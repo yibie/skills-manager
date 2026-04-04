@@ -27,6 +27,9 @@ struct Skill: Identifiable, Hashable, Sendable {
     var version: String?
     var filePath: URL           // primary file (SKILL.md)
     var directoryPath: URL      // skill directory
+    /// Path to the canonical .agents/skills/<name>/ directory, if known.
+    /// Nil for skills that were not installed via the universal symlink mechanism.
+    var canonicalPath: URL? = nil
     var compatibleAgents: [String]
     var tags: [String]
     var markdownContent: String // raw SKILL.md content
