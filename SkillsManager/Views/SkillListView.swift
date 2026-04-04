@@ -4,6 +4,8 @@ struct SkillListView: View {
     let skills: [Skill]
     let filter: SidebarFilter
     @Binding var selectedSkill: Skill?
+    let onInstall: (Skill) async -> Void
+    let onUninstall: (Skill) async -> Void
 
     private var filteredSkills: [Skill] {
         switch filter {
@@ -36,8 +38,12 @@ struct SkillListView: View {
                 emptyState
             } else {
                 List(filteredSkills, selection: $selectedSkill) { skill in
-                    SkillRow(skill: skill)
-                        .tag(skill)
+                    SkillRow(
+                        skill: skill,
+                        onInstall: { Task { await onInstall(skill) } },
+                        onUninstall: { Task { await onUninstall(skill) } }
+                    )
+                    .tag(skill)
                 }
                 .listStyle(.plain)
             }
@@ -59,6 +65,8 @@ struct SkillListView: View {
 
 private struct SkillRow: View {
     let skill: Skill
+    let onInstall: () -> Void
+    let onUninstall: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -80,7 +88,7 @@ private struct SkillRow: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
 
-            SkillActionButtons(skill: skill)
+            SkillActionButtons(skill: skill, onInstall: onInstall, onUninstall: onUninstall)
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
@@ -91,17 +99,19 @@ private struct SkillRow: View {
 
 private struct SkillActionButtons: View {
     let skill: Skill
+    let onInstall: () -> Void
+    let onUninstall: () -> Void
 
     var body: some View {
         HStack(spacing: 6) {
             switch skill.installState {
             case .notInstalled:
-                ActionButton(icon: "arrow.down.circle", label: "Install") { }
+                ActionButton(icon: "arrow.down.circle", label: "Install", action: onInstall)
             case .installed:
-                ActionButton(icon: "trash", label: "Uninstall") { }
+                ActionButton(icon: "trash", label: "Uninstall", action: onUninstall)
             case .trial:
-                ActionButton(icon: "arrow.down.circle", label: "Keep") { }
-                ActionButton(icon: "xmark.circle", label: "Discard") { }
+                ActionButton(icon: "arrow.down.circle", label: "Keep", action: onInstall)
+                ActionButton(icon: "xmark.circle", label: "Discard", action: onUninstall)
             }
 
             ActionButton(icon: "flask", label: "Try") { }
@@ -169,6 +179,12 @@ private struct InstallStateBadge: View {
 
 #Preview {
     @Previewable @State var selected: Skill? = nil
-    SkillListView(skills: Skill.mockSkills, filter: .all, selectedSkill: $selected)
-        .frame(width: 300, height: 500)
+    SkillListView(
+        skills: Skill.mockSkills,
+        filter: .all,
+        selectedSkill: $selected,
+        onInstall: { _ in },
+        onUninstall: { _ in }
+    )
+    .frame(width: 300, height: 500)
 }

@@ -1,112 +1,56 @@
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query private var skillRecords: [SkillRecord]
+
+    @State private var store = SkillStore()
     @State private var selectedFilter: SidebarFilter = .all
     @State private var selectedSkill: Skill? = nil
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
-    // Mock skills injected at the environment level until real data is wired
-    private let skills: [Skill] = Skill.mockSkills
-
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView(selectedFilter: $selectedFilter, skills: skills)
+            SidebarView(selectedFilter: $selectedFilter, skills: store.skills)
         } content: {
-            SkillListView(skills: skills, filter: selectedFilter, selectedSkill: $selectedSkill)
+            if selectedFilter == .discover {
+                DiscoverView(
+                    plugins: store.discoverablePlugins,
+                    isLoading: store.isLoadingPlugins,
+                    onInstall: { plugin in await store.install(plugin: plugin) },
+                    onUninstall: { plugin in await store.uninstall(plugin: plugin) }
+                )
+            } else {
+                SkillListView(
+                    skills: store.skills,
+                    filter: selectedFilter,
+                    selectedSkill: $selectedSkill,
+                    onInstall: { skill in await store.installSkill(skill) },
+                    onUninstall: { skill in await store.uninstallSkill(skill) }
+                )
+            }
         } detail: {
             SkillDetailView(skill: selectedSkill)
+        }
+        .task {
+            await store.reloadSkills()
+            await store.reloadDiscoverablePlugins()
+            store.merge(records: skillRecords)
+        }
+        .onChange(of: skillRecords) {
+            store.merge(records: skillRecords)
+        }
+        .alert("Error", isPresented: .constant(store.errorMessage != nil)) {
+            Button("OK") { store.errorMessage = nil }
+        } message: {
+            Text(store.errorMessage ?? "")
         }
     }
 }
 
-// MARK: - Mock data
-
-extension Skill {
-    static let mockSkills: [Skill] = [
-        Skill(
-            id: "local:commit",
-            name: "commit",
-            displayName: "Commit",
-            description: "Create well-formatted git commits with conventional commit messages and co-author attribution.",
-            source: .local,
-            version: "1.2.0",
-            filePath: URL(fileURLWithPath: "/Users/chenyibin/.claude/skills/commit/SKILL.md"),
-            directoryPath: URL(fileURLWithPath: "/Users/chenyibin/.claude/skills/commit"),
-            compatibleAgents: ["Claude Code"],
-            tags: ["git", "workflow"],
-            markdownContent: "# Commit\n\nCreates well-formatted commits.\n\n## Usage\n\nRun `/commit` to stage and commit changes.",
-            frontmatter: ["version": "1.2.0"],
-            isStarred: true,
-            installState: .installed
-        ),
-        Skill(
-            id: "local:done",
-            name: "done",
-            displayName: "Done",
-            description: "Save session summary with decisions, discoveries, and next steps to a markdown file.",
-            source: .local,
-            version: "1.0.0",
-            filePath: URL(fileURLWithPath: "/Users/chenyibin/.claude/skills/done/SKILL.md"),
-            directoryPath: URL(fileURLWithPath: "/Users/chenyibin/.claude/skills/done"),
-            compatibleAgents: ["Claude Code"],
-            tags: ["workflow", "notes"],
-            markdownContent: "# Done\n\nSaves session summaries.\n\n## Usage\n\nRun `/done` at end of a session.",
-            frontmatter: ["version": "1.0.0"],
-            isStarred: false,
-            installState: .installed
-        ),
-        Skill(
-            id: "plugin:marketplace:swiftui-expert",
-            name: "swiftui-expert-skill",
-            displayName: "SwiftUI Expert",
-            description: "Write, review, or improve SwiftUI code for iOS/macOS with modern APIs and best practices.",
-            source: .plugin(marketplace: "marketplace", pluginName: "swiftui-expert-skill"),
-            version: "2.1.0",
-            filePath: URL(fileURLWithPath: "/Users/chenyibin/.claude/skills/swiftui-expert-skill/SKILL.md"),
-            directoryPath: URL(fileURLWithPath: "/Users/chenyibin/.claude/skills/swiftui-expert-skill"),
-            compatibleAgents: ["Claude Code"],
-            tags: ["swift", "swiftui", "ios", "macos"],
-            markdownContent: "# SwiftUI Expert\n\nBuild, review, or improve SwiftUI features with correct state management and modern APIs.",
-            frontmatter: ["version": "2.1.0"],
-            isStarred: true,
-            installState: .installed
-        ),
-        Skill(
-            id: "plugin:marketplace:find-skills",
-            name: "find-skills",
-            displayName: "Find Skills",
-            description: "Helps users discover and install agent skills from the marketplace.",
-            source: .plugin(marketplace: "marketplace", pluginName: "find-skills"),
-            version: "1.0.0",
-            filePath: URL(fileURLWithPath: "/Users/chenyibin/.claude/skills/find-skills/SKILL.md"),
-            directoryPath: URL(fileURLWithPath: "/Users/chenyibin/.claude/skills/find-skills"),
-            compatibleAgents: ["Claude Code"],
-            tags: ["marketplace", "discovery"],
-            markdownContent: "# Find Skills\n\nDiscover and install skills from the marketplace.",
-            frontmatter: ["version": "1.0.0"],
-            isStarred: false,
-            installState: .trial
-        ),
-        Skill(
-            id: "local:start-phase",
-            name: "start-phase",
-            displayName: "Start Phase",
-            description: "Start a new development phase by creating a spec file and setting context for the session.",
-            source: .local,
-            version: nil,
-            filePath: URL(fileURLWithPath: "/Users/chenyibin/.claude/skills/start-phase/SKILL.md"),
-            directoryPath: URL(fileURLWithPath: "/Users/chenyibin/.claude/skills/start-phase"),
-            compatibleAgents: ["Claude Code"],
-            tags: ["workflow", "planning"],
-            markdownContent: "# Start Phase\n\nBegin a new development phase with structured context.",
-            frontmatter: [:],
-            isStarred: false,
-            installState: .notInstalled
-        ),
-    ]
-}
-
 #Preview {
     ContentView()
+        .modelContainer(for: SkillRecord.self, inMemory: true)
         .frame(width: 1100, height: 700)
 }
