@@ -10,8 +10,8 @@ struct SkillListView: View {
 
     private var filteredSkills: [Skill] {
         switch filter {
-        case .discover:
-            // ContentView routes .discover to DiscoverView; SkillListView is never shown for this filter
+        case .discover, .project:
+            // ContentView routes these to dedicated views; SkillListView is never shown for these filters
             return []
         case .all:
             return skills
@@ -29,6 +29,7 @@ struct SkillListView: View {
                 case .local: name.lowercased() == "local"
                 case .symlinked: name.lowercased() == "symlinked"
                 case .plugin(let marketplace, _): marketplace.lowercased() == name.lowercased()
+                case .projectLocal: false
                 }
             }
         }

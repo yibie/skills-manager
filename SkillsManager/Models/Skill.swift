@@ -41,6 +41,7 @@ enum SkillSource: Hashable, Codable, Sendable {
     case local           // user-created in ~/.claude/skills/
     case plugin(marketplace: String, pluginName: String)  // from marketplace plugin
     case symlinked       // symlinked from another location
+    case projectLocal(projectURL: URL)
 }
 
 enum InstallState: String, Codable, CaseIterable, Sendable {
