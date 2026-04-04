@@ -4,3 +4,6 @@
 DerivedData/
 *.xcuserstate
 .DS_Store
+
+SkillsManager.xcodeproj/xcuserdata/
+SkillsManager.xcodeproj/project.xcworkspace/xcuserdata/

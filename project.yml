@@ -1,0 +1,55 @@
+name: SkillsManager
+options:
+  bundleIdPrefix: com.skillsmanager
+  deploymentTarget:
+    macOS: "14.0"
+  defaultConfig: Debug
+  xcodeVersion: "15"
+  createIntermediateGroups: true
+
+packages:
+  swift-markdown:
+    url: https://github.com/apple/swift-markdown.git
+    from: "0.4.0"
+
+targets:
+  SkillsManager:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: SkillsManager
+        excludes:
+          - "**/*.md"
+    resources:
+      - path: SkillsManager/Assets.xcassets
+    dependencies:
+      - package: swift-markdown
+        product: Markdown
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.skillsmanager.SkillsManager
+        PRODUCT_NAME: Skills Manager
+        SWIFT_VERSION: "6.0"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        INFOPLIST_FILE: SkillsManager/Info.plist
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_HARDENED_RUNTIME: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      configs:
+        Debug:
+          SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+        Release:
+          SWIFT_OPTIMIZATION_LEVEL: "-O"
+          COPY_PHASE_STRIP: YES
+
+schemes:
+  SkillsManager:
+    build:
+      targets:
+        SkillsManager: all
+    run:
+      config: Debug
+    archive:
+      config: Release
