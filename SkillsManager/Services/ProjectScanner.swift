@@ -53,7 +53,17 @@ struct ProjectScanner {
         guard let content = try? String(contentsOf: skillFile, encoding: .utf8) else { return nil }
         let parsed = SkillParser.parse(content: content)
         let fm = parsed.frontmatter
-        let dirName = skillFile.deletingLastPathComponent().lastPathComponent
+        // Derive a stable skill name from the skill file's path relative to the project root
+        let relativePath = skillFile.deletingLastPathComponent().path
+        let projectPath = projectURL.path
+        let relativeComponent: String
+        if relativePath == projectPath {
+            // SKILL.md is in the project root — use "root" as the skill name segment
+            relativeComponent = "root"
+        } else {
+            relativeComponent = skillFile.deletingLastPathComponent().lastPathComponent
+        }
+        let dirName = relativeComponent
         let displayName = fm["name"] ?? dirName
         let description = fm["description"] ?? ""
         let rawTags = fm["tags"] ?? fm["keywords"] ?? ""
@@ -61,6 +71,8 @@ struct ProjectScanner {
             .components(separatedBy: ",")
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
+        // Unlike ClaudeCodeAdapter (which hardcodes ["Claude Code"]), project-local skills
+        // respect their frontmatter's compatible_agents, since they may target multiple agents.
         let agents = fm["compatible_agents"]
             .map { $0.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) } }
             ?? ["Claude Code"]
