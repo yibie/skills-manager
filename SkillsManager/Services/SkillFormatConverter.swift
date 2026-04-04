@@ -40,7 +40,7 @@ enum SkillFormatConverter {
         ---
         name: \(yamlString(name))
         description: \(yamlString(description))\(tagsLine)
-        compatible_agents: [Cursor]
+        compatible_agents: [Cursor, Claude Code]
         ---
 
         \(body)

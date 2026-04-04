@@ -53,17 +53,20 @@ struct ProjectScanner {
         guard let content = try? String(contentsOf: skillFile, encoding: .utf8) else { return nil }
         let parsed = SkillParser.parse(content: content)
         let fm = parsed.frontmatter
-        // Derive a stable skill name from the skill file's path relative to the project root
-        let relativePath = skillFile.deletingLastPathComponent().path
-        let projectPath = projectURL.path
-        let relativeComponent: String
-        if relativePath == projectPath {
+        // Derive a stable skill id segment from the path relative to the project root.
+        // Using the full relative path (e.g. "src/utils") prevents collisions between
+        // two SKILL.md files that share the same immediate parent directory name.
+        let skillDirPath = skillFile.deletingLastPathComponent().standardized.path
+        let projectPath = projectURL.standardized.path
+        let dirName: String
+        if skillDirPath == projectPath {
             // SKILL.md is in the project root — use "root" as the skill name segment
-            relativeComponent = "root"
+            dirName = "root"
+        } else if skillDirPath.hasPrefix(projectPath + "/") {
+            dirName = String(skillDirPath.dropFirst(projectPath.count + 1))
         } else {
-            relativeComponent = skillFile.deletingLastPathComponent().lastPathComponent
+            dirName = skillFile.deletingLastPathComponent().lastPathComponent
         }
-        let dirName = relativeComponent
         let displayName = fm["name"] ?? dirName
         let description = fm["description"] ?? ""
         let rawTags = fm["tags"] ?? fm["keywords"] ?? ""
