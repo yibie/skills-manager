@@ -99,17 +99,29 @@ actor InstallService {
     }
 
     private func runProcess(_ exec: String, args: [String], at dir: URL) async throws {
-        let process = Process()
-        let errPipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: exec)
-        process.arguments = args
-        process.currentDirectoryURL = dir
-        process.standardError = errPipe
-        try process.run()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else {
-            let msg = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-            throw InstallError.processFailed(exec, msg)
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            let process = Process()
+            let errPipe = Pipe()
+            process.executableURL = URL(fileURLWithPath: exec)
+            process.arguments = args
+            process.currentDirectoryURL = dir
+            process.standardError = errPipe
+            process.terminationHandler = { p in
+                if p.terminationStatus == 0 {
+                    continuation.resume()
+                } else {
+                    let msg = String(
+                        data: errPipe.fileHandleForReading.readDataToEndOfFile(),
+                        encoding: .utf8
+                    ) ?? ""
+                    continuation.resume(throwing: InstallError.processFailed(exec, msg))
+                }
+            }
+            do {
+                try process.run()
+            } catch {
+                continuation.resume(throwing: error)
+            }
         }
     }
 }
