@@ -4,31 +4,37 @@ struct CursorAdapter: AgentAdapter {
 
     let agentName = "Cursor"
     let agentIcon = "cursorarrow"
+    private let rulesDirectory = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".cursor/rules")
 
-    var skillsDirectories: [URL] {
-        [FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".cursor/rules")]
-    }
+    var skillsDirectories: [URL] { [rulesDirectory] }
 
     func scanSkills() async throws -> [Skill] {
-        scanMDC(in: skillsDirectories[0], source: .local)
+        // Keep source: .local — Cursor global rules are locally-installed files.
+        // The "cursor:" id prefix distinguishes them from Claude Code local skills ("local:").
+        scanMDC(in: rulesDirectory, source: .local)
     }
 
     func installSkill(_ skill: Skill) throws {
-        let rulesDir = skillsDirectories[0]
         let fm = FileManager.default
-        if !fm.fileExists(atPath: rulesDir.path) {
-            try fm.createDirectory(at: rulesDir, withIntermediateDirectories: true)
+        if !fm.fileExists(atPath: rulesDirectory.path) {
+            try fm.createDirectory(at: rulesDirectory, withIntermediateDirectories: true)
         }
         let content = SkillFormatConverter.toMDC(skill: skill)
-        let dest = rulesDir.appendingPathComponent("\(skill.name).mdc")
+        let dest = rulesDirectory.appendingPathComponent("\(skill.name).mdc")
         try content.write(to: dest, atomically: true, encoding: .utf8)
     }
 
     func uninstallSkill(_ skill: Skill) throws {
+        let resolvedPath = skill.filePath.standardized.path
+        let rulesPath = rulesDirectory.standardized.path
+        guard resolvedPath.hasPrefix(rulesPath + "/") else {
+            throw CocoaError(.fileWriteNoPermission)
+        }
         try FileManager.default.removeItem(at: skill.filePath)
     }
 
-    // MARK: - Internal (also used by ProjectScanner)
+    // MARK: - Shared API
 
     /// Scans a directory for *.mdc files, building Skill structs with the given source.
     func scanMDC(in directory: URL, source: SkillSource) -> [Skill] {
@@ -71,7 +77,7 @@ struct CursorAdapter: AgentAdapter {
             version: nil,
             filePath: fileURL,
             directoryPath: fileURL.deletingLastPathComponent(),
-            compatibleAgents: ["Cursor"],
+            compatibleAgents: [agentName],
             tags: tags,
             markdownContent: content,
             frontmatter: parsed.frontmatter
