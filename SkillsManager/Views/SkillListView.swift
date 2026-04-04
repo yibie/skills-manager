@@ -6,6 +6,7 @@ struct SkillListView: View {
     @Binding var selectedSkill: Skill?
     let onInstall: (Skill) async -> Void
     let onUninstall: (Skill) async -> Void
+    let onTry: (Skill) -> Void
 
     private var filteredSkills: [Skill] {
         switch filter {
@@ -42,7 +43,8 @@ struct SkillListView: View {
                     SkillRow(
                         skill: skill,
                         onInstall: { Task { await onInstall(skill) } },
-                        onUninstall: { Task { await onUninstall(skill) } }
+                        onUninstall: { Task { await onUninstall(skill) } },
+                        onTry: { onTry(skill) }
                     )
                     .tag(skill)
                 }
@@ -68,6 +70,7 @@ private struct SkillRow: View {
     let skill: Skill
     let onInstall: () -> Void
     let onUninstall: () -> Void
+    let onTry: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -89,7 +92,7 @@ private struct SkillRow: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
 
-            SkillActionButtons(skill: skill, onInstall: onInstall, onUninstall: onUninstall)
+            SkillActionButtons(skill: skill, onInstall: onInstall, onUninstall: onUninstall, onTry: onTry)
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
@@ -102,6 +105,7 @@ private struct SkillActionButtons: View {
     let skill: Skill
     let onInstall: () -> Void
     let onUninstall: () -> Void
+    let onTry: () -> Void
 
     var body: some View {
         HStack(spacing: 6) {
@@ -115,7 +119,7 @@ private struct SkillActionButtons: View {
                 ActionButton(icon: "xmark.circle", label: "Discard", action: onUninstall)
             }
 
-            ActionButton(icon: "flask", label: "Try") { }
+            ActionButton(icon: "flask", label: "Try", action: onTry)
 
             Menu {
                 Button("Copy ID") { }
@@ -185,7 +189,8 @@ private struct InstallStateBadge: View {
         filter: .all,
         selectedSkill: $selected,
         onInstall: { _ in },
-        onUninstall: { _ in }
+        onUninstall: { _ in },
+        onTry: { _ in }
     )
     .frame(width: 300, height: 500)
 }

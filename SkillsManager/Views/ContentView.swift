@@ -9,6 +9,7 @@ struct ContentView: View {
     @State private var selectedFilter: SidebarFilter = .all
     @State private var selectedSkill: Skill? = nil
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @State private var sandboxSkill: Skill? = nil
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -29,7 +30,8 @@ struct ContentView: View {
                     filter: selectedFilter,
                     selectedSkill: $selectedSkill,
                     onInstall: { skill in await store.installSkill(skill) },
-                    onUninstall: { skill in await store.uninstallSkill(skill) }
+                    onUninstall: { skill in await store.uninstallSkill(skill) },
+                    onTry: { skill in sandboxSkill = skill }
                 )
             }
         } detail: {
@@ -46,6 +48,13 @@ struct ContentView: View {
                     modelContext.insert(record)
                 }
             }
+        }
+        .sheet(item: $sandboxSkill) { skill in
+            SandboxView(
+                initialSkill: skill,
+                availableSkills: store.skills,
+                onKeep: { skill in await store.installSkill(skill) }
+            )
         }
         .task {
             async let skills: Void = store.reloadSkills()
