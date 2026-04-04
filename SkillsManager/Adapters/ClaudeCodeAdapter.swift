@@ -121,59 +121,51 @@ struct ClaudeCodeAdapter: AgentAdapter {
                 guard isDirectory(pluginURL) else { continue }
                 let pluginName = pluginURL.lastPathComponent
 
-                // Find versions
-                guard let versions = try? fm.contentsOfDirectory(
-                    at: pluginURL,
-                    includingPropertiesForKeys: [.isDirectoryKey],
+                // Use only the latest cached version to avoid duplicate skill IDs
+                guard let versionURL = latestVersion(in: pluginURL) else { continue }
+
+                let skillsDir = versionURL.appendingPathComponent("skills")
+                guard fm.fileExists(atPath: skillsDir.path) else { continue }
+
+                guard let skillEntries = try? fm.contentsOfDirectory(
+                    at: skillsDir,
+                    includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey],
                     options: [.skipsHiddenFiles]
                 ) else { continue }
 
-                for versionURL in versions {
-                    guard isDirectory(versionURL) else { continue }
+                for entry in skillEntries {
+                    let resolved = resolveSymlink(entry)
 
-                    let skillsDir = versionURL.appendingPathComponent("skills")
-                    guard fm.fileExists(atPath: skillsDir.path) else { continue }
+                    var isDir: ObjCBool = false
+                    fm.fileExists(atPath: resolved.path, isDirectory: &isDir)
 
-                    guard let skillEntries = try? fm.contentsOfDirectory(
-                        at: skillsDir,
-                        includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey],
-                        options: [.skipsHiddenFiles]
-                    ) else { continue }
+                    let skillName = entry.lastPathComponent
 
-                    for entry in skillEntries {
-                        let resolved = resolveSymlink(entry)
+                    if isDir.boolValue {
+                        let skillFile = resolved.appendingPathComponent("SKILL.md")
+                        guard fm.fileExists(atPath: skillFile.path) else { continue }
 
-                        var isDir: ObjCBool = false
-                        fm.fileExists(atPath: resolved.path, isDirectory: &isDir)
-
-                        let skillName = entry.lastPathComponent
-
-                        if isDir.boolValue {
-                            let skillFile = resolved.appendingPathComponent("SKILL.md")
-                            guard fm.fileExists(atPath: skillFile.path) else { continue }
-
-                            let id = "plugin:\(marketplace):\(pluginName):\(skillName)"
-                            if let skill = buildSkill(
-                                skillFile: skillFile,
-                                skillDir: resolved,
-                                id: id,
-                                name: skillName,
-                                source: .plugin(marketplace: marketplace, pluginName: pluginName)
-                            ) {
-                                skills.append(skill)
-                            }
-                        } else if entry.pathExtension == "md" {
-                            let nameWithoutExt = entry.deletingPathExtension().lastPathComponent
-                            let id = "plugin:\(marketplace):\(pluginName):\(nameWithoutExt)"
-                            if let skill = buildSkill(
-                                skillFile: resolved,
-                                skillDir: skillsDir,
-                                id: id,
-                                name: nameWithoutExt,
-                                source: .plugin(marketplace: marketplace, pluginName: pluginName)
-                            ) {
-                                skills.append(skill)
-                            }
+                        let id = "plugin:\(marketplace):\(pluginName):\(skillName)"
+                        if let skill = buildSkill(
+                            skillFile: skillFile,
+                            skillDir: resolved,
+                            id: id,
+                            name: skillName,
+                            source: .plugin(marketplace: marketplace, pluginName: pluginName)
+                        ) {
+                            skills.append(skill)
+                        }
+                    } else if entry.pathExtension == "md" {
+                        let nameWithoutExt = entry.deletingPathExtension().lastPathComponent
+                        let id = "plugin:\(marketplace):\(pluginName):\(nameWithoutExt)"
+                        if let skill = buildSkill(
+                            skillFile: resolved,
+                            skillDir: skillsDir,
+                            id: id,
+                            name: nameWithoutExt,
+                            source: .plugin(marketplace: marketplace, pluginName: pluginName)
+                        ) {
+                            skills.append(skill)
                         }
                     }
                 }
@@ -240,5 +232,21 @@ struct ClaudeCodeAdapter: AgentAdapter {
         var isDir: ObjCBool = false
         FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
         return isDir.boolValue
+    }
+
+    /// Returns the URL of the highest semantic version subdirectory inside a plugin directory.
+    /// Uses numeric string comparison so "5.0.10" > "5.0.9".
+    private func latestVersion(in pluginURL: URL) -> URL? {
+        let fm = FileManager.default
+        guard let entries = try? fm.contentsOfDirectory(
+            at: pluginURL,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else { return nil }
+        return entries
+            .filter { isDirectory($0) }
+            .max { a, b in
+                a.lastPathComponent.compare(b.lastPathComponent, options: .numeric) == .orderedAscending
+            }
     }
 }
