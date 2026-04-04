@@ -18,8 +18,10 @@ struct ContentView: View {
                 DiscoverView(
                     plugins: store.discoverablePlugins,
                     isLoading: store.isLoadingPlugins,
+                    isSyncing: store.isSyncing,
                     onInstall: { plugin in await store.install(plugin: plugin) },
-                    onUninstall: { plugin in await store.uninstall(plugin: plugin) }
+                    onUninstall: { plugin in await store.uninstall(plugin: plugin) },
+                    onRefresh: { await store.syncAndReloadPlugins() }
                 )
             } else {
                 SkillListView(

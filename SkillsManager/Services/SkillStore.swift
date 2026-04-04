@@ -11,6 +11,7 @@ final class SkillStore {
     var discoverablePlugins: [MarketplacePlugin] = []
     var isLoading = false
     var isLoadingPlugins = false
+    var isSyncing = false
     var errorMessage: String?
 
     // MARK: - Services
@@ -63,6 +64,13 @@ final class SkillStore {
             plugins: plugins,
             installed: installed
         )
+    }
+
+    func syncAndReloadPlugins() async {
+        isSyncing = true
+        defer { isSyncing = false }
+        await marketplaceService.syncAllMarketplaces()
+        await reloadDiscoverablePlugins()
     }
 
     func install(plugin: MarketplacePlugin) async {

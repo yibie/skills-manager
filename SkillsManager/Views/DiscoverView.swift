@@ -3,8 +3,10 @@ import SwiftUI
 struct DiscoverView: View {
     let plugins: [MarketplacePlugin]
     let isLoading: Bool
+    let isSyncing: Bool
     let onInstall: (MarketplacePlugin) async -> Void
     let onUninstall: (MarketplacePlugin) async -> Void
+    let onRefresh: () async -> Void
 
     @State private var searchText = ""
     @State private var selectedCategory: String?
@@ -70,6 +72,21 @@ struct DiscoverView: View {
         }
         .searchable(text: $searchText, prompt: "Search plugins...")
         .navigationTitle("Discover")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    Task { await onRefresh() }
+                } label: {
+                    if isSyncing {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Label("Refresh", systemImage: "arrow.clockwise")
+                    }
+                }
+                .disabled(isSyncing)
+                .help("Sync marketplace from GitHub")
+            }
+        }
     }
 }
 
@@ -168,8 +185,10 @@ private struct CategoryChip: View {
             ),
         ],
         isLoading: false,
+        isSyncing: false,
         onInstall: { _ in },
-        onUninstall: { _ in }
+        onUninstall: { _ in },
+        onRefresh: {}
     )
     .frame(width: 500, height: 600)
 }
