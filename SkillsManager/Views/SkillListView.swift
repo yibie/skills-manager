@@ -5,11 +5,10 @@ struct SkillListView: View {
     let filter: SidebarFilter
     @Binding var selectedSkill: Skill?
 
-    @State private var hoveredSkillID: String?
-
-    // Prefiltered list — avoids inline filtering in ForEach
     private var filteredSkills: [Skill] {
         switch filter {
+        case .discover:
+            return skills
         case .all:
             return skills
         case .installed:
@@ -37,14 +36,8 @@ struct SkillListView: View {
                 emptyState
             } else {
                 List(filteredSkills, selection: $selectedSkill) { skill in
-                    SkillRow(
-                        skill: skill,
-                        isHovered: hoveredSkillID == skill.id
-                    )
-                    .tag(skill)
-                    .onHover { hovering in
-                        hoveredSkillID = hovering ? skill.id : nil
-                    }
+                    SkillRow(skill: skill)
+                        .tag(skill)
                 }
                 .listStyle(.plain)
             }
@@ -66,7 +59,6 @@ struct SkillListView: View {
 
 private struct SkillRow: View {
     let skill: Skill
-    let isHovered: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -88,45 +80,31 @@ private struct SkillRow: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
 
-            if isHovered {
-                SkillActionBar(skill: skill)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            }
+            SkillActionButtons(skill: skill)
         }
         .padding(.vertical, 4)
-        .animation(.easeInOut(duration: 0.15), value: isHovered)
         .contentShape(Rectangle())
     }
 }
 
-// MARK: - Action bar
+// MARK: - Action buttons (inline, below row content)
 
-private struct SkillActionBar: View {
+private struct SkillActionButtons: View {
     let skill: Skill
-    // In a real app these would call into a SkillService; using no-ops for now
+
     var body: some View {
         HStack(spacing: 6) {
             switch skill.installState {
             case .notInstalled:
-                Button("Install") { }
-                    .controlSize(.small)
-                    .buttonStyle(.bordered)
+                ActionButton(icon: "arrow.down.circle", label: "Install") { }
             case .installed:
-                Button("Uninstall") { }
-                    .controlSize(.small)
-                    .buttonStyle(.bordered)
+                ActionButton(icon: "trash", label: "Uninstall") { }
             case .trial:
-                Button("Install") { }
-                    .controlSize(.small)
-                    .buttonStyle(.bordered)
-                Button("Remove Trial") { }
-                    .controlSize(.small)
-                    .buttonStyle(.bordered)
+                ActionButton(icon: "arrow.down.circle", label: "Keep") { }
+                ActionButton(icon: "xmark.circle", label: "Discard") { }
             }
 
-            Button("Try") { }
-                .controlSize(.small)
-                .buttonStyle(.bordered)
+            ActionButton(icon: "flask", label: "Try") { }
 
             Menu {
                 Button("Copy ID") { }
@@ -135,12 +113,30 @@ private struct SkillActionBar: View {
                 Button("Copy Path") { }
             } label: {
                 Image(systemName: "ellipsis")
+                    .frame(width: 22, height: 22)
+                    .contentShape(Rectangle())
             }
             .menuStyle(.borderlessButton)
-            .controlSize(.small)
-            .frame(width: 24)
+            .frame(width: 22, height: 22)
+            .help("More")
         }
-        .padding(.top, 4)
+        .padding(.top, 2)
+    }
+}
+
+private struct ActionButton: View {
+    let icon: String
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .frame(width: 22, height: 22)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .help(label)
     }
 }
 
