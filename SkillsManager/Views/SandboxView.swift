@@ -102,6 +102,7 @@ struct SandboxView: View {
                                 }
                             },
                             onDiscard: {
+                                // Safe: this closure is called from @MainActor view body
                                 slot.output = nil
                                 slot.error = nil
                             },
@@ -147,6 +148,8 @@ struct SandboxView: View {
     }
 
     private func run(slot: SandboxSlot, skill: Skill, prompt: String) async {
+        let apiKey = apiKey
+        let model = model
         await MainActor.run {
             slot.isLoading = true
             slot.output = nil
@@ -175,6 +178,8 @@ struct SandboxView: View {
 // MARK: - SlotCard
 
 private struct SlotCard: View {
+    // SandboxSlot is a reference type (@Observable class); `let` prevents reassignment
+    // but mutations to slot.skill, slot.output, etc. still propagate via @Observable.
     let slot: SandboxSlot
     let availableSkills: [Skill]
     let canRemove: Bool
