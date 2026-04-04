@@ -3,6 +3,7 @@ import SwiftData
 
 @main
 struct SkillsManagerApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             SkillRecord.self,
