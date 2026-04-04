@@ -3,6 +3,7 @@ import SwiftUI
 struct SidebarView: View {
     @Binding var selectedFilter: SidebarFilter
     let skills: [Skill]
+    var discoverableCount: Int = 0
 
     // Precomputed counts to avoid inline filtering in the view body
     private var allCount: Int { skills.count }
@@ -39,7 +40,7 @@ struct SidebarView: View {
     var body: some View {
         List(selection: $selectedFilter) {
             Section("Library") {
-                SidebarRow(filter: .discover, count: 0, selectedFilter: selectedFilter)
+                SidebarRow(filter: .discover, count: discoverableCount, selectedFilter: selectedFilter)
                 SidebarRow(filter: .all, count: allCount, selectedFilter: selectedFilter)
                 SidebarRow(filter: .installed, count: installedCount, selectedFilter: selectedFilter)
                 SidebarRow(filter: .starred, count: starredCount, selectedFilter: selectedFilter)
@@ -91,6 +92,6 @@ private struct SidebarRow: View {
 
 #Preview {
     @Previewable @State var filter: SidebarFilter = .all
-    SidebarView(selectedFilter: $filter, skills: Skill.mockSkills)
+    SidebarView(selectedFilter: $filter, skills: Skill.mockSkills, discoverableCount: 3)
         .frame(width: 220, height: 500)
 }
