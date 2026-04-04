@@ -62,9 +62,7 @@ enum SkillFormatConverter {
     /// Parses a YAML/JSON-style globs array string like ["*.ts", "*.tsx"] into [String].
     static func parseGlobs(_ raw: String) -> [String] {
         raw
-            .trimmingCharacters(in: CharacterSet(charactersIn: "["))
-            .trimmingCharacters(in: CharacterSet(charactersIn: "]"))
-            .trimmingCharacters(in: .whitespaces)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "[] "))
             .components(separatedBy: ",")
             .map {
                 $0.trimmingCharacters(in: .whitespaces)
@@ -75,7 +73,9 @@ enum SkillFormatConverter {
 
     /// Wraps a string in YAML double-quote syntax, escaping embedded double quotes.
     private static func yamlString(_ value: String) -> String {
-        let escaped = value.replacingOccurrences(of: "\"", with: "\\\"")
+        let escaped = value
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
         return "\"\(escaped)\""
     }
 }
