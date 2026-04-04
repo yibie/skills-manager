@@ -107,13 +107,13 @@ actor InstallService {
             process.currentDirectoryURL = dir
             process.standardError = errPipe
             process.terminationHandler = { p in
+                // Read stderr data synchronously in the handler — safe because
+                // process has already terminated at this point
+                let errData = errPipe.fileHandleForReading.availableData
                 if p.terminationStatus == 0 {
                     continuation.resume()
                 } else {
-                    let msg = String(
-                        data: errPipe.fileHandleForReading.readDataToEndOfFile(),
-                        encoding: .utf8
-                    ) ?? ""
+                    let msg = String(data: errData, encoding: .utf8) ?? ""
                     continuation.resume(throwing: InstallError.processFailed(exec, msg))
                 }
             }
