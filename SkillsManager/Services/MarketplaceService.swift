@@ -40,15 +40,12 @@ actor MarketplaceService {
         plugins: [MarketplacePlugin],
         installed: InstalledPluginsFile
     ) -> [MarketplacePlugin] {
-        let installedKeys = Set(installed.plugins.keys)
         return plugins.map { plugin in
             var p = plugin
             let key = "\(plugin.name)@\(plugin.marketplace)"
             if let records = installed.plugins[key], let record = records.first {
                 p.isInstalled = true
                 p.installedVersion = record.version
-            } else {
-                p.isInstalled = installedKeys.contains(where: { $0.hasPrefix("\(plugin.name)@") })
             }
             return p
         }
@@ -96,11 +93,5 @@ actor MarketplaceService {
         default:
             return .gitURL(url: dict["url"] as? String ?? "", sha: dict["sha"] as? String)
         }
-    }
-}
-
-private extension Set where Element == String {
-    func contains(where predicate: (String) -> Bool) -> Bool {
-        self.first(where: predicate) != nil
     }
 }
