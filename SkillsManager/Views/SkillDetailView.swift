@@ -18,6 +18,7 @@ struct SkillDetailView: View {
                     showVersionHistory: $showVersionHistory,
                     commits: $commits,
                     onToggleStar: onToggleStar,
+                    // Fire-and-forget tasks: errors surface via SkillStore.errorMessage, not thrown here.
                     onInstallToCursor: { Task { await onInstallToCursor(skill) } },
                     onPromote: { Task { await onPromote(skill) } }
                 )
