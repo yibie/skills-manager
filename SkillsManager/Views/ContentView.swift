@@ -46,19 +46,24 @@ struct ContentView: View {
                 )
             }
         } detail: {
-            SkillDetailView(skill: selectedSkill) {
-                guard let skill = selectedSkill else { return }
-                let skillID = skill.id
-                let descriptor = FetchDescriptor<SkillRecord>(
-                    predicate: #Predicate { $0.skillID == skillID }
-                )
-                if let record = try? modelContext.fetch(descriptor).first {
-                    record.isStarred.toggle()
-                } else {
-                    let record = SkillRecord(skillID: skillID, isStarred: true, installState: skill.installState.rawValue)
-                    modelContext.insert(record)
-                }
-            }
+            SkillDetailView(
+                skill: selectedSkill,
+                onToggleStar: {
+                    guard let skill = selectedSkill else { return }
+                    let skillID = skill.id
+                    let descriptor = FetchDescriptor<SkillRecord>(
+                        predicate: #Predicate { $0.skillID == skillID }
+                    )
+                    if let record = try? modelContext.fetch(descriptor).first {
+                        record.isStarred.toggle()
+                    } else {
+                        let record = SkillRecord(skillID: skillID, isStarred: true, installState: skill.installState.rawValue)
+                        modelContext.insert(record)
+                    }
+                },
+                onInstallToCursor: { skill in await store.installToCursor(skill: skill) },
+                onPromote: { skill in await store.promoteSkill(skill) }
+            )
         }
         .onChange(of: selectedFilter) { selectedSkill = nil }
         .fileImporter(

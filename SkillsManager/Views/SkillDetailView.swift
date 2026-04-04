@@ -4,6 +4,8 @@ import AppKit
 struct SkillDetailView: View {
     let skill: Skill?
     var onToggleStar: () -> Void = {}
+    var onInstallToCursor: (Skill) async -> Void = { _ in }
+    var onPromote: (Skill) async -> Void = { _ in }
 
     @State private var showVersionHistory = false
     @State private var commits: [GitCommit] = []
@@ -15,7 +17,9 @@ struct SkillDetailView: View {
                     skill: skill,
                     showVersionHistory: $showVersionHistory,
                     commits: $commits,
-                    onToggleStar: onToggleStar
+                    onToggleStar: onToggleStar,
+                    onInstallToCursor: { Task { await onInstallToCursor(skill) } },
+                    onPromote: { Task { await onPromote(skill) } }
                 )
             } else {
                 placeholder
@@ -40,6 +44,8 @@ private struct DetailContent: View {
     @Binding var showVersionHistory: Bool
     @Binding var commits: [GitCommit]
     let onToggleStar: () -> Void
+    let onInstallToCursor: () -> Void
+    let onPromote: () -> Void
 
     var body: some View {
         ScrollView {
@@ -176,6 +182,30 @@ private struct DetailContent: View {
                 Label("Version History", systemImage: "clock.arrow.circlepath")
             }
             .help("Show version history")
+        }
+
+        // "Install to Cursor" for installed skills that don't already target Cursor
+        if skill.installState == .installed && !skill.compatibleAgents.contains("Cursor") {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    onInstallToCursor()
+                } label: {
+                    Label("Install to Cursor", systemImage: "cursorarrow.rays")
+                }
+                .help("Convert and install this skill to ~/.cursor/rules/")
+            }
+        }
+
+        // "Promote to Global" only for project-local skills
+        if case .projectLocal = skill.source {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    onPromote()
+                } label: {
+                    Label("Promote to Global", systemImage: "arrow.up.circle")
+                }
+                .help("Copy this skill to ~/.claude/skills/")
+            }
         }
     }
 }
