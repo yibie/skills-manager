@@ -13,8 +13,11 @@ struct SidebarView: View {
     private var starredCount: Int { skills.filter { $0.isStarred }.count }
     private var trialCount: Int { skills.filter { $0.installState == .trial }.count }
 
+    /// Union of: agents detected from registry + agents appearing in skill metadata.
     private var agentNames: [String] {
-        Array(Set(skills.flatMap { $0.compatibleAgents })).sorted()
+        let fromSkills = Set(skills.flatMap { $0.compatibleAgents })
+        let fromRegistry = Set(AgentRegistry.installedAgents().map { $0.displayName })
+        return fromSkills.union(fromRegistry).sorted()
     }
 
     private var pluginSources: [String] {
