@@ -1,0 +1,103 @@
+{
+  "": {
+    "swift-dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/master.swiftdeps"
+  },
+  "/Users/chenyibin/Documents/prj/skills-manager/SkillsManager/Adapters/ClaudeCodeAdapter.swift": {
+    "dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/ClaudeCodeAdapter.d",
+    "object": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/ClaudeCodeAdapter.swift.o",
+    "swiftmodule": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/ClaudeCodeAdapter~partial.swiftmodule",
+    "swift-dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/ClaudeCodeAdapter.swiftdeps",
+    "diagnostics": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/ClaudeCodeAdapter.dia"
+  },
+  "/Users/chenyibin/Documents/prj/skills-manager/SkillsManager/Models/AgentAdapter.swift": {
+    "dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/AgentAdapter.d",
+    "object": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/AgentAdapter.swift.o",
+    "swiftmodule": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/AgentAdapter~partial.swiftmodule",
+    "swift-dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/AgentAdapter.swiftdeps",
+    "diagnostics": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/AgentAdapter.dia"
+  },
+  "/Users/chenyibin/Documents/prj/skills-manager/SkillsManager/Models/SidebarFilter.swift": {
+    "dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SidebarFilter.d",
+    "object": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SidebarFilter.swift.o",
+    "swiftmodule": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SidebarFilter~partial.swiftmodule",
+    "swift-dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SidebarFilter.swiftdeps",
+    "diagnostics": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SidebarFilter.dia"
+  },
+  "/Users/chenyibin/Documents/prj/skills-manager/SkillsManager/Models/Skill.swift": {
+    "dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/Skill.d",
+    "object": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/Skill.swift.o",
+    "swiftmodule": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/Skill~partial.swiftmodule",
+    "swift-dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/Skill.swiftdeps",
+    "diagnostics": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/Skill.dia"
+  },
+  "/Users/chenyibin/Documents/prj/skills-manager/SkillsManager/Services/FileWatcher.swift": {
+    "dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/FileWatcher.d",
+    "object": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/FileWatcher.swift.o",
+    "swiftmodule": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/FileWatcher~partial.swiftmodule",
+    "swift-dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/FileWatcher.swiftdeps",
+    "diagnostics": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/FileWatcher.dia"
+  },
+  "/Users/chenyibin/Documents/prj/skills-manager/SkillsManager/Services/GitService.swift": {
+    "dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/GitService.d",
+    "object": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/GitService.swift.o",
+    "swiftmodule": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/GitService~partial.swiftmodule",
+    "swift-dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/GitService.swiftdeps",
+    "diagnostics": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/GitService.dia"
+  },
+  "/Users/chenyibin/Documents/prj/skills-manager/SkillsManager/Services/SkillParser.swift": {
+    "dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillParser.d",
+    "object": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillParser.swift.o",
+    "swiftmodule": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillParser~partial.swiftmodule",
+    "swift-dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillParser.swiftdeps",
+    "diagnostics": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillParser.dia"
+  },
+  "/Users/chenyibin/Documents/prj/skills-manager/SkillsManager/Services/SkillStore.swift": {
+    "dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillStore.d",
+    "object": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillStore.swift.o",
+    "swiftmodule": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillStore~partial.swiftmodule",
+    "swift-dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillStore.swiftdeps",
+    "diagnostics": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillStore.dia"
+  },
+  "/Users/chenyibin/Documents/prj/skills-manager/SkillsManager/SkillsManagerApp.swift": {
+    "dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillsManagerApp.d",
+    "object": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillsManagerApp.swift.o",
+    "swiftmodule": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillsManagerApp~partial.swiftmodule",
+    "swift-dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillsManagerApp.swiftdeps",
+    "diagnostics": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillsManagerApp.dia"
+  },
+  "/Users/chenyibin/Documents/prj/skills-manager/SkillsManager/Views/ContentView.swift": {
+    "dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/ContentView.d",
+    "object": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/ContentView.swift.o",
+    "swiftmodule": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/ContentView~partial.swiftmodule",
+    "swift-dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/ContentView.swiftdeps",
+    "diagnostics": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/ContentView.dia"
+  },
+  "/Users/chenyibin/Documents/prj/skills-manager/SkillsManager/Views/SidebarView.swift": {
+    "dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SidebarView.d",
+    "object": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SidebarView.swift.o",
+    "swiftmodule": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SidebarView~partial.swiftmodule",
+    "swift-dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SidebarView.swiftdeps",
+    "diagnostics": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SidebarView.dia"
+  },
+  "/Users/chenyibin/Documents/prj/skills-manager/SkillsManager/Views/SkillDetailView.swift": {
+    "dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillDetailView.d",
+    "object": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillDetailView.swift.o",
+    "swiftmodule": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillDetailView~partial.swiftmodule",
+    "swift-dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillDetailView.swiftdeps",
+    "diagnostics": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillDetailView.dia"
+  },
+  "/Users/chenyibin/Documents/prj/skills-manager/SkillsManager/Views/SkillListView.swift": {
+    "dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillListView.d",
+    "object": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillListView.swift.o",
+    "swiftmodule": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillListView~partial.swiftmodule",
+    "swift-dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillListView.swiftdeps",
+    "diagnostics": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/SkillListView.dia"
+  },
+  "/Users/chenyibin/Documents/prj/skills-manager/SkillsManager/Views/VersionHistoryView.swift": {
+    "dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/VersionHistoryView.d",
+    "object": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/VersionHistoryView.swift.o",
+    "swiftmodule": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/VersionHistoryView~partial.swiftmodule",
+    "swift-dependencies": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/VersionHistoryView.swiftdeps",
+    "diagnostics": "/Users/chenyibin/Documents/prj/skills-manager/.build/arm64-apple-macosx/debug/SkillsManager.build/VersionHistoryView.dia"
+  }
+}

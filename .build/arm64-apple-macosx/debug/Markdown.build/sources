@@ -1,0 +1,70 @@
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Base/ChildIndexPath.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Base/DirectiveArgument.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Base/Document.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Base/LiteralMarkup.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Base/Markup.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Base/MarkupChildren.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Base/MarkupData.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Base/PlainTextConvertibleMarkup.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Base/RawMarkup.swift
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Block Container Blocks/BlockDirective.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Block Container Blocks/BlockQuote.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Block Container Blocks/CustomBlock.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Block Container Blocks/Doxygen Commands/DoxygenAbstract.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Block Container Blocks/Doxygen Commands/DoxygenDiscussion.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Block Container Blocks/Doxygen Commands/DoxygenNote.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Block Container Blocks/Doxygen Commands/DoxygenParameter.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Block Container Blocks/Doxygen Commands/DoxygenReturns.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Block Container Blocks/ListItem.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Block Container Blocks/OrderedList.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Block Container Blocks/UnorderedList.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Inline Container Blocks/Paragraph.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Leaf Blocks/CodeBlock.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Leaf Blocks/HTMLBlock.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Leaf Blocks/Heading.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Leaf Blocks/ThematicBreak.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Tables/Table.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Tables/TableBody.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Tables/TableCell.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Tables/TableCellContainer.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Tables/TableHead.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Block Nodes/Tables/TableRow.swift'
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Infrastructure/Replacement.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Infrastructure/SourceLocation.swift
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Inline Nodes/Inline Containers/Emphasis.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Inline Nodes/Inline Containers/Image.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Inline Nodes/Inline Containers/InlineAttributes.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Inline Nodes/Inline Containers/Link.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Inline Nodes/Inline Containers/Strikethrough.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Inline Nodes/Inline Containers/Strong.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Inline Nodes/Inline Leaves/CustomInline.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Inline Nodes/Inline Leaves/InlineCode.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Inline Nodes/Inline Leaves/InlineHTML.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Inline Nodes/Inline Leaves/LineBreak.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Inline Nodes/Inline Leaves/SoftBreak.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Inline Nodes/Inline Leaves/SymbolLink.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Inline Nodes/Inline Leaves/Text.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Interpretive Nodes/Aside.swift'
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Parser/BlockDirectiveParser.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Parser/CommonMarkConverter.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Parser/LazySplitLines.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Parser/ParseOptions.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Parser/RangeAdjuster.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Parser/RangerTracker.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Rewriter/MarkupRewriter.swift
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Structural Restrictions/BasicBlockContainer.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Structural Restrictions/BasicInlineContainer.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Structural Restrictions/BlockContainer.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Structural Restrictions/BlockMarkup.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Structural Restrictions/InlineContainer.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Structural Restrictions/InlineMarkup.swift'
+'/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Structural Restrictions/ListItemContainer.swift'
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Utility/AtomicCounter.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Utility/CharacterExtensions.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Utility/CollectionExtensions.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Utility/StringExtensions.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Visitor/MarkupVisitor.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Walker/MarkupWalker.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Walker/Walkers/HTMLFormatter.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Walker/Walkers/MarkupFormatter.swift
+/Users/chenyibin/Documents/prj/skills-manager/.build/checkouts/swift-markdown/Sources/Markdown/Walker/Walkers/MarkupTreeDumper.swift
