@@ -9,10 +9,7 @@ struct ProjectScanner {
 
         // .cursor/rules/*.mdc
         let cursorRules = projectURL.appendingPathComponent(".cursor/rules")
-        let cursorSkills = CursorAdapter().scanMDC(
-            in: cursorRules,
-            source: .projectLocal(projectURL: projectURL)
-        )
+        let cursorSkills = scanMDC(in: cursorRules, projectURL: projectURL)
         skills.append(contentsOf: cursorSkills)
 
         // SKILL.md anywhere in the project (depth ≤ 3)
@@ -26,6 +23,40 @@ struct ProjectScanner {
     }
 
     // MARK: - Private
+
+    /// Scans a directory for *.mdc files, building Skill structs with .projectLocal source.
+    private func scanMDC(in directory: URL, projectURL: URL) -> [Skill] {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: directory.path) else { return [] }
+        guard let entries = try? fm.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) else { return [] }
+        return entries.compactMap { url -> Skill? in
+            guard url.pathExtension == "mdc" else { return nil }
+            guard let content = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+            let filename = url.deletingPathExtension().lastPathComponent
+            let parsed = SkillFormatConverter.parseMDC(content: content)
+            let description = parsed.frontmatter["description"] ?? ""
+            let rawGlobs = parsed.frontmatter["globs"] ?? "[]"
+            let tags = SkillFormatConverter.parseGlobs(rawGlobs)
+            return Skill(
+                id: "project:\(projectURL.lastPathComponent):\(filename)",
+                name: filename,
+                displayName: filename,
+                description: description,
+                source: .projectLocal(projectURL: projectURL),
+                version: nil,
+                filePath: url,
+                directoryPath: url.deletingLastPathComponent(),
+                compatibleAgents: ["Cursor"],
+                tags: tags,
+                markdownContent: content,
+                frontmatter: parsed.frontmatter
+            )
+        }
+    }
 
     private func findSKILLMD(in directory: URL, depth: Int, maxDepth: Int) -> [URL] {
         guard depth <= maxDepth else { return [] }

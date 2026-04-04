@@ -62,7 +62,6 @@ struct ContentView: View {
                         modelContext.insert(record)
                     }
                 },
-                onInstallToCursor: { skill in await store.installToCursor(skill: skill) },
                 onPromote: { skill in await store.promoteSkill(skill) }
             )
         }

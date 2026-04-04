@@ -4,7 +4,6 @@ import AppKit
 struct SkillDetailView: View {
     let skill: Skill?
     var onToggleStar: () -> Void = {}
-    var onInstallToCursor: (Skill) async -> Void = { _ in }
     var onPromote: (Skill) async -> Void = { _ in }
 
     @State private var showVersionHistory = false
@@ -19,7 +18,6 @@ struct SkillDetailView: View {
                     commits: $commits,
                     onToggleStar: onToggleStar,
                     // Fire-and-forget tasks: errors surface via SkillStore.errorMessage, not thrown here.
-                    onInstallToCursor: { Task { await onInstallToCursor(skill) } },
                     onPromote: { Task { await onPromote(skill) } }
                 )
             } else {
@@ -45,7 +43,6 @@ private struct DetailContent: View {
     @Binding var showVersionHistory: Bool
     @Binding var commits: [GitCommit]
     let onToggleStar: () -> Void
-    let onInstallToCursor: () -> Void
     let onPromote: () -> Void
 
     var body: some View {
@@ -183,18 +180,6 @@ private struct DetailContent: View {
                 Label("Version History", systemImage: "clock.arrow.circlepath")
             }
             .help("Show version history")
-        }
-
-        // "Install to Cursor" for installed skills that don't already target Cursor
-        if skill.installState == .installed && !skill.compatibleAgents.contains("Cursor") {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    onInstallToCursor()
-                } label: {
-                    Label("Install to Cursor", systemImage: "cursorarrow.rays")
-                }
-                .help("Convert and install this skill to ~/.cursor/rules/")
-            }
         }
 
         // "Promote to Global" only for project-local skills

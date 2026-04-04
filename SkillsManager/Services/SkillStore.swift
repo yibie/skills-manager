@@ -19,15 +19,15 @@ final class SkillStore {
 
     // MARK: - Services
 
-    private let adapter: ClaudeCodeAdapter
-    private let cursorAdapter: CursorAdapter
+    private let claudeAdapter: ClaudeCodeAdapter
+    private let universalAdapter: UniversalAdapter
     private let marketplaceService: MarketplaceService
     private let installService: InstallService
 
     init() {
         let ms = MarketplaceService()
-        self.adapter = ClaudeCodeAdapter()
-        self.cursorAdapter = CursorAdapter()
+        self.claudeAdapter = ClaudeCodeAdapter()
+        self.universalAdapter = UniversalAdapter()
         self.marketplaceService = ms
         self.installService = InstallService(marketplaceService: ms)
     }
@@ -38,10 +38,15 @@ final class SkillStore {
         isLoading = true
         defer { isLoading = false }
         do {
-            async let claudeSkills = adapter.scanSkills()
-            async let cursorSkills = cursorAdapter.scanSkills()
-            let (claude, cursor) = try await (claudeSkills, cursorSkills)
-            skills = claude + cursor
+            async let claudeSkills = claudeAdapter.scanSkills()
+            async let universalSkills = universalAdapter.scanSkills()
+            let (claude, universal) = try await (claudeSkills, universalSkills)
+            var seen = Set<String>()
+            var merged: [Skill] = []
+            for skill in claude + universal {
+                if seen.insert(skill.id).inserted { merged.append(skill) }
+            }
+            skills = merged
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -117,11 +122,12 @@ final class SkillStore {
 
         switch skill.source {
         case .local:
-            // Only delete directories directly inside ~/.claude/skills/
             let skillsBase = home.appendingPathComponent(".claude/skills").standardized
             let target = skill.directoryPath.standardized
             if target.path.hasPrefix(skillsBase.path + "/") {
                 do { try fm.removeItem(at: target) } catch { errorMessage = error.localizedDescription }
+            } else if skill.canonicalPath != nil {
+                do { try SymlinkInstaller.uninstall(skillName: skill.name) } catch { errorMessage = error.localizedDescription }
             }
         case .plugin(let marketplace, let pluginName):
             // Delete the skill's own subdirectory inside the plugin cache.
@@ -157,12 +163,15 @@ final class SkillStore {
         for skill in batch { await installSkill(skill) }
     }
 
-    // MARK: - Install to Cursor
+    // MARK: - Install to agents via SymlinkInstaller
 
-    /// Converts the skill to .mdc format and writes it to ~/.cursor/rules/.
-    func installToCursor(skill: Skill) async {
+    func installSkillToAgents(_ skill: Skill, agentIDs: [String]) async {
         do {
-            try cursorAdapter.installSkill(skill)
+            try SymlinkInstaller.install(
+                content: skill.markdownContent,
+                skillName: skill.name,
+                agentIDs: agentIDs
+            )
             await reloadSkills()
         } catch {
             errorMessage = error.localizedDescription
