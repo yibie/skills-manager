@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import AppKit
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
@@ -13,7 +14,7 @@ struct ContentView: View {
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView(selectedFilter: $selectedFilter, skills: store.skills, discoverableCount: store.discoverablePlugins.count)
+            SidebarView(selectedFilter: $selectedFilter, skills: store.skills, discoverableCount: store.discoverablePlugins.count, projectSkillCount: store.projectSkills.count, currentProjectURL: store.currentProjectURL)
         } content: {
             if selectedFilter == .discover {
                 DiscoverView(
@@ -23,6 +24,14 @@ struct ContentView: View {
                     onInstall: { plugin in await store.install(plugin: plugin) },
                     onUninstall: { plugin in await store.uninstall(plugin: plugin) },
                     onRefresh: { await store.syncAndReloadPlugins() }
+                )
+            } else if selectedFilter == .project {
+                ProjectSkillsView(
+                    projectURL: store.currentProjectURL,
+                    skills: store.projectSkills,
+                    isLoading: store.isLoadingProject,
+                    selectedSkill: $selectedSkill,
+                    onPromote: { skill in await store.promoteSkill(skill) }
                 )
             } else {
                 SkillListView(
@@ -47,6 +56,24 @@ struct ContentView: View {
                     let record = SkillRecord(skillID: skillID, isStarred: true, installState: skill.installState.rawValue)
                     modelContext.insert(record)
                 }
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Button {
+                    let panel = NSOpenPanel()
+                    panel.canChooseDirectories = true
+                    panel.canChooseFiles = false
+                    panel.allowsMultipleSelection = false
+                    panel.message = "Select a project folder to scan for skills"
+                    panel.prompt = "Open Project"
+                    if panel.runModal() == .OK, let url = panel.url {
+                        Task { await store.openProject(url: url) }
+                    }
+                } label: {
+                    Label("Open Project", systemImage: "folder.badge.plus")
+                }
+                .help("Open a project folder to scan for local skills")
             }
         }
         .sheet(item: $sandboxSkill) { skill in

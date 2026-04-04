@@ -4,6 +4,8 @@ struct SidebarView: View {
     @Binding var selectedFilter: SidebarFilter
     let skills: [Skill]
     var discoverableCount: Int = 0
+    var projectSkillCount: Int = 0
+    var currentProjectURL: URL? = nil
 
     // Precomputed counts to avoid inline filtering in the view body
     private var allCount: Int { skills.count }
@@ -70,6 +72,12 @@ struct SidebarView: View {
                     )
                 }
             }
+
+            if currentProjectURL != nil {
+                Section("Project") {
+                    SidebarRow(filter: .project, count: projectSkillCount, selectedFilter: selectedFilter)
+                }
+            }
         }
         .listStyle(.sidebar)
         .navigationTitle("Skills")
@@ -92,6 +100,12 @@ private struct SidebarRow: View {
 
 #Preview {
     @Previewable @State var filter: SidebarFilter = .all
-    SidebarView(selectedFilter: $filter, skills: Skill.mockSkills, discoverableCount: 3)
-        .frame(width: 220, height: 500)
+    SidebarView(
+        selectedFilter: $filter,
+        skills: Skill.mockSkills,
+        discoverableCount: 3,
+        projectSkillCount: 2,
+        currentProjectURL: URL(fileURLWithPath: "/Users/user/my-project")
+    )
+    .frame(width: 220, height: 600)
 }
