@@ -17,6 +17,7 @@ struct ContentView: View {
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             SidebarView(selectedFilter: $selectedFilter, skills: store.skills, discoverableCount: store.discoverablePlugins.count, projectSkillCount: store.projectSkills.count, currentProjectURL: store.currentProjectURL)
+                .navigationSplitViewColumnWidth(min: 200, ideal: 220)
         } content: {
             if selectedFilter == .discover {
                 DiscoverView(

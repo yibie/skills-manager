@@ -41,8 +41,10 @@ struct DiscoverView: View {
                         }
                     }
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
                 Divider()
             }
 
