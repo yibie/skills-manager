@@ -18,6 +18,7 @@ struct SettingsView: View {
                         Text("claude-opus-4-5 (Best)").tag("claude-opus-4-5")
                     }
                     .pickerStyle(.menu)
+                    .labelsHidden()
                     .frame(width: 220)
                 }
             }
