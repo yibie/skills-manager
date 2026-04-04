@@ -5,6 +5,7 @@ struct SkillDetailView: View {
     let skill: Skill?
     var onToggleStar: () -> Void = {}
     var onPromote: (Skill) async -> Void = { _ in }
+    var onInstallToAgent: (Skill, [String]) async -> Void = { _, _ in }
 
     @State private var showVersionHistory = false
     @State private var commits: [GitCommit] = []
@@ -18,7 +19,8 @@ struct SkillDetailView: View {
                     commits: $commits,
                     onToggleStar: onToggleStar,
                     // Fire-and-forget tasks: errors surface via SkillStore.errorMessage, not thrown here.
-                    onPromote: { Task { await onPromote(skill) } }
+                    onPromote: { Task { await onPromote(skill) } },
+                    onInstallToAgent: { agentIDs in Task { await onInstallToAgent(skill, agentIDs) } }
                 )
             } else {
                 placeholder
@@ -44,6 +46,9 @@ private struct DetailContent: View {
     @Binding var commits: [GitCommit]
     let onToggleStar: () -> Void
     let onPromote: () -> Void
+    let onInstallToAgent: ([String]) -> Void
+
+    @State private var showInstallToAgent = false
 
     var body: some View {
         ScrollView {
@@ -59,6 +64,9 @@ private struct DetailContent: View {
         .toolbar { toolbarContent }
         .sheet(isPresented: $showVersionHistory) {
             VersionHistoryView(commits: commits)
+        }
+        .sheet(isPresented: $showInstallToAgent) {
+            InstallToAgentView(skill: skill, onInstall: onInstallToAgent)
         }
     }
 
@@ -192,6 +200,15 @@ private struct DetailContent: View {
                 }
                 .help("Copy this skill to ~/.claude/skills/")
             }
+        }
+
+        ToolbarItem(placement: .primaryAction) {
+            Button {
+                showInstallToAgent = true
+            } label: {
+                Label("Install to Agent…", systemImage: "square.and.arrow.down.on.square")
+            }
+            .help("Install this skill to another coding agent")
         }
     }
 }

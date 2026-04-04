@@ -62,7 +62,10 @@ struct ContentView: View {
                         modelContext.insert(record)
                     }
                 },
-                onPromote: { skill in await store.promoteSkill(skill) }
+                onPromote: { skill in await store.promoteSkill(skill) },
+                onInstallToAgent: { skill, agentIDs in
+                    await store.installSkillToAgents(skill, agentIDs: agentIDs)
+                }
             )
         }
         .onChange(of: selectedFilter) { selectedSkill = nil }

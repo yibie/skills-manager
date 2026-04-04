@@ -38,6 +38,7 @@
 		B5B708ED0875BA8358F12ECC /* Skill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5427F0708C634AC8F5F4B080 /* Skill.swift */; };
 		B70021700185C42AB4070C8A /* SkillStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 541163F5E744A67FA92AE00F /* SkillStore.swift */; };
 		C74ED18341F7EE56F00197B8 /* SkillDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C471621958512C86DD74AE10 /* SkillDetailView.swift */; };
+		A1B2C3D4E5F678901234ABCD /* InstallToAgentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F678901234ABCDEF /* InstallToAgentView.swift */; };
 		F65E3F18110FF168816B0597 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B204889413D1B5B1DE273D2 /* SettingsView.swift */; };
 		F90897662904C11B2D9E1411 /* ProjectSkillsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F000347C95927A1B1EE9704F /* ProjectSkillsView.swift */; };
 /* End PBXBuildFile section */
@@ -69,6 +70,7 @@
 		AFF0465C82F147C7332064AC /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
 		C12D2413CCD83C7EC8E03F9C /* Skill+Mock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Skill+Mock.swift"; sourceTree = "<group>"; };
 		C471621958512C86DD74AE10 /* SkillDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillDetailView.swift; sourceTree = "<group>"; };
+		B2C3D4E5F678901234ABCDEF /* InstallToAgentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallToAgentView.swift; sourceTree = "<group>"; };
 		CC4AC87ED906F4D954E16850 /* InstallService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallService.swift; sourceTree = "<group>"; };
 		E755FBEC77714122731E7A45 /* SkillParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillParser.swift; sourceTree = "<group>"; };
 		ED29C0FD04ADF31DF622AD6C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -101,6 +103,7 @@
 				8B204889413D1B5B1DE273D2 /* SettingsView.swift */,
 				AFF0465C82F147C7332064AC /* SidebarView.swift */,
 				C471621958512C86DD74AE10 /* SkillDetailView.swift */,
+				B2C3D4E5F678901234ABCDEF /* InstallToAgentView.swift */,
 				072BA9F86FFF3B545CCC344D /* SkillListView.swift */,
 				50069145DEE4F107B789596A /* VersionHistoryView.swift */,
 			);
@@ -276,6 +279,7 @@
 				7970AB614D3D0C641C9FB0EC /* SidebarView.swift in Sources */,
 				B0EA7B739614499B5988BBEC /* Skill+Mock.swift in Sources */,
 				B5B708ED0875BA8358F12ECC /* Skill.swift in Sources */,
+				A1B2C3D4E5F678901234ABCD /* InstallToAgentView.swift in Sources */,
 				C74ED18341F7EE56F00197B8 /* SkillDetailView.swift in Sources */,
 				A4031159D8844F05E8D8E9E6 /* SkillFormatConverter.swift in Sources */,
 				5407109449B814A8F2658F23 /* SkillListView.swift in Sources */,
