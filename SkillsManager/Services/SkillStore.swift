@@ -110,24 +110,41 @@ final class SkillStore {
         }
     }
 
-    /// Deletes the skill from disk (local skills only) and removes it from the list immediately.
+    /// Deletes the skill from disk and removes it from the list immediately.
     func uninstallSkill(_ skill: Skill) async {
-        if case .local = skill.source {
-            let skillsBase = FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent(".claude/skills")
-                .standardized
-            // Only delete directories directly inside ~/.claude/skills/ to avoid
-            // accidentally removing symlink targets that live elsewhere.
+        let fm = FileManager.default
+        let home = fm.homeDirectoryForCurrentUser
+
+        switch skill.source {
+        case .local:
+            // Only delete directories directly inside ~/.claude/skills/
+            let skillsBase = home.appendingPathComponent(".claude/skills").standardized
             let target = skill.directoryPath.standardized
             if target.path.hasPrefix(skillsBase.path + "/") {
-                do {
-                    try FileManager.default.removeItem(at: target)
-                } catch {
-                    errorMessage = error.localizedDescription
-                }
+                do { try fm.removeItem(at: target) } catch { errorMessage = error.localizedDescription }
             }
+        case .plugin(let marketplace, let pluginName):
+            // Delete the skill's own subdirectory inside the plugin cache.
+            // skill.directoryPath is e.g. ~/.claude/plugins/cache/{marketplace}/{plugin}/{version}/skills/{skillName}
+            // We only remove that leaf directory — the plugin itself remains usable.
+            let cacheBase = home.appendingPathComponent(".claude/plugins/cache").standardized
+            let target = skill.directoryPath.standardized
+            if target.path.hasPrefix(cacheBase.path + "/\(marketplace)/\(pluginName)/") {
+                do { try fm.removeItem(at: target) } catch { errorMessage = error.localizedDescription }
+            }
+        case .symlinked:
+            // Remove the symlink in ~/.claude/skills/ but leave the target intact
+            let skillsBase = home.appendingPathComponent(".claude/skills").standardized
+            let target = skill.directoryPath.standardized
+            if target.path.hasPrefix(skillsBase.path + "/") {
+                do { try fm.removeItem(at: target) } catch { errorMessage = error.localizedDescription }
+            }
+        case .projectLocal:
+            // Project-local skills are not managed here; use Promote instead
+            return
         }
-        // Remove from memory immediately so the row disappears without waiting for a reload.
+
+        // Remove from memory immediately — row disappears without a reload
         skills.removeAll { $0.id == skill.id }
     }
 
