@@ -7,7 +7,7 @@ struct DiscoverView: View {
     let onUninstall: (MarketplacePlugin) async -> Void
 
     @State private var searchText = ""
-    @State private var selectedCategory: String? = nil
+    @State private var selectedCategory: String?
 
     private var filtered: [MarketplacePlugin] {
         plugins.filter { plugin in
@@ -133,7 +133,7 @@ private struct CategoryChip: View {
                     isSelected ? Color.accentColor : Color.secondary.opacity(0.1),
                     in: Capsule()
                 )
-                .foregroundStyle(isSelected ? .white : .primary)
+                .foregroundStyle(isSelected ? Color.white : Color.primary)
         }
         .buttonStyle(.plain)
     }
