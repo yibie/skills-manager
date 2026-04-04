@@ -10,7 +10,8 @@ struct SkillListView: View {
     private var filteredSkills: [Skill] {
         switch filter {
         case .discover:
-            return skills
+            // ContentView routes .discover to DiscoverView; SkillListView is never shown for this filter
+            return []
         case .all:
             return skills
         case .installed:

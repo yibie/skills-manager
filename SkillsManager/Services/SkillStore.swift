@@ -17,7 +17,7 @@ final class SkillStore {
 
     private let adapter: ClaudeCodeAdapter
     private let marketplaceService: MarketplaceService
-    let installService: InstallService
+    private let installService: InstallService
 
     init() {
         let ms = MarketplaceService()

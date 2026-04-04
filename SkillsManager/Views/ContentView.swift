@@ -34,14 +34,18 @@ struct ContentView: View {
             SkillDetailView(skill: selectedSkill)
         }
         .task {
-            await store.reloadSkills()
-            await store.reloadDiscoverablePlugins()
+            async let skills: Void = store.reloadSkills()
+            async let plugins: Void = store.reloadDiscoverablePlugins()
+            _ = await (skills, plugins)
             store.merge(records: skillRecords)
         }
         .onChange(of: skillRecords) {
             store.merge(records: skillRecords)
         }
-        .alert("Error", isPresented: .constant(store.errorMessage != nil)) {
+        .alert("Error", isPresented: Binding(
+            get: { store.errorMessage != nil },
+            set: { if !$0 { store.errorMessage = nil } }
+        )) {
             Button("OK") { store.errorMessage = nil }
         } message: {
             Text(store.errorMessage ?? "")
