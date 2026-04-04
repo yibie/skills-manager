@@ -9,20 +9,25 @@ final class SkillStore {
 
     var skills: [Skill] = []
     var discoverablePlugins: [MarketplacePlugin] = []
+    var projectSkills: [Skill] = []
+    var currentProjectURL: URL?
     var isLoading = false
     var isLoadingPlugins = false
+    var isLoadingProject = false
     var isSyncing = false
     var errorMessage: String?
 
     // MARK: - Services
 
     private let adapter: ClaudeCodeAdapter
+    private let cursorAdapter: CursorAdapter
     private let marketplaceService: MarketplaceService
     private let installService: InstallService
 
     init() {
         let ms = MarketplaceService()
         self.adapter = ClaudeCodeAdapter()
+        self.cursorAdapter = CursorAdapter()
         self.marketplaceService = ms
         self.installService = InstallService(marketplaceService: ms)
     }
@@ -33,7 +38,9 @@ final class SkillStore {
         isLoading = true
         defer { isLoading = false }
         do {
-            skills = try await adapter.scanSkills()
+            async let claudeSkills = adapter.scanSkills()
+            async let cursorSkills = cursorAdapter.scanSkills()
+            skills = try await claudeSkills + (try await cursorSkills)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -93,7 +100,7 @@ final class SkillStore {
         }
     }
 
-    // MARK: - Skill-level install/uninstall (state only for Phase 2)
+    // MARK: - Skill-level install/uninstall (state only)
 
     func installSkill(_ skill: Skill) async {
         if let index = skills.firstIndex(where: { $0.id == skill.id }) {
@@ -104,6 +111,62 @@ final class SkillStore {
     func uninstallSkill(_ skill: Skill) async {
         if let index = skills.firstIndex(where: { $0.id == skill.id }) {
             skills[index].installState = .notInstalled
+        }
+    }
+
+    // MARK: - Install to Cursor
+
+    /// Converts the skill to .mdc format and writes it to ~/.cursor/rules/.
+    func installToCursor(skill: Skill) async {
+        do {
+            try cursorAdapter.installSkill(skill)
+            await reloadSkills()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Project skills
+
+    func openProject(url: URL) async {
+        currentProjectURL = url
+        await loadProjectSkills()
+    }
+
+    func loadProjectSkills() async {
+        guard let projectURL = currentProjectURL else {
+            projectSkills = []
+            return
+        }
+        isLoadingProject = true
+        defer { isLoadingProject = false }
+        projectSkills = ProjectScanner().scan(projectURL: projectURL)
+    }
+
+    /// Copies a project-local skill to ~/.claude/skills/.
+    /// Converts .mdc → SKILL.md format if needed.
+    func promoteSkill(_ skill: Skill) async {
+        let skillsDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude/skills/\(skill.name)")
+        let fm = FileManager.default
+        do {
+            if !fm.fileExists(atPath: skillsDir.path) {
+                try fm.createDirectory(at: skillsDir, withIntermediateDirectories: true)
+            }
+            let destFile = skillsDir.appendingPathComponent("SKILL.md")
+            let content: String
+            if skill.filePath.pathExtension == "mdc" {
+                content = SkillFormatConverter.toSKILLMD(
+                    name: skill.name,
+                    mdcContent: skill.markdownContent
+                )
+            } else {
+                content = try String(contentsOf: skill.filePath, encoding: .utf8)
+            }
+            try content.write(to: destFile, atomically: true, encoding: .utf8)
+            await reloadSkills()
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 }
