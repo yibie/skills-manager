@@ -40,7 +40,8 @@ final class SkillStore {
         do {
             async let claudeSkills = adapter.scanSkills()
             async let cursorSkills = cursorAdapter.scanSkills()
-            skills = try await claudeSkills + (try await cursorSkills)
+            let (claude, cursor) = try await (claudeSkills, cursorSkills)
+            skills = claude + cursor
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -140,14 +141,22 @@ final class SkillStore {
         }
         isLoadingProject = true
         defer { isLoadingProject = false }
-        projectSkills = ProjectScanner().scan(projectURL: projectURL)
+        // Run filesystem scan on a background thread to avoid blocking the MainActor.
+        // Skill is Sendable so the result crosses the actor boundary safely.
+        let results = await Task.detached(priority: .userInitiated) {
+            ProjectScanner().scan(projectURL: projectURL)
+        }.value
+        projectSkills = results
     }
 
     /// Copies a project-local skill to ~/.claude/skills/.
     /// Converts .mdc → SKILL.md format if needed.
     func promoteSkill(_ skill: Skill) async {
+        // Use displayName (from frontmatter name: field) for a more meaningful directory name.
+        // Falls back to skill.name if displayName equals the raw directory name.
+        let destDirName = skill.displayName.isEmpty ? skill.name : skill.displayName
         let skillsDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/skills/\(skill.name)")
+            .appendingPathComponent(".claude/skills/\(destDirName)")
         let fm = FileManager.default
         do {
             if !fm.fileExists(atPath: skillsDir.path) {
