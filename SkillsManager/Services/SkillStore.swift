@@ -101,18 +101,43 @@ final class SkillStore {
         }
     }
 
-    // MARK: - Skill-level install/uninstall (state only)
+    // MARK: - Skill-level install/uninstall
 
+    /// Marks a skill as installed (trial → keep, or re-install state).
     func installSkill(_ skill: Skill) async {
         if let index = skills.firstIndex(where: { $0.id == skill.id }) {
             skills[index].installState = .installed
         }
     }
 
+    /// Deletes the skill from disk (local skills only) and removes it from the list immediately.
     func uninstallSkill(_ skill: Skill) async {
-        if let index = skills.firstIndex(where: { $0.id == skill.id }) {
-            skills[index].installState = .notInstalled
+        if case .local = skill.source {
+            let skillsBase = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".claude/skills")
+                .standardized
+            // Only delete directories directly inside ~/.claude/skills/ to avoid
+            // accidentally removing symlink targets that live elsewhere.
+            let target = skill.directoryPath.standardized
+            if target.path.hasPrefix(skillsBase.path + "/") {
+                do {
+                    try FileManager.default.removeItem(at: target)
+                } catch {
+                    errorMessage = error.localizedDescription
+                }
+            }
         }
+        // Remove from memory immediately so the row disappears without waiting for a reload.
+        skills.removeAll { $0.id == skill.id }
+    }
+
+    /// Convenience batch variant used by multi-select.
+    func uninstallSkills(_ batch: [Skill]) async {
+        for skill in batch { await uninstallSkill(skill) }
+    }
+
+    func installSkills(_ batch: [Skill]) async {
+        for skill in batch { await installSkill(skill) }
     }
 
     // MARK: - Install to Cursor

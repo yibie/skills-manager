@@ -8,10 +8,11 @@ struct SkillListView: View {
     let onUninstall: (Skill) async -> Void
     let onTry: (Skill) -> Void
 
+    @State private var listSelection: Set<Skill> = []
+
     private var filteredSkills: [Skill] {
         switch filter {
         case .discover, .project:
-            // ContentView routes these to dedicated views; SkillListView is never shown for these filters
             return []
         case .all:
             return skills
@@ -38,9 +39,13 @@ struct SkillListView: View {
     var body: some View {
         Group {
             if filteredSkills.isEmpty {
-                emptyState
+                ContentUnavailableView(
+                    "No Skills",
+                    systemImage: "tray",
+                    description: Text("No skills match the current filter.")
+                )
             } else {
-                List(filteredSkills, selection: $selectedSkill) { skill in
+                List(filteredSkills, selection: $listSelection) { skill in
                     SkillRow(
                         skill: skill,
                         onInstall: { Task { await onInstall(skill) } },
@@ -50,18 +55,88 @@ struct SkillListView: View {
                     .tag(skill)
                 }
                 .listStyle(.plain)
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if listSelection.count > 1 {
+                        BatchActionBar(
+                            selection: listSelection,
+                            onInstall: {
+                                let batch = Array(listSelection)
+                                listSelection = []
+                                Task { await installBatch(batch) }
+                            },
+                            onUninstall: {
+                                let batch = Array(listSelection)
+                                listSelection = []
+                                Task { await uninstallBatch(batch) }
+                            },
+                            onDeselect: { listSelection = [] }
+                        )
+                    }
+                }
             }
         }
         .navigationTitle(filter.title)
         .frame(minWidth: 260)
+        // Sync single-selection → detail panel
+        .onChange(of: listSelection) {
+            selectedSkill = listSelection.count == 1 ? listSelection.first : nil
+        }
+        // Clear selection when filter changes
+        .onChange(of: filter) {
+            listSelection = []
+        }
     }
 
-    private var emptyState: some View {
-        ContentUnavailableView(
-            "No Skills",
-            systemImage: "tray",
-            description: Text("No skills match the current filter.")
-        )
+    // MARK: - Batch helpers
+
+    private func installBatch(_ batch: [Skill]) async {
+        for skill in batch { await onInstall(skill) }
+    }
+
+    private func uninstallBatch(_ batch: [Skill]) async {
+        for skill in batch { await onUninstall(skill) }
+    }
+}
+
+// MARK: - Batch action bar
+
+private struct BatchActionBar: View {
+    let selection: Set<Skill>
+    let onInstall: () -> Void
+    let onUninstall: () -> Void
+    let onDeselect: () -> Void
+
+    private var hasInstallable: Bool { selection.contains { $0.installState != .installed } }
+    private var hasUninstallable: Bool { selection.contains { $0.installState == .installed } }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text("\(selection.count) selected")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            if hasInstallable {
+                Button("Install") { onInstall() }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            }
+            if hasUninstallable {
+                Button("Uninstall") { onUninstall() }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .tint(.red)
+            }
+            Button("Deselect") { onDeselect() }
+                .buttonStyle(.plain)
+                .controlSize(.small)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(.bar)
+        .overlay(alignment: .top) { Divider() }
     }
 }
 
@@ -100,7 +175,7 @@ private struct SkillRow: View {
     }
 }
 
-// MARK: - Action buttons (inline, below row content)
+// MARK: - Action buttons
 
 private struct SkillActionButtons: View {
     let skill: Skill
