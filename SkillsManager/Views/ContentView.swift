@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import AppKit
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
@@ -11,6 +12,7 @@ struct ContentView: View {
     @State private var selectedSkill: Skill? = nil
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var sandboxSkill: Skill? = nil
+    @State private var isProjectPickerPresented = false
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -58,18 +60,19 @@ struct ContentView: View {
                 }
             }
         }
+        .onChange(of: selectedFilter) { selectedSkill = nil }
+        .fileImporter(
+            isPresented: $isProjectPickerPresented,
+            allowedContentTypes: [.folder]
+        ) { result in
+            if case .success(let url) = result {
+                Task { await store.openProject(url: url) }
+            }
+        }
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 Button {
-                    let panel = NSOpenPanel()
-                    panel.canChooseDirectories = true
-                    panel.canChooseFiles = false
-                    panel.allowsMultipleSelection = false
-                    panel.message = "Select a project folder to scan for skills"
-                    panel.prompt = "Open Project"
-                    if panel.runModal() == .OK, let url = panel.url {
-                        Task { await store.openProject(url: url) }
-                    }
+                    isProjectPickerPresented = true
                 } label: {
                     Label("Open Project", systemImage: "folder.badge.plus")
                 }
