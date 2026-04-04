@@ -14,11 +14,13 @@ enum SkillFormatConverter {
         } else {
             globs = "[\(skill.tags.map { "\"\($0)\"" }.joined(separator: ", "))]"
         }
+        // alwaysApply: true when unscoped (no globs), false when glob-scoped
+        let alwaysApply = skill.tags.isEmpty ? "true" : "false"
         return """
         ---
-        description: \(skill.description)
+        description: \(yamlString(skill.description))
         globs: \(globs)
-        alwaysApply: true
+        alwaysApply: \(alwaysApply)
         ---
 
         \(body)
@@ -36,9 +38,9 @@ enum SkillFormatConverter {
         let body = parsed.body.trimmingCharacters(in: .whitespacesAndNewlines)
         return """
         ---
-        name: \(name)
-        description: \(description)\(tagsLine)
-        compatible_agents: [Cursor, Claude Code]
+        name: \(yamlString(name))
+        description: \(yamlString(description))\(tagsLine)
+        compatible_agents: [Cursor]
         ---
 
         \(body)
@@ -55,16 +57,25 @@ enum SkillFormatConverter {
         return (frontmatter: result.frontmatter, body: result.body)
     }
 
-    // MARK: - Private
+    // MARK: - Helpers
 
-    private static func parseGlobs(_ raw: String) -> [String] {
+    /// Parses a YAML/JSON-style globs array string like ["*.ts", "*.tsx"] into [String].
+    static func parseGlobs(_ raw: String) -> [String] {
         raw
-            .trimmingCharacters(in: CharacterSet(charactersIn: "[] "))
+            .trimmingCharacters(in: CharacterSet(charactersIn: "["))
+            .trimmingCharacters(in: CharacterSet(charactersIn: "]"))
+            .trimmingCharacters(in: .whitespaces)
             .components(separatedBy: ",")
             .map {
                 $0.trimmingCharacters(in: .whitespaces)
                   .trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
             }
             .filter { !$0.isEmpty }
+    }
+
+    /// Wraps a string in YAML double-quote syntax, escaping embedded double quotes.
+    private static func yamlString(_ value: String) -> String {
+        let escaped = value.replacingOccurrences(of: "\"", with: "\\\"")
+        return "\"\(escaped)\""
     }
 }
