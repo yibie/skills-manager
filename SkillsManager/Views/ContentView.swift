@@ -12,7 +12,7 @@ struct ContentView: View {
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView(selectedFilter: $selectedFilter, skills: store.skills)
+            SidebarView(selectedFilter: $selectedFilter, skills: store.skills, discoverableCount: store.discoverablePlugins.count)
         } content: {
             if selectedFilter == .discover {
                 DiscoverView(
@@ -31,7 +31,19 @@ struct ContentView: View {
                 )
             }
         } detail: {
-            SkillDetailView(skill: selectedSkill)
+            SkillDetailView(skill: selectedSkill) {
+                guard let skill = selectedSkill else { return }
+                let skillID = skill.id
+                let descriptor = FetchDescriptor<SkillRecord>(
+                    predicate: #Predicate { $0.skillID == skillID }
+                )
+                if let record = try? modelContext.fetch(descriptor).first {
+                    record.isStarred.toggle()
+                } else {
+                    let record = SkillRecord(skillID: skillID, isStarred: true, installState: skill.installState.rawValue)
+                    modelContext.insert(record)
+                }
+            }
         }
         .task {
             async let skills: Void = store.reloadSkills()

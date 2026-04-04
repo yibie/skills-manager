@@ -3,6 +3,7 @@ import AppKit
 
 struct SkillDetailView: View {
     let skill: Skill?
+    var onToggleStar: () -> Void = {}
 
     @State private var showVersionHistory = false
     @State private var commits: [GitCommit] = []
@@ -13,7 +14,8 @@ struct SkillDetailView: View {
                 DetailContent(
                     skill: skill,
                     showVersionHistory: $showVersionHistory,
-                    commits: $commits
+                    commits: $commits,
+                    onToggleStar: onToggleStar
                 )
             } else {
                 placeholder
@@ -37,17 +39,7 @@ private struct DetailContent: View {
     let skill: Skill
     @Binding var showVersionHistory: Bool
     @Binding var commits: [GitCommit]
-
-    // Local mirror of starred state — will be replaced with a real binding once
-    // the data layer is wired up.
-    @State private var isStarred: Bool
-
-    init(skill: Skill, showVersionHistory: Binding<Bool>, commits: Binding<[GitCommit]>) {
-        self.skill = skill
-        self._showVersionHistory = showVersionHistory
-        self._commits = commits
-        self._isStarred = State(initialValue: skill.isStarred)
-    }
+    let onToggleStar: () -> Void
 
     var body: some View {
         ScrollView {
@@ -165,15 +157,15 @@ private struct DetailContent: View {
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
             Button {
-                isStarred.toggle()
+                onToggleStar()
             } label: {
                 Label(
-                    isStarred ? "Unstar" : "Star",
-                    systemImage: isStarred ? "star.fill" : "star"
+                    skill.isStarred ? "Unstar" : "Star",
+                    systemImage: skill.isStarred ? "star.fill" : "star"
                 )
             }
-            .foregroundStyle(isStarred ? .yellow : .secondary)
-            .help(isStarred ? "Remove from starred" : "Add to starred")
+            .foregroundStyle(skill.isStarred ? .yellow : .secondary)
+            .help(skill.isStarred ? "Remove from starred" : "Add to starred")
         }
 
         ToolbarItem(placement: .primaryAction) {
