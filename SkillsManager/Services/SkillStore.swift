@@ -106,6 +106,16 @@ final class SkillStore {
         }
     }
 
+    /// Fetch plugin skills into memory for sandbox preview without installing.
+    func previewPluginSkills(_ plugin: MarketplacePlugin) async -> [Skill] {
+        do {
+            return try await installService.previewSkills(plugin: plugin)
+        } catch {
+            errorMessage = error.localizedDescription
+            return []
+        }
+    }
+
     // MARK: - Skill-level install/uninstall
 
     /// Marks a skill as installed (trial → keep, or re-install state).

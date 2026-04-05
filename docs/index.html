@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skills Manager — Manage coding agent skills on macOS</title>
+  <meta name="description" content="A native macOS app to discover, install, and manage skills across Claude Code, Cursor, Copilot CLI, Codex, Gemini CLI and more.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f14;
+      --surface: #1a1a22;
+      --border: rgba(255,255,255,0.07);
+      --text: #e8e8f0;
+      --muted: #7878a0;
+      --accent: #9898c8;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Nav */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 48px;
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text);
+      text-decoration: none;
+    }
+    .nav-logo img {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+    }
+    .nav-links { display: flex; gap: 28px; }
+    .nav-links a {
+      font-size: 14px;
+      color: var(--muted);
+      text-decoration: none;
+      transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 96px 24px 80px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .hero-icon {
+      width: 96px;
+      height: 96px;
+      border-radius: 22px;
+      margin: 0 auto 32px;
+      display: block;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+    h1 {
+      font-size: clamp(32px, 5vw, 52px);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 20px;
+    }
+    .hero-sub {
+      font-size: 18px;
+      color: var(--muted);
+      max-width: 480px;
+      margin: 0 auto 40px;
+    }
+    .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: opacity .2s, transform .15s;
+    }
+    .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn-primary { background: var(--text); color: var(--bg); }
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    /* Agents */
+    .agents {
+      text-align: center;
+      padding: 16px 24px 64px;
+    }
+    .agents-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .agent-chips {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+    }
+    .chip {
+      padding: 5px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--muted);
+      background: var(--surface);
+    }
+
+    /* Features */
+    .features {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 64px 24px;
+    }
+    .section-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .section-title {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 48px;
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+    }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+    }
+    .feature-icon {
+      font-size: 24px;
+      margin-bottom: 14px;
+    }
+    .feature-card h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .feature-card p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* CTA */
+    .cta {
+      text-align: center;
+      padding: 80px 24px;
+      border-top: 1px solid var(--border);
+    }
+    .cta h2 {
+      font-size: 28px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .cta p {
+      color: var(--muted);
+      margin-bottom: 32px;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 13px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--text); }
+
+    @media (max-width: 600px) {
+      nav { padding: 16px 20px; }
+      .nav-links { gap: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="#">
+    <img src="../SkillsManager_Logo.png" alt="Skills Manager">
+    Skills Manager
+  </a>
+  <div class="nav-links">
+    <a href="https://github.com/yibie/skills-manager">GitHub</a>
+    <a href="https://github.com/yibie/skills-manager/releases">Download</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <img class="hero-icon" src="../SkillsManager_Logo.png" alt="Skills Manager icon">
+  <h1>One place for all your agent skills</h1>
+  <p class="hero-sub">Discover, install, and manage skills across Claude Code, Cursor, Copilot CLI, Codex, Gemini CLI — from a single native macOS app.</p>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="https://github.com/yibie/skills-manager/releases">
+      Download for macOS
+    </a>
+    <a class="btn btn-secondary" href="https://github.com/yibie/skills-manager">
+      View on GitHub
+    </a>
+  </div>
+</section>
+
+<div class="agents">
+  <p class="agents-label">Works with</p>
+  <div class="agent-chips">
+    <span class="chip">Claude Code</span>
+    <span class="chip">Cursor</span>
+    <span class="chip">Copilot CLI</span>
+    <span class="chip">Codex CLI</span>
+    <span class="chip">Gemini CLI</span>
+  </div>
+</div>
+
+<section class="features">
+  <p class="section-label">Features</p>
+  <h2 class="section-title">Everything you need to manage skills</h2>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon">🔍</div>
+      <h3>Discover</h3>
+      <p>Browse skills from the marketplace and community sources. Search, filter by agent, and preview before installing.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <h3>Install to multiple agents</h3>
+      <p>Install a skill to one agent or all of them at once. Skills Manager handles the path differences automatically.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🧪</div>
+      <h3>Sandbox testing</h3>
+      <p>Try a skill before committing. The built-in LLM sandbox lets you see exactly how it performs.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📦</div>
+      <h3>Lifecycle management</h3>
+      <p>Track versions, check for updates, star favorites, and remove skills you no longer use.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔄</div>
+      <h3>Real-time sync</h3>
+      <p>FSEvents watches your skill directories. Changes from any source appear instantly.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔒</div>
+      <h3>Fully local</h3>
+      <p>No backend, no account required. Works offline. Your skills stay on your machine.</p>
+    </div>
+  </div>
+</section>
+
+<section class="cta">
+  <h2>Open source, free to use</h2>
+  <p>Built by developers, for developers. MIT licensed.</p>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="https://github.com/yibie/skills-manager/releases">
+      Download
+    </a>
+    <a class="btn btn-secondary" href="https://github.com/yibie/skills-manager">
+      Star on GitHub
+    </a>
+  </div>
+</section>
+
+<footer>
+  <p>Made by <a href="https://github.com/yibie">yibie</a> · <a href="https://github.com/yibie/skills-manager/blob/main/LICENSE">MIT License</a></p>
+</footer>
+
+</body>
+</html>

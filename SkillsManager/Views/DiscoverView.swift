@@ -7,6 +7,7 @@ struct DiscoverView: View {
     let onInstall: (MarketplacePlugin) async -> Void
     let onUninstall: (MarketplacePlugin) async -> Void
     let onRefresh: () async -> Void
+    var onTrySandbox: ((MarketplacePlugin) async -> Void)? = nil
 
     @State private var searchText = ""
     @State private var selectedCategory: String?
@@ -66,7 +67,8 @@ struct DiscoverView: View {
                     PluginRow(
                         plugin: plugin,
                         onInstall: { Task { await onInstall(plugin) } },
-                        onUninstall: { Task { await onUninstall(plugin) } }
+                        onUninstall: { Task { await onUninstall(plugin) } },
+                        onTrySandbox: onTrySandbox.map { handler in { Task { await handler(plugin) } } }
                     )
                 }
                 .listStyle(.plain)
@@ -96,6 +98,7 @@ private struct PluginRow: View {
     let plugin: MarketplacePlugin
     let onInstall: () -> Void
     let onUninstall: () -> Void
+    var onTrySandbox: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -109,6 +112,11 @@ private struct PluginRow: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
+                if let onTrySandbox {
+                    Button("Try", action: onTrySandbox)
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                }
                 if plugin.isInstalled {
                     Button("Uninstall", action: onUninstall)
                         .buttonStyle(.bordered)

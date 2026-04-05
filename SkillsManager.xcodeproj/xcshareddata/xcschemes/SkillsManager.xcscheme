@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "1500"
-   version = "1.7">
+   LastUpgradeVersion = "2630"
+   version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"
-      buildImplicitDependencies = "YES"
-      runPostActionsOnFailure = "NO">
+      buildImplicitDependencies = "YES">
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"
@@ -16,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "0B9641116DC5DB74BA44F450"
-               BuildableName = "SkillsManager.app"
+               BuildableName = "Skills Manager.app"
                BlueprintName = "SkillsManager"
                ReferencedContainer = "container:SkillsManager.xcodeproj">
             </BuildableReference>
@@ -27,13 +26,12 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      shouldUseLaunchSchemeArgsEnv = "YES"
-      onlyGenerateCoverageForSpecifiedTargets = "NO">
+      shouldUseLaunchSchemeArgsEnv = "YES">
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "0B9641116DC5DB74BA44F450"
-            BuildableName = "SkillsManager.app"
+            BuildableName = "Skills Manager.app"
             BlueprintName = "SkillsManager"
             ReferencedContainer = "container:SkillsManager.xcodeproj">
          </BuildableReference>
@@ -56,13 +54,11 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "0B9641116DC5DB74BA44F450"
-            BuildableName = "SkillsManager.app"
+            BuildableName = "Skills Manager.app"
             BlueprintName = "SkillsManager"
             ReferencedContainer = "container:SkillsManager.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <CommandLineArguments>
-      </CommandLineArguments>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -75,7 +71,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "0B9641116DC5DB74BA44F450"
-            BuildableName = "SkillsManager.app"
+            BuildableName = "Skills Manager.app"
             BlueprintName = "SkillsManager"
             ReferencedContainer = "container:SkillsManager.xcodeproj">
          </BuildableReference>

@@ -7,3 +7,12 @@ DerivedData/
 
 SkillsManager.xcodeproj/xcuserdata/
 SkillsManager.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Superpowers brainstorm artifacts
+.superpowers/
+
+# SwiftPM
+.swiftpm/
+
+# Intermediate logo files
+*_rgba.png

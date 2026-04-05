@@ -6,16 +6,33 @@ struct SkillListView: View {
     @Binding var selectedSkill: Skill?
     let onInstall: (Skill) async -> Void
     let onUninstall: (Skill) async -> Void
-    let onTry: (Skill) -> Void
 
     @State private var listSelection: Set<Skill> = []
+    @State private var showPluginSkills = false
+
+    private var pluginSkills: [Skill] {
+        filteredSkills.filter {
+            if case .plugin = $0.source { return true }
+            return false
+        }
+    }
+
+    private var standaloneSkills: [Skill] {
+        filteredSkills.filter {
+            if case .plugin = $0.source { return false }
+            return true
+        }
+    }
 
     private var filteredSkills: [Skill] {
         switch filter {
         case .discover, .project:
             return []
         case .all:
-            return skills
+            return showPluginSkills ? skills : skills.filter {
+                if case .plugin = $0.source { return false }
+                return true
+            }
         case .installed:
             return skills.filter { $0.installState == .installed }
         case .starred:
@@ -45,14 +62,38 @@ struct SkillListView: View {
                     description: Text("No skills match the current filter.")
                 )
             } else {
-                List(filteredSkills, selection: $listSelection) { skill in
-                    SkillRow(
-                        skill: skill,
-                        onInstall: { Task { await onInstall(skill) } },
-                        onUninstall: { Task { await onUninstall(skill) } },
-                        onTry: { onTry(skill) }
-                    )
-                    .tag(skill)
+                List(selection: $listSelection) {
+                    if filter == .all && !pluginSkills.isEmpty && !standaloneSkills.isEmpty {
+                        Section("From Plugins") {
+                            ForEach(pluginSkills) { skill in
+                                SkillRow(
+                                    skill: skill,
+                                    onInstall: { Task { await onInstall(skill) } },
+                                    onUninstall: { Task { await onUninstall(skill) } }
+                                )
+                                .tag(skill)
+                            }
+                        }
+                        Section("Installed") {
+                            ForEach(standaloneSkills) { skill in
+                                SkillRow(
+                                    skill: skill,
+                                    onInstall: { Task { await onInstall(skill) } },
+                                    onUninstall: { Task { await onUninstall(skill) } }
+                                )
+                                .tag(skill)
+                            }
+                        }
+                    } else {
+                        ForEach(filteredSkills) { skill in
+                            SkillRow(
+                                skill: skill,
+                                onInstall: { Task { await onInstall(skill) } },
+                                onUninstall: { Task { await onUninstall(skill) } }
+                            )
+                            .tag(skill)
+                        }
+                    }
                 }
                 .listStyle(.plain)
                 .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -77,6 +118,22 @@ struct SkillListView: View {
         }
         .navigationTitle(filter.title)
         .frame(minWidth: 260)
+        .toolbar {
+            if filter == .all {
+                ToolbarItem(placement: .automatic) {
+                    Group {
+                        if showPluginSkills {
+                            Button("Plugin Skills") { showPluginSkills.toggle() }
+                                .buttonStyle(.borderedProminent)
+                        } else {
+                            Button("Plugin Skills") { showPluginSkills.toggle() }
+                                .buttonStyle(.bordered)
+                        }
+                    }
+                    .controlSize(.small)
+                }
+            }
+        }
         // Sync single-selection → detail panel
         .onChange(of: listSelection) {
             selectedSkill = listSelection.count == 1 ? listSelection.first : nil
@@ -146,7 +203,6 @@ private struct SkillRow: View {
     let skill: Skill
     let onInstall: () -> Void
     let onUninstall: () -> Void
-    let onTry: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -168,7 +224,7 @@ private struct SkillRow: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
 
-            SkillActionButtons(skill: skill, onInstall: onInstall, onUninstall: onUninstall, onTry: onTry)
+            SkillActionButtons(skill: skill, onInstall: onInstall, onUninstall: onUninstall)
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
@@ -181,7 +237,6 @@ private struct SkillActionButtons: View {
     let skill: Skill
     let onInstall: () -> Void
     let onUninstall: () -> Void
-    let onTry: () -> Void
 
     var body: some View {
         HStack(spacing: 6) {
@@ -195,8 +250,6 @@ private struct SkillActionButtons: View {
                 ActionButton(icon: "xmark.circle", label: "Discard", action: onUninstall)
             }
 
-            ActionButton(icon: "flask", label: "Try", action: onTry)
-
             Menu {
                 Button("Copy ID") { }
                 Button("Show in Finder") { }
@@ -208,6 +261,7 @@ private struct SkillActionButtons: View {
                     .contentShape(Rectangle())
             }
             .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
             .frame(width: 22, height: 22)
             .help("More")
         }
@@ -265,8 +319,7 @@ private struct InstallStateBadge: View {
         filter: .all,
         selectedSkill: $selected,
         onInstall: { _ in },
-        onUninstall: { _ in },
-        onTry: { _ in }
+        onUninstall: { _ in }
     )
     .frame(width: 300, height: 500)
 }
