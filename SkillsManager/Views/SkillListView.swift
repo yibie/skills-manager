@@ -204,6 +204,8 @@ private struct SkillRow: View {
     let onInstall: () -> Void
     let onUninstall: () -> Void
 
+    @State private var isHovered = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
@@ -226,8 +228,15 @@ private struct SkillRow: View {
 
             SkillActionButtons(skill: skill, onInstall: onInstall, onUninstall: onUninstall)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isHovered ? Color.primary.opacity(0.05) : Color.clear)
+        )
         .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
+        .animation(.easeInOut(duration: 0.12), value: isHovered)
     }
 }
 
