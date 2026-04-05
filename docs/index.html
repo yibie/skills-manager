@@ -204,9 +204,35 @@
     footer a { color: var(--muted); text-decoration: none; }
     footer a:hover { color: var(--text); }
 
+    /* Screenshots */
+    .screenshots {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+    .screenshot-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .screenshot-grid img {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: 0 12px 48px rgba(0,0,0,0.5);
+      display: block;
+    }
+    .screenshot-caption {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 8px;
+    }
+
     @media (max-width: 600px) {
       nav { padding: 16px 20px; }
       .nav-links { gap: 16px; }
+      .screenshot-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -247,6 +273,19 @@
     <span class="chip">Gemini CLI</span>
   </div>
 </div>
+
+<section class="screenshots">
+  <div class="screenshot-grid">
+    <div>
+      <img src="screenshots/discover.png" alt="Discover & Sandbox">
+      <p class="screenshot-caption">Discover marketplace plugins and test in the built-in sandbox</p>
+    </div>
+    <div>
+      <img src="screenshots/starred.png" alt="Starred Skills">
+      <p class="screenshot-caption">Manage your library — filter by agent, source, or starred</p>
+    </div>
+  </div>
+</section>
 
 <section class="features">
   <p class="section-label">Features</p>

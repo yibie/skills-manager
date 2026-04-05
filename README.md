@@ -6,6 +6,16 @@ A native macOS app to manage skills across all your coding agents — Claude Cod
 
 ---
 
+## Screenshots
+
+![Discover & Sandbox](docs/screenshots/discover.png)
+*Discover marketplace plugins and test them in the built-in sandbox*
+
+![Starred Skills](docs/screenshots/starred.png)
+*Manage your library — filter by agent, source, or starred*
+
+---
+
 ## What it does
 
 Coding agent skills are scattered everywhere. Each agent has its own format, install path, and management story. Skills Manager brings them together in one place.
