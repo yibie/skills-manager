@@ -2,7 +2,7 @@
 
 A native macOS app to manage skills across all your coding agents — Claude Code, Cursor, Copilot CLI, Codex, Gemini CLI, and more.
 
-![Skills Manager Icon](SkillsManager_Logo.png)
+<img src="SkillsManager_Logo.png" width="80" alt="Skills Manager Icon">
 
 ---
 
