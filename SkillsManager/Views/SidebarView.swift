@@ -101,6 +101,7 @@ private struct SidebarRow: View {
     }
 }
 
+#if DEBUG
 #Preview {
     @Previewable @State var filter: SidebarFilter = .all
     SidebarView(
@@ -112,3 +113,4 @@ private struct SidebarRow: View {
     )
     .frame(width: 220, height: 600)
 }
+#endif

@@ -453,6 +453,7 @@ private struct SlotCard: View {
     }
 }
 
+#if DEBUG
 #Preview {
     SandboxView(
         initialSkill: Skill.mockSkills.first,
@@ -461,3 +462,4 @@ private struct SlotCard: View {
     )
     .frame(width: 700, height: 600)
 }
+#endif

@@ -312,6 +312,7 @@ private struct InstallStateBadge: View {
     }
 }
 
+#if DEBUG
 #Preview {
     @Previewable @State var selected: Skill? = nil
     SkillListView(
@@ -323,3 +324,4 @@ private struct InstallStateBadge: View {
     )
     .frame(width: 300, height: 500)
 }
+#endif

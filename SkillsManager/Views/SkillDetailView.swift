@@ -213,6 +213,7 @@ private struct DetailContent: View {
     }
 }
 
+#if DEBUG
 #Preview {
     SkillDetailView(skill: Skill.mockSkills.first)
         .frame(width: 500, height: 600)
@@ -222,3 +223,4 @@ private struct DetailContent: View {
     SkillDetailView(skill: nil)
         .frame(width: 500, height: 600)
 }
+#endif
