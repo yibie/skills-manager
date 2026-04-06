@@ -23,6 +23,13 @@ export function App() {
     setSkills(loadSkills())
   }, [])
 
+  useEffect(() => {
+    // Background marketplace sync — non-blocking
+    import('./services/MarketplaceService.js').then(({ syncMarketplace }) => {
+      syncMarketplace().catch(() => {/* silent */})
+    })
+  }, [])
+
   const filteredSkills = skills.filter(s => {
     if (filterState === 'installed' && !s.isInstalled) return false
     if (filterState === 'starred' && !s.isStarred) return false
