@@ -17,16 +17,24 @@ interface TuiState {
 
 function readState(): TuiState {
   try {
-    return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')) as TuiState
+    const parsed = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')) as unknown
+    if (typeof parsed === 'object' && parsed !== null && 'starred' in parsed && Array.isArray((parsed as Record<string, unknown>)['starred'])) {
+      return parsed as TuiState
+    }
+    return { starred: [] }
   } catch {
     return { starred: [] }
   }
 }
 
 function writeState(state: TuiState): void {
-  const dir = path.dirname(STATE_FILE)
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2))
+  try {
+    const dir = path.dirname(STATE_FILE)
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2))
+  } catch {
+    // Silent: star state is best-effort, never crash the TUI
+  }
 }
 
 function parseSkillFile(filePath: string, isInstalled: boolean, starredNames: string[]): Skill | null {
