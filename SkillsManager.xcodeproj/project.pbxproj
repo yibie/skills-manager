@@ -26,6 +26,7 @@
 		7970AB614D3D0C641C9FB0EC /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFF0465C82F147C7332064AC /* SidebarView.swift */; };
 		79C92DE48CAF4F5BBAEDF299 /* InstallService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC4AC87ED906F4D954E16850 /* InstallService.swift */; };
 		7A8064994B4633978FA3E334 /* DiscoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42BA7574CDF65767B64E1FEE /* DiscoverView.swift */; };
+		BB9876543210FEDCBA987654 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1234567890ABCDEF123456 /* FlowLayout.swift */; };
 		7C0C9E9A97FA6E85F1819B7B /* ProjectScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52C4A4957C14CE0EEBB00D79 /* ProjectScanner.swift */; };
 		7E6931289A067C712BB9B78B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7DBBBF8B70FCF8E665BA164F /* Assets.xcassets */; };
 		85E646533EC754C4C02414FE /* ClaudeCodeAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BE38B49272B1AA0A1752A87 /* ClaudeCodeAdapter.swift */; };
@@ -50,6 +51,7 @@
 		34850DA72E29812DF60C423C /* SkillsManager/Services/SymlinkInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillsManager/Services/SymlinkInstaller.swift; sourceTree = SOURCE_ROOT; };
 		3BE38B49272B1AA0A1752A87 /* ClaudeCodeAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCodeAdapter.swift; sourceTree = "<group>"; };
 		42BA7574CDF65767B64E1FEE /* DiscoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverView.swift; sourceTree = "<group>"; };
+		AA1234567890ABCDEF123456 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		50069145DEE4F107B789596A /* VersionHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionHistoryView.swift; sourceTree = "<group>"; };
 		522C4FF85D5865CEB9DEEF64 /* LLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMService.swift; sourceTree = "<group>"; };
 		5274AE0EE82A46941B29B3F1 /* SandboxSlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SandboxSlot.swift; sourceTree = "<group>"; };
@@ -98,6 +100,7 @@
 			children = (
 				2F161109A29CF7DCE1257393 /* ContentView.swift */,
 				42BA7574CDF65767B64E1FEE /* DiscoverView.swift */,
+				AA1234567890ABCDEF123456 /* FlowLayout.swift */,
 				F000347C95927A1B1EE9704F /* ProjectSkillsView.swift */,
 				F6BD0C5D68F6CEB4FE4C14CD /* SandboxView.swift */,
 				8B204889413D1B5B1DE273D2 /* SettingsView.swift */,
@@ -274,6 +277,7 @@
 				617909719D9F4BFBB8B9BCDD /* UniversalAdapter.swift in Sources */,
 				5427BC541444486E97ABECF1 /* ContentView.swift in Sources */,
 				7A8064994B4633978FA3E334 /* DiscoverView.swift in Sources */,
+				BB9876543210FEDCBA987654 /* FlowLayout.swift in Sources */,
 				67760A8B31C1AA2B7744DF2D /* FileWatcher.swift in Sources */,
 				0947139B78E3F9D9857F730A /* GitService.swift in Sources */,
 				79C92DE48CAF4F5BBAEDF299 /* InstallService.swift in Sources */,

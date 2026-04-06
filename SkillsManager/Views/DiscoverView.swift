@@ -12,6 +12,9 @@ struct DiscoverView: View {
     @State private var searchText = ""
     @State private var selectedCategory: String?
 
+    /// Max chips shown inline; the rest go into the "More" menu.
+    private static let maxVisible = 8
+
     private var filtered: [MarketplacePlugin] {
         plugins.filter { plugin in
             let matchesSearch = searchText.isEmpty
@@ -23,29 +26,56 @@ struct DiscoverView: View {
         }
     }
 
-    private var categories: [String] {
-        Array(Set(plugins.compactMap { $0.category })).sorted()
+    /// All categories sorted by frequency descending, then alphabetically.
+    private var rankedCategories: [String] {
+        var freq: [String: Int] = [:]
+        for p in plugins { if let c = p.category { freq[c, default: 0] += 1 } }
+        return freq.keys.sorted { freq[$0]! != freq[$1]! ? freq[$0]! > freq[$1]! : $0 < $1 }
     }
+
+    private var visibleCategories: [String] { Array(rankedCategories.prefix(Self.maxVisible)) }
+    private var overflowCategories: [String] { Array(rankedCategories.dropFirst(Self.maxVisible)) }
 
     var body: some View {
         VStack(spacing: 0) {
-            if !categories.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        CategoryChip(label: "All", isSelected: selectedCategory == nil) {
-                            selectedCategory = nil
-                        }
-                        ForEach(categories, id: \.self) { cat in
-                            CategoryChip(label: cat.capitalized, isSelected: selectedCategory == cat) {
-                                selectedCategory = cat
-                            }
+            if !rankedCategories.isEmpty {
+                FlowLayout(hSpacing: 8, vSpacing: 6) {
+                    CategoryChip(label: "All", isSelected: selectedCategory == nil) {
+                        selectedCategory = nil
+                    }
+                    ForEach(visibleCategories, id: \.self) { cat in
+                        CategoryChip(label: cat.capitalized, isSelected: selectedCategory == cat) {
+                            selectedCategory = cat
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .fixedSize(horizontal: false, vertical: true)
+                    if !overflowCategories.isEmpty {
+                        let isMoreSelected = selectedCategory.map { overflowCategories.contains($0) } ?? false
+                        Menu {
+                            Button("All Categories") { selectedCategory = nil }
+                            Divider()
+                            ForEach(overflowCategories, id: \.self) { cat in
+                                Button(cat.capitalized) { selectedCategory = cat }
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(isMoreSelected ? selectedCategory!.capitalized : "More")
+                                    .font(.caption)
+                                    .lineLimit(1)
+                                Image(systemName: "chevron.down")
+                                    .font(.caption2)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(isMoreSelected ? Color.accentColor : Color.secondary.opacity(0.1), in: Capsule())
+                            .foregroundStyle(isMoreSelected ? Color.white : Color.primary)
+                        }
+                        .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
+                        .fixedSize()
+                    }
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
                 Divider()
             }
 
@@ -154,6 +184,8 @@ private struct CategoryChip: View {
         Button(action: action) {
             Text(label)
                 .font(.caption)
+                .lineLimit(1)
+                .fixedSize()
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
                 .background(
