@@ -1,0 +1,1 @@
+{"version":3,"file":"theme.js","sourceRoot":"","sources":["../../../source/components/spinner/theme.ts"],"names":[],"mappings":"AAGA,MAAM,KAAK,GAAG;IACb,MAAM,EAAE;QACP,SAAS,EAAE,GAAa,EAAE,CAAC,CAAC;YAC3B,GAAG,EAAE,CAAC;SACN,CAAC;QACF,KAAK,EAAE,GAAc,EAAE,CAAC,CAAC;YACxB,KAAK,EAAE,MAAM;SACb,CAAC;QACF,KAAK,EAAE,GAAc,EAAE,CAAC,CAAC,EAAE,CAAC;KAC5B;CACwB,CAAC;AAE3B,eAAe,KAAK,CAAC"}
