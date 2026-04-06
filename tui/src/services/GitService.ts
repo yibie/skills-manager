@@ -36,30 +36,15 @@ export async function getDiff(skillName: string, fromHash: string): Promise<stri
   try {
     const { stdout } = await exec('git', [
       '-C', INSTALL_DIR,
-      'show', `${fromHash}:${fileName}`,
+      'diff', `${fromHash}..HEAD`,
+      '--', fileName,
     ])
-    // Return the raw diff-style output by comparing HEAD content with that commit
-    const { stdout: headContent } = await exec('git', [
-      '-C', INSTALL_DIR,
-      'show', `HEAD:${fileName}`,
-    ]).catch(() => ({ stdout: '' }))
-
-    const oldLines = stdout.split('\n')
-    const newLines = headContent.split('\n')
-    const diffLines: string[] = []
-
-    const maxLen = Math.max(oldLines.length, newLines.length)
-    for (let i = 0; i < maxLen; i++) {
-      const oldLine = oldLines[i]
-      const newLine = newLines[i]
-      if (oldLine === newLine) {
-        diffLines.push(` ${oldLine ?? ''}`)
-      } else {
-        if (oldLine !== undefined) diffLines.push(`-${oldLine}`)
-        if (newLine !== undefined) diffLines.push(`+${newLine}`)
-      }
-    }
-    return diffLines.slice(0, 30).join('\n')
+    if (!stdout.trim()) return '(no changes)'
+    // Return only the diff lines (skip git header lines), capped at 30 lines
+    const lines = stdout.split('\n').filter(l =>
+      l.startsWith('+') || l.startsWith('-') || l.startsWith(' ')
+    )
+    return lines.slice(0, 30).join('\n')
   } catch {
     return ''
   }
@@ -67,6 +52,10 @@ export async function getDiff(skillName: string, fromHash: string): Promise<stri
 
 export async function rollback(skillName: string, toHash: string): Promise<void> {
   const fileName = skillName.endsWith('.md') ? skillName : `${skillName}.md`
-  await exec('git', ['-C', INSTALL_DIR, 'checkout', toHash, '--', fileName])
-  await exec('git', ['-C', INSTALL_DIR, 'commit', '-m', `rollback: ${skillName} to ${toHash.slice(0, 7)}`])
+  try {
+    await exec('git', ['-C', INSTALL_DIR, 'checkout', toHash, '--', fileName])
+    await exec('git', ['-C', INSTALL_DIR, 'commit', '-m', `rollback: ${skillName} to ${toHash.slice(0, 7)}`])
+  } catch (err) {
+    throw new Error(`Rollback failed for ${skillName}: ${String(err)}`)
+  }
 }

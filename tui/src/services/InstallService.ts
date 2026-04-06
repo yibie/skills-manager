@@ -18,13 +18,17 @@ export async function install(skill: Skill): Promise<void> {
 
   // git init + initial commit if not already a git repo
   const gitDir = path.join(INSTALL_DIR, '.git')
-  if (!fs.existsSync(gitDir)) {
-    await exec('git', ['-C', INSTALL_DIR, 'init'])
-    await exec('git', ['-C', INSTALL_DIR, 'add', '.'])
-    await exec('git', ['-C', INSTALL_DIR, 'commit', '-m', 'Initial install'])
-  } else {
-    await exec('git', ['-C', INSTALL_DIR, 'add', path.basename(skill.filePath)])
-    await exec('git', ['-C', INSTALL_DIR, 'commit', '-m', `install: ${skill.name}`])
+  try {
+    if (!fs.existsSync(gitDir)) {
+      await exec('git', ['-C', INSTALL_DIR, 'init'])
+      await exec('git', ['-C', INSTALL_DIR, 'add', '.'])
+      await exec('git', ['-C', INSTALL_DIR, 'commit', '-m', 'Initial install'])
+    } else {
+      await exec('git', ['-C', INSTALL_DIR, 'add', path.basename(skill.filePath)])
+      await exec('git', ['-C', INSTALL_DIR, 'commit', '-m', `install: ${skill.name}`])
+    }
+  } catch (err) {
+    throw new Error(`Git tracking failed for ${skill.name}: ${String(err)}`)
   }
 }
 
@@ -34,7 +38,11 @@ export async function uninstall(skill: Skill): Promise<void> {
   fs.rmSync(target)
   const gitDir = path.join(INSTALL_DIR, '.git')
   if (fs.existsSync(gitDir)) {
-    await exec('git', ['-C', INSTALL_DIR, 'rm', path.basename(skill.filePath)])
-    await exec('git', ['-C', INSTALL_DIR, 'commit', '-m', `uninstall: ${skill.name}`])
+    try {
+      await exec('git', ['-C', INSTALL_DIR, 'rm', path.basename(skill.filePath)])
+      await exec('git', ['-C', INSTALL_DIR, 'commit', '-m', `uninstall: ${skill.name}`])
+    } catch (err) {
+      throw new Error(`Git tracking failed for ${skill.name}: ${String(err)}`)
+    }
   }
 }
