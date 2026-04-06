@@ -51,7 +51,7 @@ export function DetailPanel({ skill, isActive }: Props) {
 
       <Box flexDirection="column" marginTop={1}>
         <Text dimColor>
-          [{skill.isInstalled ? 'i' : 'i'}]{skill.isInstalled ? 'uninstall' : 'install'}{' '}
+          [i]{skill.isInstalled ? 'uninstall' : 'install'}{' '}
           [s]{skill.isStarred ? 'unstar' : 'star'}
         </Text>
         <Text dimColor>[h]istory  [o]pen</Text>

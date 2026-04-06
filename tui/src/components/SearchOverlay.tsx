@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Box, Text, useInput } from 'ink'
 import type { Skill } from '../types.js'
 
@@ -17,11 +17,27 @@ export function SearchOverlay({ skills, onSelect, onClose }: Props) {
     s.description.toLowerCase().includes(query.toLowerCase())
   ).slice(0, 8)
 
+  // Refs so useInput always reads current values (avoids stale closure)
+  const resultsRef = useRef(results)
+  const cursorRef = useRef(cursor)
+  useEffect(() => { resultsRef.current = results }, [results])
+  useEffect(() => { cursorRef.current = cursor }, [cursor])
+
   useInput((input, key) => {
     if (key.escape) { onClose(); return }
-    if (key.return && results[cursor]) { onSelect(results[cursor]); return }
-    if (key.downArrow && cursor < results.length - 1) { setCursor(c => c + 1); return }
-    if (key.upArrow && cursor > 0) { setCursor(c => c - 1); return }
+    if (key.return) {
+      const selected = resultsRef.current[cursorRef.current]
+      if (selected) onSelect(selected)
+      return
+    }
+    if (key.downArrow && cursorRef.current < resultsRef.current.length - 1) {
+      setCursor(c => c + 1)
+      return
+    }
+    if (key.upArrow && cursorRef.current > 0) {
+      setCursor(c => c - 1)
+      return
+    }
     if (key.backspace || key.delete) {
       setQuery(q => q.slice(0, -1))
       setCursor(0)

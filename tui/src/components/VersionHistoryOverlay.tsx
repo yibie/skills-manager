@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Box, Text, useInput } from 'ink'
 import { getHistory, getDiff, rollback } from '../services/GitService.js'
 import type { Skill, Commit } from '../types.js'
@@ -14,31 +14,41 @@ export function VersionHistoryOverlay({ skill, onClose }: Props) {
   const [diff, setDiff] = useState('')
   const [status, setStatus] = useState('')
 
+  // Refs so useInput always reads current values (avoids stale closure)
+  const commitsRef = useRef(commits)
+  const cursorRef = useRef(cursor)
+  useEffect(() => { commitsRef.current = commits }, [commits])
+  useEffect(() => { cursorRef.current = cursor }, [cursor])
+
   useEffect(() => {
     getHistory(skill.name).then(setCommits)
   }, [skill.name])
 
   useEffect(() => {
-    if (commits[cursor]) {
-      getDiff(skill.name, commits[cursor].hash).then(setDiff)
+    const commit = commitsRef.current[cursorRef.current]
+    if (commit) {
+      getDiff(skill.name, commit.hash).then(setDiff)
     }
   }, [cursor, commits, skill.name])
 
   useInput((input, key) => {
     if (key.escape) { onClose(); return }
-    if ((key.downArrow || input === 'j') && cursor < commits.length - 1) {
+    if ((key.downArrow || input === 'j') && cursorRef.current < commitsRef.current.length - 1) {
       setCursor(c => c + 1)
       return
     }
-    if ((key.upArrow || input === 'k') && cursor > 0) {
+    if ((key.upArrow || input === 'k') && cursorRef.current > 0) {
       setCursor(c => c - 1)
       return
     }
-    if (input === 'r' && commits[cursor]) {
-      setStatus('Rolling back…')
-      rollback(skill.name, commits[cursor].hash)
-        .then(() => { setStatus('Rolled back successfully'); setTimeout(onClose, 1000) })
-        .catch(e => setStatus(`Error: ${String(e)}`))
+    if (input === 'r') {
+      const commit = commitsRef.current[cursorRef.current]
+      if (commit) {
+        setStatus('Rolling back…')
+        rollback(skill.name, commit.hash)
+          .then(() => { setStatus('Rolled back successfully'); setTimeout(onClose, 1000) })
+          .catch(e => setStatus(`Error: ${String(e)}`))
+      }
     }
   })
 

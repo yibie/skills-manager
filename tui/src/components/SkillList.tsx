@@ -9,7 +9,7 @@ interface Props {
   onSelect: (index: number) => void
 }
 
-export function SkillList({ skills, selectedIndex, isActive }: Props) {
+export function SkillList({ skills, selectedIndex, isActive, onSelect: _onSelect }: Props) {
   const borderColor = isActive ? 'blue' : undefined
 
   return (
