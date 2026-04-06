@@ -32,6 +32,15 @@ export function App() {
 
   const selectedSkill: Skill | undefined = filteredSkills[selectedIndex]
 
+  useEffect(() => {
+    if (filteredSkills.length === 0) {
+      setSelectedIndex(0)
+    } else if (selectedIndex >= filteredSkills.length) {
+      setSelectedIndex(filteredSkills.length - 1)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredSkills.length])
+
   function refresh() {
     setSkills(loadSkills())
   }
