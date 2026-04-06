@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Box, useInput, useApp } from 'ink'
+import { Box, Text, useInput, useApp } from 'ink'
 import { loadSkills, toggleStar } from './services/SkillStore.js'
 import { install, uninstall } from './services/InstallService.js'
 import { StatusBar } from './components/StatusBar.js'
@@ -18,6 +18,7 @@ export function App() {
   const [filterState, setFilterState] = useState<FilterState>('all')
   const [agentFilter, setAgentFilter] = useState<AgentFilter>('all')
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [statusMessage, setStatusMessage] = useState<string>('')
 
   useEffect(() => {
     setSkills(loadSkills())
@@ -79,9 +80,9 @@ export function App() {
       }
       if (input === 'i') {
         if (selectedSkill.isInstalled) {
-          uninstall(selectedSkill).then(refresh)
+          uninstall(selectedSkill).then(refresh).catch(err => setStatusMessage(String(err)))
         } else {
-          install(selectedSkill).then(refresh)
+          install(selectedSkill).then(refresh).catch(err => setStatusMessage(String(err)))
         }
       }
       if (input === 'h') {
@@ -146,6 +147,11 @@ export function App() {
           isActive={activePanel === 'detail'}
         />
       </Box>
+      {statusMessage && (
+        <Box>
+          <Text color="red">{statusMessage}</Text>
+        </Box>
+      )}
       <StatusBar activePanel={activePanel} overlay={overlay} />
     </Box>
   )

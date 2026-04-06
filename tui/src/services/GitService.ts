@@ -8,7 +8,8 @@ const exec = promisify(execFile)
 const INSTALL_DIR = path.join(os.homedir(), '.claude', 'skills')
 
 export async function getHistory(skillName: string): Promise<Commit[]> {
-  const fileName = skillName.endsWith('.md') ? skillName : `${skillName}.md`
+  // Keep extension if skill name already has one, otherwise default to .md
+  const fileName = /\.[a-z]+$/i.test(skillName) ? skillName : `${skillName}.md`
   try {
     const { stdout } = await exec('git', [
       '-C', INSTALL_DIR,
@@ -32,7 +33,8 @@ export async function getHistory(skillName: string): Promise<Commit[]> {
 }
 
 export async function getDiff(skillName: string, fromHash: string): Promise<string> {
-  const fileName = skillName.endsWith('.md') ? skillName : `${skillName}.md`
+  // Keep extension if skill name already has one, otherwise default to .md
+  const fileName = /\.[a-z]+$/i.test(skillName) ? skillName : `${skillName}.md`
   try {
     const { stdout } = await exec('git', [
       '-C', INSTALL_DIR,
@@ -51,7 +53,8 @@ export async function getDiff(skillName: string, fromHash: string): Promise<stri
 }
 
 export async function rollback(skillName: string, toHash: string): Promise<void> {
-  const fileName = skillName.endsWith('.md') ? skillName : `${skillName}.md`
+  // Keep extension if skill name already has one, otherwise default to .md
+  const fileName = /\.[a-z]+$/i.test(skillName) ? skillName : `${skillName}.md`
   try {
     await exec('git', ['-C', INSTALL_DIR, 'checkout', toHash, '--', fileName])
     await exec('git', ['-C', INSTALL_DIR, 'commit', '-m', `rollback: ${skillName} to ${toHash.slice(0, 7)}`])

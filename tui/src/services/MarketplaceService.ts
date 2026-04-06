@@ -40,13 +40,33 @@ export async function syncMarketplace(): Promise<MarketplaceEntry[]> {
     })
     if (!res.ok) return []
     const files = await res.json() as Array<{ name: string; download_url: string }>
-    const entries: MarketplaceEntry[] = files
-      .filter(f => f.name.endsWith('.md'))
-      .map(f => ({
-        name: f.name.replace(/\.md$/, ''),
-        description: '',
-        downloadUrl: f.download_url,
-      }))
+    const mdFiles = files.filter(f => f.name.endsWith('.md'))
+
+    // Download skill files into the path SkillStore scans:
+    // ~/.claude/plugins/cache/<pluginDir>/skills/
+    const SKILLS_CACHE_DIR = path.join(os.homedir(), '.claude', 'plugins', 'cache', 'marketplace-tui', 'skills')
+    if (!fs.existsSync(SKILLS_CACHE_DIR)) fs.mkdirSync(SKILLS_CACHE_DIR, { recursive: true })
+
+    const entries: MarketplaceEntry[] = []
+    await Promise.all(mdFiles.map(async f => {
+      try {
+        const fileRes = await fetch(f.download_url, {
+          headers: { 'User-Agent': 'skills-manager-tui' },
+        })
+        if (!fileRes.ok) return
+        const content = await fileRes.text()
+        const destPath = path.join(SKILLS_CACHE_DIR, f.name)
+        fs.writeFileSync(destPath, content)
+        entries.push({
+          name: f.name.replace(/\.md$/, ''),
+          description: '',
+          downloadUrl: f.download_url,
+        })
+      } catch {
+        // Skip individual file download failures
+      }
+    }))
+
     writeCache(entries)
     return entries
   } catch {
