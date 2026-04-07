@@ -1,75 +1,125 @@
+/**
+ * MarketplaceService
+ *
+ * Reads Claude Code's existing local plugin metadata — no network requests.
+ * Claude Code itself handles syncing known_marketplaces.json and marketplace.json files.
+ *
+ * Key files (maintained by Claude Code, not by us):
+ *   ~/.claude/plugins/known_marketplaces.json      — list of registered marketplaces
+ *   ~/.claude/plugins/marketplaces/{name}/.claude-plugin/marketplace.json  — plugin catalog
+ *   ~/.claude/plugins/installed_plugins.json       — installed plugin records
+ */
+
 import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 
-const CACHE_DIR = path.join(os.homedir(), '.skills-manager', 'cache')
-const CACHE_FILE = path.join(CACHE_DIR, 'marketplace.json')
-const CACHE_TTL_MS = 30 * 60 * 1000  // 30 minutes
+const PLUGINS_BASE = path.join(os.homedir(), '.claude', 'plugins')
+const KNOWN_MARKETPLACES_FILE = path.join(PLUGINS_BASE, 'known_marketplaces.json')
+const INSTALLED_PLUGINS_FILE = path.join(PLUGINS_BASE, 'installed_plugins.json')
 
-const MARKETPLACE_URL =
-  'https://api.github.com/repos/anthropics/claude-code/contents/skills'
+// ── Types ────────────────────────────────────────────────────────────────────
 
-interface MarketplaceEntry {
+export interface MarketplacePlugin {
+  /** "{marketplace}:{name}" */
+  id: string
   name: string
   description: string
-  downloadUrl: string
+  marketplace: string
+  category?: string
+  isInstalled: boolean
+  installedVersion?: string
 }
 
-function readCache(): MarketplaceEntry[] | null {
+interface KnownMarketplace {
+  source: { source: string; repo?: string }
+  installLocation: string
+  lastUpdated?: string
+}
+
+interface InstalledPluginRecord {
+  installPath: string
+  version: string
+  scope: string
+}
+
+interface InstalledPluginsFile {
+  plugins: Record<string, InstalledPluginRecord[]>
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function readJSON<T>(filePath: string): T | null {
   try {
-    const stat = fs.statSync(CACHE_FILE)
-    if (Date.now() - stat.mtimeMs > CACHE_TTL_MS) return null
-    return JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8')) as MarketplaceEntry[]
+    return JSON.parse(fs.readFileSync(filePath, 'utf8')) as T
   } catch {
     return null
   }
 }
 
-function writeCache(entries: MarketplaceEntry[]): void {
-  if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true })
-  fs.writeFileSync(CACHE_FILE, JSON.stringify(entries, null, 2))
+function knownMarketplaceNames(): string[] {
+  const dict = readJSON<Record<string, KnownMarketplace>>(KNOWN_MARKETPLACES_FILE)
+  if (!dict) return []
+  return Object.keys(dict).sort()
 }
 
-export async function syncMarketplace(): Promise<MarketplaceEntry[]> {
-  const cached = readCache()
-  if (cached) return cached
+function loadCachedPlugins(marketplaceName: string): MarketplacePlugin[] {
+  const catalogPath = path.join(
+    PLUGINS_BASE, 'marketplaces', marketplaceName, '.claude-plugin', 'marketplace.json'
+  )
+  const root = readJSON<{ plugins?: Array<Record<string, unknown>> }>(catalogPath)
+  if (!root?.plugins) return []
 
-  try {
-    const res = await fetch(MARKETPLACE_URL, {
-      headers: { 'User-Agent': 'skills-manager-tui' },
-    })
-    if (!res.ok) return []
-    const files = await res.json() as Array<{ name: string; download_url: string }>
-    const mdFiles = files.filter(f => f.name.endsWith('.md'))
+  return root.plugins.flatMap(dict => {
+    const name = dict['name']
+    if (typeof name !== 'string') return []
+    const description = typeof dict['description'] === 'string' ? dict['description'] : ''
+    const category = typeof dict['category'] === 'string' ? dict['category'] : undefined
+    const plugin: MarketplacePlugin = {
+      id: `${marketplaceName}:${name}`,
+      name,
+      description,
+      marketplace: marketplaceName,
+      category,
+      isInstalled: false,
+    }
+    return [plugin]
+  })
+}
 
-    // Download skill files into the path SkillStore scans:
-    // ~/.claude/plugins/cache/<pluginDir>/skills/
-    const SKILLS_CACHE_DIR = path.join(os.homedir(), '.claude', 'plugins', 'cache', 'marketplace-tui', 'skills')
-    if (!fs.existsSync(SKILLS_CACHE_DIR)) fs.mkdirSync(SKILLS_CACHE_DIR, { recursive: true })
+// ── Public API ───────────────────────────────────────────────────────────────
 
-    const entries: MarketplaceEntry[] = []
-    await Promise.all(mdFiles.map(async f => {
-      try {
-        const fileRes = await fetch(f.download_url, {
-          headers: { 'User-Agent': 'skills-manager-tui' },
-        })
-        if (!fileRes.ok) return
-        const content = await fileRes.text()
-        const destPath = path.join(SKILLS_CACHE_DIR, f.name)
-        fs.writeFileSync(destPath, content)
-        entries.push({
-          name: f.name.replace(/\.md$/, ''),
-          description: '',
-          downloadUrl: f.download_url,
-        })
-      } catch {
-        // Skip individual file download failures
+/**
+ * Load all plugins from all known marketplace catalogs, merged with install state.
+ * This is purely a local filesystem read — instant, no network.
+ */
+export function loadMarketplacePlugins(): MarketplacePlugin[] {
+  const names = knownMarketplaceNames()
+  const plugins = names.flatMap(name => loadCachedPlugins(name))
+
+  // Merge install state from installed_plugins.json
+  const installed = readJSON<InstalledPluginsFile>(INSTALLED_PLUGINS_FILE)
+  if (!installed?.plugins) return plugins
+
+  return plugins.map(plugin => {
+    // Key format in installed_plugins.json: "{pluginName}@{marketplace}"
+    const key = `${plugin.name}@${plugin.marketplace}`
+    const records = installed.plugins[key]
+    if (records && records.length > 0) {
+      return {
+        ...plugin,
+        isInstalled: true,
+        installedVersion: records[0]?.version,
       }
-    }))
+    }
+    return plugin
+  })
+}
 
-    writeCache(entries)
-    return entries
-  } catch {
-    return []
-  }
+/**
+ * No-op: Claude Code handles marketplace syncing via its own update mechanism.
+ * We call this from app.tsx for API compatibility but there's nothing to do.
+ */
+export async function syncMarketplace(): Promise<void> {
+  // Intentionally empty — Claude Code owns the sync lifecycle
 }

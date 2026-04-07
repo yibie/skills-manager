@@ -3,7 +3,11 @@ export interface Skill {
   displayName: string
   description: string
   filePath: string
-  source: 'local' | 'marketplace'
+  /** 'local' = standalone skill in ~/.claude/skills/; 'plugin' = bundled inside a plugin */
+  source: 'local' | 'plugin'
+  /** Set when source === 'plugin' */
+  marketplace?: string
+  pluginName?: string
   compatibleAgents: string[]
   isStarred: boolean
   isInstalled: boolean
@@ -21,4 +25,12 @@ export type Panel = 'sidebar' | 'list' | 'detail'
 export type Overlay = 'none' | 'search' | 'history'
 
 export type FilterState = 'all' | 'installed' | 'starred'
-export type AgentFilter = 'all' | 'claude-code' | 'copilot-cli' | 'codex'
+/** Agent filter is now dynamic - can be 'all' or any agent ID */
+export type AgentFilter = string
+
+export interface AgentDefinition {
+  id: string
+  label: string
+  detectPath: string
+  skillsDir: string
+}

@@ -1,11 +1,12 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Box, Text, useInput } from 'ink'
-import type { Skill, FilterState, AgentFilter } from '../types.js'
+import type { Skill, FilterState, AgentFilter, AgentDefinition } from '../types.js'
 
 interface Props {
   filterState: FilterState
   agentFilter: AgentFilter
   skills: Skill[]
+  agents: AgentDefinition[]
   isActive: boolean
   onFilterChange: (f: FilterState) => void
   onAgentChange: (a: AgentFilter) => void
@@ -17,36 +18,50 @@ const FILTER_OPTIONS: { key: FilterState; label: string }[] = [
   { key: 'starred', label: 'Starred' },
 ]
 
-const AGENT_OPTIONS: { key: AgentFilter; label: string }[] = [
-  { key: 'all', label: 'All Agents' },
-  { key: 'claude-code', label: 'Claude Code' },
-  { key: 'copilot-cli', label: 'Copilot CLI' },
-  { key: 'codex', label: 'Codex' },
-]
+export function Sidebar({ filterState, agentFilter, skills, agents, isActive, onFilterChange, onAgentChange }: Props) {
+  const [cursorIdx, setCursorIdx] = useState(0)
 
-export function Sidebar({ filterState, agentFilter, skills, isActive, onFilterChange, onAgentChange }: Props) {
   const allCount = skills.length
   const installedCount = skills.filter(s => s.isInstalled).length
   const starredCount = skills.filter(s => s.isStarred).length
   const counts: Record<FilterState, number> = { all: allCount, installed: installedCount, starred: starredCount }
 
+  // Count skills per agent
+  const agentCounts = new Map<string, number>()
+  agentCounts.set('all', allCount)
+  for (const agent of agents) {
+    const count = skills.filter(s => s.compatibleAgents.includes(agent.id)).length
+    agentCounts.set(agent.id, count)
+  }
+
   const borderColor = isActive ? 'blue' : undefined
 
-  // All selectable rows: 3 filter + 4 agent = 7
-  const allRows: Array<{ type: 'filter'; key: FilterState } | { type: 'agent'; key: AgentFilter }> = [
-    ...FILTER_OPTIONS.map(f => ({ type: 'filter' as const, key: f.key })),
-    ...AGENT_OPTIONS.map(a => ({ type: 'agent' as const, key: a.key })),
+  // Build agent options dynamically from installed agents
+  const agentOptions: { key: AgentFilter; label: string; count: number }[] = [
+    { key: 'all', label: 'All Agents', count: agentCounts.get('all') || 0 },
+    ...agents.map(a => ({ key: a.id, label: a.label, count: agentCounts.get(a.id) || 0 })),
   ]
 
-  const currentRowIdx = allRows.findIndex(r =>
-    (r.type === 'filter' && r.key === filterState) ||
-    (r.type === 'agent' && r.key === agentFilter)
-  )
+  // All selectable rows: 3 filter + N agent
+  const allRows: Array<{ type: 'filter'; key: FilterState } | { type: 'agent'; key: AgentFilter }> = [
+    ...FILTER_OPTIONS.map(f => ({ type: 'filter' as const, key: f.key })),
+    ...agentOptions.map(a => ({ type: 'agent' as const, key: a.key })),
+  ]
+
+  // Sync cursor with current filter/agent state when they change externally
+  useEffect(() => {
+    const idx = allRows.findIndex(r =>
+      (r.type === 'filter' && r.key === filterState) ||
+      (r.type === 'agent' && r.key === agentFilter)
+    )
+    if (idx !== -1) setCursorIdx(idx)
+  }, [filterState, agentFilter])
 
   useInput((input, key) => {
     if (!isActive) return
     if (key.downArrow || input === 'j') {
-      const next = Math.min(currentRowIdx + 1, allRows.length - 1)
+      const next = Math.min(cursorIdx + 1, allRows.length - 1)
+      setCursorIdx(next)
       const row = allRows[next]
       if (row) {
         if (row.type === 'filter') onFilterChange(row.key)
@@ -54,7 +69,8 @@ export function Sidebar({ filterState, agentFilter, skills, isActive, onFilterCh
       }
     }
     if (key.upArrow || input === 'k') {
-      const prev = Math.max(currentRowIdx - 1, 0)
+      const prev = Math.max(cursorIdx - 1, 0)
+      setCursorIdx(prev)
       const row = allRows[prev]
       if (row) {
         if (row.type === 'filter') onFilterChange(row.key)
@@ -66,7 +82,7 @@ export function Sidebar({ filterState, agentFilter, skills, isActive, onFilterCh
   return (
     <Box
       flexDirection="column"
-      width={18}
+      width={20}
       borderStyle="round"
       borderColor={borderColor}
       paddingX={1}
@@ -83,9 +99,9 @@ export function Sidebar({ filterState, agentFilter, skills, isActive, onFilterCh
         ))}
       </Box>
       <Box flexDirection="column" marginTop={1}>
-        <Text dimColor>── Agents ──</Text>
-        {AGENT_OPTIONS.map(a => (
-          <FilterRow key={a.key} label={a.label} active={agentFilter === a.key} />
+        <Text bold>Agents</Text>
+        {agentOptions.map(a => (
+          <FilterRow key={a.key} label={a.label} count={a.count} active={agentFilter === a.key} />
         ))}
       </Box>
     </Box>

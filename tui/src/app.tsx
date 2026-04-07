@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { Box, Text, useInput, useApp } from 'ink'
-import { loadSkills, toggleStar } from './services/SkillStore.js'
+import { Box, useInput, useApp } from 'ink'
+import { loadSkills, toggleStar, getInstalledAgents } from './services/SkillStore.js'
 import { install, uninstall } from './services/InstallService.js'
 import { StatusBar } from './components/StatusBar.js'
 import { Sidebar } from './components/Sidebar.js'
@@ -8,27 +8,31 @@ import { SkillList } from './components/SkillList.js'
 import { DetailPanel } from './components/DetailPanel.js'
 import { SearchOverlay } from './components/SearchOverlay.js'
 import { VersionHistoryOverlay } from './components/VersionHistoryOverlay.js'
-import type { Skill, Panel, Overlay, FilterState, AgentFilter } from './types.js'
+import type { Skill, Panel, Overlay, FilterState, AgentFilter, AgentDefinition } from './types.js'
 
 export function App() {
   const { exit } = useApp()
-  const [skills, setSkills] = useState<Skill[]>([])
+  // Load synchronously so the first render is already full-height
+  const [skills, setSkills] = useState<Skill[]>(() => loadSkills())
+  const [agents, setAgents] = useState<AgentDefinition[]>(() => getInstalledAgents())
   const [activePanel, setActivePanel] = useState<Panel>('list')
   const [overlay, setOverlay] = useState<Overlay>('none')
   const [filterState, setFilterState] = useState<FilterState>('all')
   const [agentFilter, setAgentFilter] = useState<AgentFilter>('all')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [statusMessage, setStatusMessage] = useState<string>('')
+  const [terminalRows, setTerminalRows] = useState(() => process.stdout.rows || 24)
 
   useEffect(() => {
-    setSkills(loadSkills())
-  }, [])
-
-  useEffect(() => {
-    // Background marketplace sync — non-blocking
     import('./services/MarketplaceService.js').then(({ syncMarketplace }) => {
       syncMarketplace().catch(() => {/* silent */})
     })
+  }, [])
+
+  useEffect(() => {
+    const onResize = () => setTerminalRows(process.stdout.rows || 24)
+    process.stdout.on('resize', onResize)
+    return () => { process.stdout.off('resize', onResize) }
   }, [])
 
   const filteredSkills = skills.filter(s => {
@@ -51,16 +55,36 @@ export function App() {
 
   function refresh() {
     setSkills(loadSkills())
+    setAgents(getInstalledAgents())
   }
 
   useInput((input, key) => {
-    if (overlay !== 'none') return  // overlays handle their own input
+    if (overlay !== 'none') return
 
     if (input === 'q') { exit(); return }
     if (input === '/') { setOverlay('search'); return }
 
-    if (key.tab) {
-      setActivePanel(p => p === 'sidebar' ? 'list' : p === 'list' ? 'detail' : 'sidebar')
+    // Panel navigation: h = left, l/Enter = right (yazi-style)
+    if (input === 'h') {
+      setActivePanel(p => p === 'detail' ? 'list' : p === 'list' ? 'sidebar' : 'sidebar')
+      return
+    }
+    if (input === 'l' || key.return) {
+      if (activePanel === 'sidebar') {
+        setActivePanel('list')
+      } else if (activePanel === 'list') {
+        setActivePanel('detail')
+      } else if (activePanel === 'detail' && selectedSkill?.filePath) {
+        // l in detail = open file, like yazi
+        import('node:child_process').then(({ execFile }) => {
+          const editor = process.env['EDITOR']
+          if (editor) {
+            execFile(editor, [selectedSkill.filePath])
+          } else {
+            execFile('open', [selectedSkill.filePath])
+          }
+        })
+      }
       return
     }
 
@@ -70,6 +94,12 @@ export function App() {
       }
       if ((input === 'k' || key.upArrow) && selectedIndex > 0) {
         setSelectedIndex(i => i - 1)
+      }
+      if (input === 'g') {
+        setSelectedIndex(0)
+      }
+      if (input === 'G') {
+        setSelectedIndex(Math.max(0, filteredSkills.length - 1))
       }
     }
 
@@ -85,20 +115,21 @@ export function App() {
           install(selectedSkill).then(refresh).catch(err => setStatusMessage(String(err)))
         }
       }
-      if (input === 'h') {
+      if (input === 'H') {
         setOverlay('history')
-      }
-      if (input === 'o' && selectedSkill.filePath) {
-        import('node:child_process').then(({ execFile }) => {
-          execFile('open', [selectedSkill.filePath])
-        })
       }
     }
   })
 
+  // StatusBar is always exactly 2 rows (top-border + content).
+  // statusMessage is routed into StatusBar so the total height never changes.
+  const contentHeight = Math.max(4, terminalRows - 2)
+
+  // Use explicit terminalRows (not "100%") so Ink always writes the same number of
+  // lines on every render — preventing ghost rows when content height shrinks.
   if (overlay === 'search') {
     return (
-      <Box flexDirection="column" height="100%">
+      <Box flexDirection="column" height={terminalRows}>
         <SearchOverlay
           skills={skills}
           onSelect={(skill: Skill) => {
@@ -108,30 +139,31 @@ export function App() {
           }}
           onClose={() => setOverlay('none')}
         />
-        <StatusBar activePanel={activePanel} overlay={overlay} />
+        <StatusBar activePanel={activePanel} overlay={overlay} message={statusMessage} />
       </Box>
     )
   }
 
   if (overlay === 'history' && selectedSkill) {
     return (
-      <Box flexDirection="column" height="100%">
+      <Box flexDirection="column" height={terminalRows}>
         <VersionHistoryOverlay
           skill={selectedSkill}
           onClose={() => { setOverlay('none'); refresh() }}
         />
-        <StatusBar activePanel={activePanel} overlay={overlay} />
+        <StatusBar activePanel={activePanel} overlay={overlay} message={statusMessage} />
       </Box>
     )
   }
 
   return (
-    <Box flexDirection="column" height="100%">
+    <Box flexDirection="column" height={terminalRows}>
       <Box flexGrow={1}>
         <Sidebar
           filterState={filterState}
           agentFilter={agentFilter}
           skills={skills}
+          agents={agents}
           isActive={activePanel === 'sidebar'}
           onFilterChange={setFilterState}
           onAgentChange={setAgentFilter}
@@ -140,19 +172,15 @@ export function App() {
           skills={filteredSkills}
           selectedIndex={selectedIndex}
           isActive={activePanel === 'list'}
-          onSelect={setSelectedIndex}
+          height={contentHeight}
         />
         <DetailPanel
           skill={selectedSkill}
           isActive={activePanel === 'detail'}
+          height={contentHeight}
         />
       </Box>
-      {statusMessage && (
-        <Box>
-          <Text color="red">{statusMessage}</Text>
-        </Box>
-      )}
-      <StatusBar activePanel={activePanel} overlay={overlay} />
+      <StatusBar activePanel={activePanel} overlay={overlay} message={statusMessage} />
     </Box>
   )
 }

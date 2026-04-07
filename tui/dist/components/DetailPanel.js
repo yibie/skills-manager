@@ -1,0 +1,9 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { Box, Text } from 'ink';
+export function DetailPanel({ skill, isActive, height: _height }) {
+    const borderColor = isActive ? 'blue' : undefined;
+    if (!skill) {
+        return (_jsx(Box, { flexDirection: "column", width: 30, borderStyle: "round", borderColor: borderColor, paddingX: 1, children: _jsx(Text, { dimColor: true, children: "Select a skill" }) }));
+    }
+    return (_jsxs(Box, { flexDirection: "column", width: 30, borderStyle: "round", borderColor: borderColor, paddingX: 1, children: [_jsx(Text, { bold: true, children: skill.displayName }), _jsx(Text, { dimColor: true, children: "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500" }), _jsx(Text, { wrap: "wrap", children: skill.description }), _jsxs(Box, { flexDirection: "column", marginTop: 1, children: [_jsx(Text, { dimColor: true, children: "Compatible:" }), skill.compatibleAgents.map(agent => (_jsxs(Text, { color: "green", children: [" \u2713 ", agent] }, agent)))] }), (skill.version || skill.source === 'plugin') && (_jsxs(Box, { marginTop: 1, flexDirection: "column", children: [skill.version && _jsxs(Text, { dimColor: true, children: ["v", skill.version] }), _jsxs(Text, { dimColor: true, children: [skill.source, skill.marketplace ? ` · ${skill.marketplace}` : ''] })] })), _jsxs(Box, { flexDirection: "column", marginTop: 1, children: [_jsxs(Text, { dimColor: true, children: ["[i]", skill.isInstalled ? 'uninstall' : 'install', ' ', "[s]", skill.isStarred ? 'unstar' : 'star'] }), _jsx(Text, { dimColor: true, children: "[H]istory  [l]open" })] })] }));
+}

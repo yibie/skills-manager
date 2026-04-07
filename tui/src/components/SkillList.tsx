@@ -6,11 +6,23 @@ interface Props {
   skills: Skill[]
   selectedIndex: number
   isActive: boolean
-  onSelect: (index: number) => void
+  /** Available content height in terminal rows (from parent, excluding status bar) */
+  height: number
 }
 
-export function SkillList({ skills, selectedIndex, isActive, onSelect: _onSelect }: Props) {
+export function SkillList({ skills, selectedIndex, isActive, height }: Props) {
   const borderColor = isActive ? 'blue' : undefined
+
+  // Subtract structural rows: top border(1) + header(1) + marginTop(1) + bottom border(1) = 4
+  const visibleRows = Math.max(1, height - 4)
+
+  // Keep selected item centered in the viewport
+  const scrollStart = Math.max(0, Math.min(
+    selectedIndex - Math.floor(visibleRows / 2),
+    Math.max(0, skills.length - visibleRows)
+  ))
+
+  const visibleSkills = skills.slice(scrollStart, scrollStart + visibleRows)
 
   return (
     <Box
@@ -20,14 +32,19 @@ export function SkillList({ skills, selectedIndex, isActive, onSelect: _onSelect
       borderColor={borderColor}
       paddingX={1}
     >
-      <Text bold>Skills ({skills.length})</Text>
+      <Box>
+        <Text bold>Skills </Text>
+        <Text dimColor>
+          {skills.length > 0 ? `${selectedIndex + 1}/${skills.length}` : '0'}
+        </Text>
+      </Box>
       <Box flexDirection="column" marginTop={1}>
         {skills.length === 0 && <Text dimColor>No skills found</Text>}
-        {skills.map((skill, idx) => (
+        {visibleSkills.map((skill, relIdx) => (
           <SkillRow
             key={skill.name}
             skill={skill}
-            isSelected={idx === selectedIndex}
+            isSelected={scrollStart + relIdx === selectedIndex}
           />
         ))}
       </Box>
@@ -36,22 +53,16 @@ export function SkillList({ skills, selectedIndex, isActive, onSelect: _onSelect
 }
 
 function SkillRow({ skill, isSelected }: { skill: Skill; isSelected: boolean }) {
-  const prefix = isSelected ? '▶ ' : '  '
-  const starIcon = skill.isStarred ? <Text color="yellow"> ★</Text> : null
-  const installedIcon = skill.isInstalled ? <Text color="green"> ●</Text> : null
-
-  const descPreview = skill.description.slice(0, 28)
-
   return (
-    <Box flexDirection="column">
-      <Box>
-        <Text backgroundColor={isSelected ? 'blue' : undefined}>
-          {prefix}{skill.name}
-        </Text>
-        {starIcon}
-        {installedIcon}
-      </Box>
-      <Text dimColor>  {descPreview}{skill.description.length > 28 ? '…' : ''}</Text>
+    <Box>
+      <Text
+        backgroundColor={isSelected ? 'blue' : undefined}
+        wrap="truncate"
+      >
+        {isSelected ? '▶ ' : '  '}{skill.displayName}
+      </Text>
+      {skill.isStarred && <Text color="yellow"> ★</Text>}
+      {skill.isInstalled && <Text color="green"> ●</Text>}
     </Box>
   )
 }

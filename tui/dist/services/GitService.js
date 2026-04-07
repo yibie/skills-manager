@@ -1,0 +1,61 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import path from 'node:path';
+import os from 'node:os';
+const exec = promisify(execFile);
+const INSTALL_DIR = path.join(os.homedir(), '.claude', 'skills');
+export async function getHistory(skillName) {
+    // Keep extension if skill name already has one, otherwise default to .md
+    const fileName = /\.[a-z]+$/i.test(skillName) ? skillName : `${skillName}.md`;
+    try {
+        const { stdout } = await exec('git', [
+            '-C', INSTALL_DIR,
+            'log', '--format=%H|%as|%s',
+            '--', fileName,
+        ]);
+        const lines = stdout.trim().split('\n').filter(Boolean);
+        const commits = lines.map((line, idx) => {
+            const [hash, date, ...msgParts] = line.split('|');
+            return {
+                hash: hash ?? '',
+                date: date ?? '',
+                message: msgParts.join('|'),
+                isHead: idx === 0,
+            };
+        });
+        return commits;
+    }
+    catch {
+        return [];
+    }
+}
+export async function getDiff(skillName, fromHash) {
+    // Keep extension if skill name already has one, otherwise default to .md
+    const fileName = /\.[a-z]+$/i.test(skillName) ? skillName : `${skillName}.md`;
+    try {
+        const { stdout } = await exec('git', [
+            '-C', INSTALL_DIR,
+            'diff', `${fromHash}..HEAD`,
+            '--', fileName,
+        ]);
+        if (!stdout.trim())
+            return '(no changes)';
+        // Return only the diff lines (skip git header lines), capped at 30 lines
+        const lines = stdout.split('\n').filter(l => l.startsWith('+') || l.startsWith('-') || l.startsWith(' '));
+        return lines.slice(0, 30).join('\n');
+    }
+    catch {
+        return '';
+    }
+}
+export async function rollback(skillName, toHash) {
+    // Keep extension if skill name already has one, otherwise default to .md
+    const fileName = /\.[a-z]+$/i.test(skillName) ? skillName : `${skillName}.md`;
+    try {
+        await exec('git', ['-C', INSTALL_DIR, 'checkout', toHash, '--', fileName]);
+        await exec('git', ['-C', INSTALL_DIR, 'commit', '-m', `rollback: ${skillName} to ${toHash.slice(0, 7)}`]);
+    }
+    catch (err) {
+        throw new Error(`Rollback failed for ${skillName}: ${String(err)}`);
+    }
+}

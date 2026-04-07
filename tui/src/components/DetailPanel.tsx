@@ -5,9 +5,10 @@ import type { Skill } from '../types.js'
 interface Props {
   skill: Skill | undefined
   isActive: boolean
+  height?: number
 }
 
-export function DetailPanel({ skill, isActive }: Props) {
+export function DetailPanel({ skill, isActive, height: _height }: Props) {
   const borderColor = isActive ? 'blue' : undefined
 
   if (!skill) {
@@ -32,7 +33,7 @@ export function DetailPanel({ skill, isActive }: Props) {
       borderColor={borderColor}
       paddingX={1}
     >
-      <Text bold>{skill.name}</Text>
+      <Text bold>{skill.displayName}</Text>
       <Text dimColor>────────────────</Text>
       <Text wrap="wrap">{skill.description}</Text>
 
@@ -43,9 +44,10 @@ export function DetailPanel({ skill, isActive }: Props) {
         ))}
       </Box>
 
-      {skill.version && (
-        <Box marginTop={1}>
-          <Text dimColor>v{skill.version} · {skill.source}</Text>
+      {(skill.version || skill.source === 'plugin') && (
+        <Box marginTop={1} flexDirection="column">
+          {skill.version && <Text dimColor>v{skill.version}</Text>}
+          <Text dimColor>{skill.source}{skill.marketplace ? ` · ${skill.marketplace}` : ''}</Text>
         </Box>
       )}
 
@@ -54,7 +56,7 @@ export function DetailPanel({ skill, isActive }: Props) {
           [i]{skill.isInstalled ? 'uninstall' : 'install'}{' '}
           [s]{skill.isStarred ? 'unstar' : 'star'}
         </Text>
-        <Text dimColor>[h]istory  [o]pen</Text>
+        <Text dimColor>[H]istory  [l]open</Text>
       </Box>
     </Box>
   )
