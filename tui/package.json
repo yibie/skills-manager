@@ -1,23 +1,47 @@
 {
   "name": "skills-manager-tui",
   "version": "0.1.0",
+  "description": "Keyboard-first Blessed TUI for Skills Manager",
+  "license": "MIT",
   "type": "module",
+  "bin": {
+    "skills-manager": "./dist/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yibie/skills-manager-tui.git"
+  },
+  "homepage": "https://github.com/yibie/skills-manager-tui",
+  "bugs": {
+    "url": "https://github.com/yibie/skills-manager-tui/issues"
+  },
   "scripts": {
-    "start": "tsx src/index.tsx",
-    "build": "tsc"
+    "start": "tsx src/index.ts",
+    "start:ink": "tsx src/index-ink.tsx",
+    "build": "tsc",
+    "prepare": "tsc"
   },
   "dependencies": {
-    "ink": "^5.0.1",
     "@inkjs/ui": "^2.0.0",
-    "react": "^18.3.1",
+    "@types/blessed": "^0.1.27",
+    "blessed": "^0.1.81",
     "gray-matter": "^4.0.3",
-    "js-yaml": "^4.1.0"
+    "ink": "^5.0.1",
+    "js-yaml": "^4.1.0",
+    "react": "^18.3.1"
   },
+  "keywords": [
+    "tui",
+    "blessed",
+    "cli",
+    "terminal-ui",
+    "skills-manager"
+  ],
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.0.0",
     "@types/react": "^18.3.1",
-    "@types/js-yaml": "^4.0.9",
-    "typescript": "^5.4.0",
-    "tsx": "^4.7.0"
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
   }
 }

@@ -1,119 +1,141 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Box, Text, useInput } from 'ink'
-import type { Skill, FilterState, AgentFilter, AgentDefinition } from '../types.js'
+import type { Skill, AgentDefinition, SidebarSelection } from '../types.js'
 
 interface Props {
-  filterState: FilterState
-  agentFilter: AgentFilter
+  selected: SidebarSelection
   skills: Skill[]
   agents: AgentDefinition[]
+  discoverCount: number
   isActive: boolean
-  onFilterChange: (f: FilterState) => void
-  onAgentChange: (a: AgentFilter) => void
+  height: number
+  onSelect: (selection: SidebarSelection) => void
 }
 
-const FILTER_OPTIONS: { key: FilterState; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'installed', label: 'Installed' },
-  { key: 'starred', label: 'Starred' },
-]
+type SidebarRow = {
+  kind: 'row'
+  key: SidebarSelection
+  label: string
+  count: number
+}
 
-export function Sidebar({ filterState, agentFilter, skills, agents, isActive, onFilterChange, onAgentChange }: Props) {
+type SidebarHeader = {
+  kind: 'header'
+  title: string
+}
+
+type SidebarItem = SidebarRow | SidebarHeader
+
+export function Sidebar({ selected, skills, agents, discoverCount, isActive, height, onSelect }: Props) {
   const [cursorIdx, setCursorIdx] = useState(0)
 
-  const allCount = skills.length
-  const installedCount = skills.filter(s => s.isInstalled).length
-  const starredCount = skills.filter(s => s.isStarred).length
-  const counts: Record<FilterState, number> = { all: allCount, installed: installedCount, starred: starredCount }
+  const rows = useMemo<SidebarRow[]>(() => {
+    const skillAgentMap = new Map<string, string>()
+    for (const skill of skills) {
+      for (const agentId of skill.compatibleAgents) {
+        if (!skillAgentMap.has(agentId)) skillAgentMap.set(agentId, agentId)
+      }
+    }
+    for (const agent of agents) skillAgentMap.set(agent.id, agent.label)
 
-  // Count skills per agent
-  const agentCounts = new Map<string, number>()
-  agentCounts.set('all', allCount)
-  for (const agent of agents) {
-    const count = skills.filter(s => s.compatibleAgents.includes(agent.id)).length
-    agentCounts.set(agent.id, count)
-  }
+    const sortedAgents = Array.from(skillAgentMap.entries())
+      .map(([id, fallback]) => ({ id, label: agents.find(agent => agent.id === id)?.label ?? fallback }))
+      .sort((a, b) => a.label.localeCompare(b.label))
 
-  const borderColor = isActive ? 'blue' : undefined
+    const localCount = skills.filter(skill => skill.source === 'local').length
+    const sourceCounts = new Map<string, number>()
+    for (const skill of skills) {
+      if (skill.pluginSource) sourceCounts.set(skill.pluginSource, (sourceCounts.get(skill.pluginSource) ?? 0) + 1)
+    }
+    const sourceOptions = Array.from(sourceCounts.entries())
+      .map(([id, count]) => ({ id, label: id, count }))
+      .sort((a, b) => a.label.localeCompare(b.label))
 
-  // Build agent options dynamically from installed agents
-  const agentOptions: { key: AgentFilter; label: string; count: number }[] = [
-    { key: 'all', label: 'All Agents', count: agentCounts.get('all') || 0 },
-    ...agents.map(a => ({ key: a.id, label: a.label, count: agentCounts.get(a.id) || 0 })),
-  ]
+    return [
+      { kind: 'row', key: 'library:discover', label: 'Discover', count: discoverCount },
+      { kind: 'row', key: 'library:all', label: 'All', count: skills.length },
+      { kind: 'row', key: 'library:installed', label: 'Installed', count: skills.filter(s => s.isInstalled).length },
+      { kind: 'row', key: 'library:starred', label: 'Starred', count: skills.filter(s => s.isStarred).length },
+      ...sortedAgents.map(agent => ({
+        kind: 'row' as const,
+        key: `agent:${agent.id}` as SidebarSelection,
+        label: agent.label,
+        count: skills.filter(skill => skill.compatibleAgents.includes(agent.id)).length,
+      })),
+      { kind: 'row', key: 'source:local', label: 'Local', count: localCount },
+      ...sourceOptions.map(source => ({
+        kind: 'row' as const,
+        key: `source:${source.id}` as SidebarSelection,
+        label: source.label,
+        count: source.count,
+      })),
+    ]
+  }, [skills, agents, discoverCount])
 
-  // All selectable rows: 3 filter + N agent
-  const allRows: Array<{ type: 'filter'; key: FilterState } | { type: 'agent'; key: AgentFilter }> = [
-    ...FILTER_OPTIONS.map(f => ({ type: 'filter' as const, key: f.key })),
-    ...agentOptions.map(a => ({ type: 'agent' as const, key: a.key })),
-  ]
+  const items = useMemo<SidebarItem[]>(() => {
+    const libraryRows = rows.filter(row => row.key.startsWith('library:'))
+    const agentRows = rows.filter(row => row.key.startsWith('agent:'))
+    const sourceRows = rows.filter(row => row.key.startsWith('source:'))
 
-  // Sync cursor with current filter/agent state when they change externally
+    const result: SidebarItem[] = []
+    if (libraryRows.length > 0) result.push({ kind: 'header', title: 'Library' }, ...libraryRows)
+    if (agentRows.length > 0) result.push({ kind: 'header', title: 'Agents' }, ...agentRows)
+    if (sourceRows.length > 0) result.push({ kind: 'header', title: 'Sources' }, ...sourceRows)
+    return result
+  }, [rows])
+
   useEffect(() => {
-    const idx = allRows.findIndex(r =>
-      (r.type === 'filter' && r.key === filterState) ||
-      (r.type === 'agent' && r.key === agentFilter)
-    )
+    const idx = rows.findIndex(row => row.key === selected)
     if (idx !== -1) setCursorIdx(idx)
-  }, [filterState, agentFilter])
+  }, [selected, rows])
 
   useInput((input, key) => {
     if (!isActive) return
-    if (key.downArrow || input === 'j') {
-      const next = Math.min(cursorIdx + 1, allRows.length - 1)
+    if ((key.downArrow || input === 'j') && cursorIdx < rows.length - 1) {
+      const next = cursorIdx + 1
       setCursorIdx(next)
-      const row = allRows[next]
-      if (row) {
-        if (row.type === 'filter') onFilterChange(row.key)
-        else onAgentChange(row.key)
-      }
+      onSelect(rows[next]!.key)
+      return
     }
-    if (key.upArrow || input === 'k') {
-      const prev = Math.max(cursorIdx - 1, 0)
+    if ((key.upArrow || input === 'k') && cursorIdx > 0) {
+      const prev = cursorIdx - 1
       setCursorIdx(prev)
-      const row = allRows[prev]
-      if (row) {
-        if (row.type === 'filter') onFilterChange(row.key)
-        else onAgentChange(row.key)
-      }
+      onSelect(rows[prev]!.key)
     }
   })
 
+  const lineBudget = Math.max(4, height - 2)
+  const rowToItemIndex = rows.map(row => items.findIndex(item => item.kind === 'row' && item.key === row.key))
+  const selectedItemIndex = rowToItemIndex[cursorIdx] ?? 0
+  const visibleStart = Math.max(0, Math.min(
+    selectedItemIndex - Math.floor(lineBudget / 2),
+    Math.max(0, items.length - lineBudget),
+  ))
+  const visibleItems = items.slice(visibleStart, visibleStart + lineBudget)
+  const showTopMore = visibleStart > 0
+  const showBottomMore = visibleStart + lineBudget < items.length
+
   return (
-    <Box
-      flexDirection="column"
-      width={20}
-      borderStyle="round"
-      borderColor={borderColor}
-      paddingX={1}
-    >
-      <Text bold>Filter</Text>
-      <Box flexDirection="column" marginTop={1}>
-        {FILTER_OPTIONS.map(f => (
-          <FilterRow
-            key={f.key}
-            label={f.label}
-            count={counts[f.key]}
-            active={filterState === f.key}
-          />
-        ))}
-      </Box>
-      <Box flexDirection="column" marginTop={1}>
-        <Text bold>Agents</Text>
-        {agentOptions.map(a => (
-          <FilterRow key={a.key} label={a.label} count={a.count} active={agentFilter === a.key} />
-        ))}
-      </Box>
+    <Box flexDirection="column" width={22} borderStyle="round" borderColor={isActive ? 'blue' : undefined} paddingX={1}>
+      {showTopMore && <Text dimColor>↑ more</Text>}
+      {!showTopMore && <Text dimColor> </Text>}
+      {visibleItems.map(item => item.kind === 'header'
+        ? <Text key={`h:${item.title}`} bold>{item.title}</Text>
+        : <Row key={item.key} label={item.label} count={item.count} active={item.key === selected} />,
+      )}
+      {showBottomMore && <Text dimColor>↓ more</Text>}
     </Box>
   )
 }
 
-function FilterRow({ label, count, active }: { label: string; count?: number; active: boolean }) {
+function Row({ label, count, active }: { label: string; count: number; active: boolean }) {
+  const countText = String(count)
+  const maxLabelWidth = 16 - countText.length
+  const text = label.length > maxLabelWidth ? `${label.slice(0, Math.max(0, maxLabelWidth - 1))}…` : label
   return (
     <Box>
-      <Text color={active ? 'blue' : undefined}>{active ? '●' : '○'} </Text>
-      <Text color={active ? 'blue' : undefined}>{label}</Text>
-      {count !== undefined && <Text dimColor> {count}</Text>}
+      <Text color={active ? 'blue' : undefined}>{active ? '● ' : '○ '}{text.padEnd(Math.max(1, maxLabelWidth), ' ')}</Text>
+      <Text dimColor>{countText}</Text>
     </Box>
   )
 }

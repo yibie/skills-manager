@@ -21,15 +21,17 @@ export function VersionHistoryOverlay({ skill, onClose }: Props) {
   useEffect(() => { cursorRef.current = cursor }, [cursor])
 
   useEffect(() => {
-    getHistory(skill.name).then(setCommits)
-  }, [skill.name])
+    getHistory(skill).then(setCommits)
+  }, [skill])
 
   useEffect(() => {
     const commit = commitsRef.current[cursorRef.current]
     if (commit) {
-      getDiff(skill.name, commit.hash).then(setDiff)
+      getDiff(skill, commit.hash).then(setDiff)
+    } else {
+      setDiff('')
     }
-  }, [cursor, commits, skill.name])
+  }, [cursor, commits, skill])
 
   useInput((input, key) => {
     if (key.escape) { onClose(); return }
@@ -45,7 +47,7 @@ export function VersionHistoryOverlay({ skill, onClose }: Props) {
       const commit = commitsRef.current[cursorRef.current]
       if (commit) {
         setStatus('Rolling back…')
-        rollback(skill.name, commit.hash)
+        rollback(skill, commit.hash)
           .then(() => { setStatus('Rolled back successfully'); setTimeout(onClose, 1000) })
           .catch(e => setStatus(`Error: ${String(e)}`))
       }

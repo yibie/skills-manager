@@ -13,14 +13,17 @@ export function VersionHistoryOverlay({ skill, onClose }) {
     useEffect(() => { commitsRef.current = commits; }, [commits]);
     useEffect(() => { cursorRef.current = cursor; }, [cursor]);
     useEffect(() => {
-        getHistory(skill.name).then(setCommits);
-    }, [skill.name]);
+        getHistory(skill).then(setCommits);
+    }, [skill]);
     useEffect(() => {
         const commit = commitsRef.current[cursorRef.current];
         if (commit) {
-            getDiff(skill.name, commit.hash).then(setDiff);
+            getDiff(skill, commit.hash).then(setDiff);
         }
-    }, [cursor, commits, skill.name]);
+        else {
+            setDiff('');
+        }
+    }, [cursor, commits, skill]);
     useInput((input, key) => {
         if (key.escape) {
             onClose();
@@ -38,7 +41,7 @@ export function VersionHistoryOverlay({ skill, onClose }) {
             const commit = commitsRef.current[cursorRef.current];
             if (commit) {
                 setStatus('Rolling back…');
-                rollback(skill.name, commit.hash)
+                rollback(skill, commit.hash)
                     .then(() => { setStatus('Rolled back successfully'); setTimeout(onClose, 1000); })
                     .catch(e => setStatus(`Error: ${String(e)}`));
             }

@@ -8,14 +8,15 @@ interface Props {
   height?: number
 }
 
-export function DetailPanel({ skill, isActive, height: _height }: Props) {
+export function DetailPanel({ skill, isActive, height }: Props) {
   const borderColor = isActive ? 'blue' : undefined
 
   if (!skill) {
     return (
       <Box
         flexDirection="column"
-        width={30}
+        width={50}
+        height={height}
         borderStyle="round"
         borderColor={borderColor}
         paddingX={1}
@@ -28,13 +29,14 @@ export function DetailPanel({ skill, isActive, height: _height }: Props) {
   return (
     <Box
       flexDirection="column"
-      width={30}
+      width={50}
+      height={height}
       borderStyle="round"
       borderColor={borderColor}
       paddingX={1}
     >
       <Text bold>{skill.displayName}</Text>
-      <Text dimColor>────────────────</Text>
+      <Text dimColor>────────────────────────────────────</Text>
       <Text wrap="wrap">{skill.description}</Text>
 
       <Box flexDirection="column" marginTop={1}>
@@ -47,7 +49,7 @@ export function DetailPanel({ skill, isActive, height: _height }: Props) {
       {(skill.version || skill.source === 'plugin') && (
         <Box marginTop={1} flexDirection="column">
           {skill.version && <Text dimColor>v{skill.version}</Text>}
-          <Text dimColor>{skill.source}{skill.marketplace ? ` · ${skill.marketplace}` : ''}</Text>
+          <Text dimColor>{skill.source}{skill.pluginSource ? ` · ${skill.pluginSource}` : ''}</Text>
         </Box>
       )}
 
