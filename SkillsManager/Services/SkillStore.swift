@@ -21,6 +21,7 @@ final class SkillStore {
 
     private let claudeAdapter: ClaudeCodeAdapter
     private let universalAdapter: UniversalAdapter
+    private let openClawAdapter: OpenClawAdapter
     private let marketplaceService: MarketplaceService
     private let installService: InstallService
 
@@ -28,6 +29,7 @@ final class SkillStore {
         let ms = MarketplaceService()
         self.claudeAdapter = ClaudeCodeAdapter()
         self.universalAdapter = UniversalAdapter()
+        self.openClawAdapter = OpenClawAdapter()
         self.marketplaceService = ms
         self.installService = InstallService(marketplaceService: ms)
     }
@@ -40,10 +42,11 @@ final class SkillStore {
         do {
             async let claudeSkills = claudeAdapter.scanSkills()
             async let universalSkills = universalAdapter.scanSkills()
-            let (claude, universal) = try await (claudeSkills, universalSkills)
+            async let openClawSkills = openClawAdapter.scanSkills()
+            let (claude, universal, openclaw) = try await (claudeSkills, universalSkills, openClawSkills)
             var seen = Set<String>()
             var merged: [Skill] = []
-            for skill in claude + universal {
+            for skill in claude + universal + openclaw {
                 if seen.insert(skill.id).inserted { merged.append(skill) }
             }
             skills = merged

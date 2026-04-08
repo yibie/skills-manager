@@ -1,6 +1,6 @@
 # Skills Manager
 
-A native macOS app to manage skills across all your coding agents — Claude Code, Cursor, Copilot CLI, Codex, Gemini CLI, and more.
+A native macOS app to manage skills across all your coding agents — Claude Code, Cursor, Copilot CLI, Codex, Gemini CLI, OpenClaw, and more.
 
 <img src="SkillsManager_Logo.png" width="80" alt="Skills Manager Icon">
 
@@ -52,6 +52,7 @@ open SkillsManager.xcodeproj
 | Copilot CLI | ✅ |
 | OpenAI Codex CLI | ✅ |
 | Gemini CLI | ✅ |
+| OpenClaw | ✅ |
 
 ## Architecture
 
