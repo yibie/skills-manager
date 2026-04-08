@@ -142,6 +142,8 @@ final class SkillStore {
             } else if skill.canonicalPath != nil {
                 do { try SymlinkInstaller.uninstall(skillName: skill.name) } catch { errorMessage = error.localizedDescription }
             }
+        case .openClaw:
+            do { try fm.removeItem(at: skill.directoryPath.standardized) } catch { errorMessage = error.localizedDescription }
         case .plugin(let marketplace, let pluginName):
             // Delete the skill's own subdirectory inside the plugin cache.
             // skill.directoryPath is e.g. ~/.claude/plugins/cache/{marketplace}/{plugin}/{version}/skills/{skillName}

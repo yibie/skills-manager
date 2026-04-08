@@ -113,6 +113,7 @@ private struct DetailContent: View {
         let label: String
         switch skill.source {
         case .local:                          label = "Local"
+        case .openClaw:                       label = "OpenClaw"
         case .symlinked:                      label = "Symlinked"
         case .plugin(let marketplace, _):     label = marketplace.capitalized
         case .projectLocal:                   label = "Project"

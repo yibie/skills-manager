@@ -70,7 +70,7 @@ struct OpenClawAdapter: AgentAdapter {
             name: skillName,
             displayName: displayName,
             description: description,
-            source: .local,
+            source: .openClaw(root: root.lastPathComponent),
             version: frontmatter["version"],
             filePath: skillFile,
             directoryPath: skillDir,

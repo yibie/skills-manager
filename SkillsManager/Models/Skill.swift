@@ -42,6 +42,7 @@ struct Skill: Identifiable, Hashable, Sendable {
 
 enum SkillSource: Hashable, Codable, Sendable {
     case local           // user-created in ~/.claude/skills/
+    case openClaw(root: String)
     case plugin(marketplace: String, pluginName: String)  // from marketplace plugin
     case symlinked       // symlinked from another location
     case projectLocal(projectURL: URL)
