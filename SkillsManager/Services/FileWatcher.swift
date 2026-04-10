@@ -46,8 +46,8 @@ final class FileWatcher: ObservableObject {
     }
 
     deinit {
-        for source in sources {
-            source.cancel()
+        MainActor.assumeIsolated {
+            stopAll()
         }
     }
 }
