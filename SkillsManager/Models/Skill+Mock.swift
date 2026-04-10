@@ -36,11 +36,11 @@ extension Skill {
             installState: .installed
         ),
         Skill(
-            id: "plugin:marketplace:swiftui-expert",
+            id: "plugin:plugin-cache:swiftui-expert",
             name: "swiftui-expert-skill",
             displayName: "SwiftUI Expert",
             description: "Write, review, or improve SwiftUI code for iOS/macOS with modern APIs and best practices.",
-            source: .plugin(marketplace: "marketplace", pluginName: "swiftui-expert-skill"),
+            source: .plugin(pluginSource: "plugin-cache", pluginName: "swiftui-expert-skill"),
             version: "2.1.0",
             filePath: URL(fileURLWithPath: "/Users/chenyibin/.claude/skills/swiftui-expert-skill/SKILL.md"),
             directoryPath: URL(fileURLWithPath: "/Users/chenyibin/.claude/skills/swiftui-expert-skill"),
@@ -52,17 +52,17 @@ extension Skill {
             installState: .installed
         ),
         Skill(
-            id: "plugin:marketplace:find-skills",
+            id: "plugin:plugin-cache:find-skills",
             name: "find-skills",
             displayName: "Find Skills",
-            description: "Helps users discover and install agent skills from the marketplace.",
-            source: .plugin(marketplace: "marketplace", pluginName: "find-skills"),
+            description: "Helps users discover and install agent skills from shared skill directories.",
+            source: .plugin(pluginSource: "plugin-cache", pluginName: "find-skills"),
             version: "1.0.0",
             filePath: URL(fileURLWithPath: "/Users/chenyibin/.claude/skills/find-skills/SKILL.md"),
             directoryPath: URL(fileURLWithPath: "/Users/chenyibin/.claude/skills/find-skills"),
             compatibleAgents: ["Claude Code"],
-            tags: ["marketplace", "discovery"],
-            markdownContent: "# Find Skills\n\nDiscover and install skills from the marketplace.",
+            tags: ["directory", "discovery"],
+            markdownContent: "# Find Skills\n\nDiscover and install skills from shared skill directories.",
             frontmatter: ["version": "1.0.0"],
             isStarred: false,
             installState: .trial

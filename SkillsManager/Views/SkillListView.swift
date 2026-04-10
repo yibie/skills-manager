@@ -46,7 +46,7 @@ struct SkillListView: View {
                 switch skill.source {
                 case .local: name.lowercased() == "local"
                 case .symlinked: name.lowercased() == "symlinked"
-                case .plugin(let marketplace, _): marketplace.lowercased() == name.lowercased()
+                case .plugin(let pluginSource, _): pluginSource.lowercased() == name.lowercased()
                 case .projectLocal: false
                 }
             }

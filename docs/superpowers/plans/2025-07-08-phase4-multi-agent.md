@@ -1,5 +1,7 @@
 # Phase 4: Multi-Agent Support Implementation Plan
 
+> **Historical note (2026-04):** This plan references the earlier marketplace-era naming in some snippets. The current product uses **https://skills.sh/** for Discover; plugin-cache skills are only a local Library source.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add CursorAdapter with .mdc format support, project-local skill discovery and one-click promotion to global, and "Install to Cursor" action from the skill detail view.

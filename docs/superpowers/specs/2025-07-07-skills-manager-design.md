@@ -1,5 +1,7 @@
 # Skills Manager — macOS 原生 SwiftUI 应用设计
 
+> **Historical note (2026-04):** This design doc captures an earlier marketplace-based Discover model. The current app uses **https://skills.sh/** for Discover; skills scanned from the local plugin cache are still manageable in Library, but they are not Discover content.
+
 ## 概述
 
 一个 macOS 原生应用，用于统一管理各 coding agent（Claude Code、Cursor、Copilot CLI、Codex、Gemini CLI 等）的 skills。提供完善的生命周期管理：发现、测试、安装、保留、删除、星标收藏。内置 LLM 沙箱让用户对比不同 skills 的效果。

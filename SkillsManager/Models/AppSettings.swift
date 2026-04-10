@@ -57,4 +57,6 @@ enum AppSettings {
     static let lmStudioBaseURLKey   = "lmStudioBaseURL"
     static let lmStudioModelKey     = "lmStudioModel"
     static let defaultLMStudioModel = "local-model"
+
+    static let importedAgentFoldersKey = "importedAgentFolders"
 }

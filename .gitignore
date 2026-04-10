@@ -16,3 +16,4 @@ SkillsManager.xcodeproj/project.xcworkspace/xcuserdata/
 
 # Intermediate logo files
 *_rgba.png
+.omx/

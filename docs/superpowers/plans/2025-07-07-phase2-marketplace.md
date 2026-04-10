@@ -1,5 +1,7 @@
 # Phase 2: Marketplace + 安装/卸载 Implementation Plan
 
+> **Historical note (2026-04):** This plan reflects an older plugin-marketplace-based Discover architecture. The current product uses **https://skills.sh/** for Discover; plugin-bundled skills may still be scanned and managed locally, but they are not Discover content.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 接入真实 ClaudeCodeAdapter 数据，实现 GitHub marketplace 索引同步、skill 安装/卸载、以及搜索筛选功能。

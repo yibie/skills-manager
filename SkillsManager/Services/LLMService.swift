@@ -12,6 +12,11 @@ struct LLMConfig {
 // MARK: - Service
 
 actor LLMService {
+    private let session: URLSession
+
+    init(session: URLSession = NetworkSessionFactory.makeEphemeralSession()) {
+        self.session = session
+    }
 
     func complete(
         prompt: String,
@@ -67,7 +72,7 @@ actor LLMService {
             system: systemPrompt,
             messages: [AnthropicMessage(role: "user", content: prompt)]
         ))
-        let (data, response) = try await URLSession.shared.data(for: req)
+        let (data, response) = try await session.data(for: req)
         try checkHTTP(response, data)
         return try JSONDecoder().decode(AnthropicResponse.self, from: data).text
     }
@@ -98,24 +103,7 @@ actor LLMService {
            config.apiKey.trimmingCharacters(in: .whitespaces).isEmpty {
             throw LLMError.noApiKey
         }
-
-        let base: String
-        switch config.provider {
-        case .openAI:
-            let raw = config.baseURL.trimmingCharacters(in: .whitespaces)
-            base = raw.isEmpty ? "https://api.openai.com/v1" : raw
-        case .openRouter:
-            base = "https://openrouter.ai/api/v1"
-        case .ollama, .lmStudio:
-            let raw = config.baseURL.trimmingCharacters(in: .whitespaces)
-            base = raw.isEmpty ? config.provider.defaultBaseURL : raw
-        default:
-            base = config.baseURL
-        }
-
-        guard let url = URL(string: "\(base)/chat/completions") else {
-            throw LLMError.invalidResponse
-        }
+        let url = try Self.resolveChatCompletionsURL(for: config)
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "content-type")
@@ -129,12 +117,74 @@ actor LLMService {
                 OAIMessage(role: "user", content: prompt)
             ]
         ))
-        let (data, response) = try await URLSession.shared.data(for: req)
+        let (data, response) = try await session.data(for: req)
         try checkHTTP(response, data)
         return try JSONDecoder().decode(OAIResponse.self, from: data).text
     }
 
     // MARK: - Helpers
+
+    private static func resolveChatCompletionsURL(for config: LLMConfig) throws -> URL {
+        let rawBase = rawBaseURL(for: config.provider, configuredBaseURL: config.baseURL)
+        guard var components = URLComponents(string: rawBase) else {
+            throw LLMError.invalidResponse
+        }
+
+        let normalizedPath = normalizedChatCompletionsPath(
+            provider: config.provider,
+            existingPath: components.path
+        )
+        components.path = normalizedPath
+
+        guard let url = components.url else {
+            throw LLMError.invalidResponse
+        }
+        return url
+    }
+
+    private static func rawBaseURL(for provider: LLMProvider, configuredBaseURL: String) -> String {
+        let raw = configuredBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        switch provider {
+        case .openAI:
+            return raw.isEmpty ? "https://api.openai.com/v1" : raw
+        case .openRouter:
+            return raw.isEmpty ? "https://openrouter.ai/api/v1" : raw
+        case .ollama, .lmStudio:
+            return raw.isEmpty ? provider.defaultBaseURL : raw
+        case .claude:
+            return raw
+        }
+    }
+
+    private static func normalizedChatCompletionsPath(provider: LLMProvider, existingPath: String) -> String {
+        let trimmed = existingPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+
+        if trimmed.hasSuffix("chat/completions") {
+            return "/" + trimmed
+        }
+
+        switch provider {
+        case .openAI, .openRouter:
+            if trimmed.isEmpty {
+                return "/v1/chat/completions"
+            }
+            if trimmed == "v1" {
+                return "/v1/chat/completions"
+            }
+            return "/" + trimmed + "/chat/completions"
+        case .ollama, .lmStudio:
+            if trimmed.isEmpty {
+                return "/v1/chat/completions"
+            }
+            if trimmed == "v1" {
+                return "/v1/chat/completions"
+            }
+            return "/" + trimmed + "/v1/chat/completions"
+        case .claude:
+            return existingPath
+        }
+    }
 
     private func checkHTTP(_ response: URLResponse, _ data: Data) throws {
         guard let http = response as? HTTPURLResponse else { throw LLMError.invalidResponse }
@@ -142,6 +192,12 @@ actor LLMService {
             let body = String(data: data, encoding: .utf8) ?? "(no body)"
             throw LLMError.httpError(http.statusCode, body)
         }
+    }
+}
+
+extension LLMService {
+    static func debugResolvedChatCompletionsURL(for config: LLMConfig) throws -> URL {
+        try resolveChatCompletionsURL(for: config)
     }
 }
 

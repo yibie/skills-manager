@@ -19,23 +19,21 @@ MVP: local skill management + version tracking.
 
 ## Phase 2 ✅ COMPLETE
 
-Marketplace discovery + install/uninstall.
+Discover foundations + local plugin-cache management.
 
 ### Delivered
-- `MarketplacePlugin` model (`PluginSourceType`: localPath, gitURL, gitSubdir, remoteURL)
-- `MarketplaceService` actor: reads `~/.claude/plugins/known_marketplaces.json` + local marketplace cache; `syncAllMarketplaces()` fetches from GitHub Contents API in parallel
-- `InstallService` actor: install (localPath copy or git clone), uninstall, updates `installed_plugins.json`
-- `DiscoverView`: search + category chips, Install/Uninstall per plugin, Refresh button (GitHub sync)
-- `SidebarFilter.discover` → routes to DiscoverView in ContentView
-- `SkillStore` wired to real data: `reloadSkills()`, `reloadDiscoverablePlugins()`, `install(plugin:)`, `uninstall(plugin:)`
-- `ContentView` rewritten: real SkillStore, parallel startup load, proper error alert binding
+- Initial Discover plumbing in the macOS app
+- Local plugin-cache scanning so plugin-bundled skills can be managed as normal local entries once present on disk
+- Install / uninstall flows for local skill management
+- `SidebarFilter.discover` routing in `ContentView`
+- `SkillStore` wired to real filesystem data and SwiftData state
+- Proper startup loading and error alert binding in `ContentView`
 
-### Bugs fixed post-completion
-- Star toggle didn't persist → now writes to SwiftData `SkillRecord` via ContentView callback
-- Discover sidebar count hardcoded 0 → wired to `store.discoverablePlugins.count`
-- Alert used `.constant()` binding → replaced with real `Binding(get:set:)`
-- `installService` was not `private` → fixed
-- `.discover` case in `SkillListView.filteredSkills` returned full list → returns `[]` with comment
+### Current status after later refactors
+- Discover no longer uses the Claude plugin index as its source of truth
+- Discover now loads from `https://skills.sh/`
+- Plugin-contained skills are still manageable locally after scanning, but they are not used as Discover results
+- Star toggle persists via SwiftData `SkillRecord`
 
 ---
 
@@ -58,6 +56,31 @@ Try Sandbox: LLM-powered skill testing with A/B slot comparison.
 
 ---
 
+## TUI Track ✅ COMPLETE (2026-04)
+
+Blessed-based terminal UI is now considered complete for the current product scope.
+
+### Delivered
+- Blessed TUI is the primary terminal implementation; the older Ink version is kept only as historical reference and is no longer the target runtime
+- Three-panel keyboard-first layout (Sidebar / List / Detail) with focus switching and stable cursor behavior
+- Discover integration via `https://skills.sh/` with async detail loading, source filtering, install flow, and source-page opening
+- Local library management: install, uninstall, star, version history, diff, rollback, source-file opening, full refresh
+- Search overlay, discover detail overlay, version history overlay, and agent selection overlay
+- Local vs plugin-source differentiation in both sidebar and list/detail views
+- Expanded agent/resource scanning in the TUI layer:
+  - Claude Code local skills + plugin cache
+  - Codex local skills + plugin cache
+  - Pi skills
+  - Pi package resources and extensions, surfaced in the UI as plugin resources
+- Keyboard semantics normalized (`i` install, `x` uninstall, `o` open source file, `O` open discover source page, `R` full refresh)
+- Mouse interactions disabled intentionally to avoid partial or misleading behavior; current TUI is keyboard-first by design
+
+### Scope decision
+- TUI is complete for the current phase and should be treated as a maintained Blessed implementation, not an active Ink migration project
+- Future work can improve polish or add new product capabilities, but the core TUI implementation itself is no longer considered in-progress
+
+---
+
 ## Phase 4 — PENDING
 
 Multi-agent support per original spec:
@@ -67,13 +90,13 @@ Multi-agent support per original spec:
 
 ---
 
-## Architecture snapshot (as of Phase 3)
+## Architecture snapshot (current)
 
 ```
 SkillsManagerApp.swift          — App entry, ModelContainer, Settings scene
 Models/
   Skill.swift                   — Skill struct + SkillRecord @Model + SkillSource + InstallState
-  MarketplacePlugin.swift       — MarketplacePlugin + PluginSourceType + InstalledPluginsFile
+  DiscoverSkill.swift           — DiscoverSkill model for skills.sh entries
   SidebarFilter.swift           — SidebarFilter enum (all/installed/starred/trial/agent/source/discover)
   AppSettings.swift             — API key constants
   SandboxSlot.swift             — @Observable slot state for Try Sandbox
@@ -82,8 +105,8 @@ Adapters/
   ClaudeCodeAdapter.swift       — scans ~/.claude/skills/ + plugins/
 Services/
   SkillStore.swift              — @Observable @MainActor central state
-  MarketplaceService.swift      — local cache read + GitHub API sync
-  InstallService.swift          — plugin install/uninstall, installed_plugins.json
+  SkillsDirectoryService.swift  — skills.sh directory + detail loading
+  InstallService.swift          — legacy file retained as a note; Discover installs now use `npx skills add ... --skill ...`
   LLMService.swift              — Claude Messages API actor
   GitService.swift              — git log/diff/rollback via Process
   FileWatcher.swift             — FSEvents file change detection
@@ -92,7 +115,7 @@ Views/
   ContentView.swift             — NavigationSplitView, sheet routing, error alert
   SidebarView.swift             — sidebar with counts
   SkillListView.swift           — filtered list + action buttons
-  DiscoverView.swift            — marketplace browse, search, category filter
+  DiscoverView.swift            — skills.sh browse, search, source filter, shared detail column
   SkillDetailView.swift         — markdown preview, star, version history
   SandboxView.swift             — LLM sandbox with slot comparison
   SettingsView.swift            — API key + model config

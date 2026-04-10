@@ -1,8 +1,8 @@
 import AppKit
 import SwiftUI
 
-struct InstallToAgentView: View {
-    let skill: Skill
+struct DiscoverInstallToAgentView: View {
+    let skill: DiscoverSkill
     let onInstall: ([String]) async -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -24,9 +24,9 @@ struct InstallToAgentView: View {
         VStack(spacing: 0) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Install to Agent")
+                    Text("Install Skill")
                         .font(.headline)
-                    Text(skill.displayName)
+                    Text(skill.name)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -40,7 +40,7 @@ struct InstallToAgentView: View {
 
             if installedAgents.isEmpty {
                 importPanel
-                    .frame(minHeight: 200)
+                    .frame(minHeight: 220)
             } else {
                 List(selection: $selected) {
                     Section("Install Targets") {
@@ -70,14 +70,15 @@ struct InstallToAgentView: View {
             Divider()
 
             HStack {
-                Text(selected.isEmpty ? "Select agents above" : "\(selected.count) agent\(selected.count == 1 ? "" : "s") selected")
+                Text(selected.isEmpty ? "Select install targets" : "\(selected.count) target\(selected.count == 1 ? "" : "s") selected")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button("Install") {
                     isInstalling = true
+                    let agentIDs = Array(selected)
                     Task {
-                        await onInstall(Array(selected))
+                        await onInstall(agentIDs)
                         dismiss()
                     }
                 }
@@ -87,7 +88,12 @@ struct InstallToAgentView: View {
             }
             .padding()
         }
-        .frame(width: 340, height: 420)
+        .frame(width: 360, height: 430)
+        .task {
+            if selected.isEmpty, installedAgents.contains(where: { $0.id == "claude-code" }) {
+                selected = ["claude-code"]
+            }
+        }
     }
 
     private var importPanel: some View {

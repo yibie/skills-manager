@@ -8,8 +8,8 @@ A native macOS app to manage skills across all your coding agents — Claude Cod
 
 ## Screenshots
 
-![Discover & Sandbox](docs/screenshots/discover.png)
-*Discover marketplace plugins and test them in the built-in sandbox*
+![Discover](docs/screenshots/discover.png)
+*Discover skills from skills.sh and inspect them in the native detail view*
 
 ![Starred Skills](docs/screenshots/starred.png)
 *Manage your library — filter by agent, source, or starred*
@@ -20,7 +20,7 @@ A native macOS app to manage skills across all your coding agents — Claude Cod
 
 Coding agent skills are scattered everywhere. Each agent has its own format, install path, and management story. Skills Manager brings them together in one place.
 
-- **Discover** skills from the marketplace and community sources
+- **Discover** skills from [skills.sh](https://skills.sh/) and community repositories
 - **Install** to one or multiple agents at once
 - **Test** skills in the built-in LLM sandbox before committing
 - **Manage** installed skills — update, remove, star favorites
@@ -55,16 +55,52 @@ open SkillsManager.xcodeproj
 
 ## Architecture
 
-Pure local architecture — no backend, works offline (except sandbox LLM calls). Reads and writes agent config files directly, uses Git to sync with skill marketplaces.
+Pure local architecture — no backend, works offline except for network-backed features like Discover detail loading and sandbox LLM calls. Reads and writes agent config files directly and uses local Git history for version management.
 
 Built with SwiftUI + Swift 6, SwiftData, macOS 14+.
 
+## Terminal UI
+
+The repository also includes a terminal UI in `tui/`.
+
+Current status:
+- **Blessed TUI:** complete for the current scope and treated as the primary terminal implementation
+- **Ink TUI:** historical backup/reference only, no longer the target runtime
+
+Official CLI command:
+
+```bash
+cd tui
+npm exec skills-manager
+```
+
+For a global command, run once inside `tui/`:
+
+```bash
+npm link
+```
+
+Then launch from anywhere with:
+
+```bash
+skills-manager
+```
+
+The Blessed TUI currently supports:
+- three-panel keyboard-first navigation
+- discover via [skills.sh](https://skills.sh/)
+- install / uninstall / star
+- source-file opening and discover source-page opening
+- search, detail overlays, full refresh
+- version history is temporarily disabled
+- local / plugin differentiation, including Codex plugin cache and Pi package resources
+
 ## Roadmap
 
-- [ ] Auto-update detection for marketplace skills
+- [ ] Auto-update detection for discovered skills
 - [ ] Skill conflict detection across agents
 - [ ] Export / import skill sets
-- [ ] Team sync via shared marketplace fork
+- [ ] Team sync via shared skills repository
 
 ## Contributing
 

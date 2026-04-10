@@ -18,5 +18,10 @@ let package = Package(
             ],
             path: "SkillsManager"
         ),
+        .testTarget(
+            name: "SkillsManagerTests",
+            dependencies: ["SkillsManager"],
+            path: "Tests/SkillsManagerTests"
+        ),
     ]
 )

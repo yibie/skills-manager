@@ -100,19 +100,19 @@ struct ClaudeCodeAdapter: AgentAdapter {
 
         var skills: [Skill] = []
 
-        // Structure: {marketplace}/{plugin}/{version}/skills/
-        guard let marketplaces = try? fm.contentsOfDirectory(
+        // Structure: {pluginSource}/{plugin}/{version}/skills/
+        guard let pluginSourceDirectories = try? fm.contentsOfDirectory(
             at: cacheDir,
             includingPropertiesForKeys: [.isDirectoryKey],
             options: [.skipsHiddenFiles]
         ) else { return [] }
 
-        for marketplaceURL in marketplaces {
-            guard isDirectory(marketplaceURL) else { continue }
-            let marketplace = marketplaceURL.lastPathComponent
+        for pluginSourceURL in pluginSourceDirectories {
+            guard isDirectory(pluginSourceURL) else { continue }
+            let pluginSource = pluginSourceURL.lastPathComponent
 
             guard let plugins = try? fm.contentsOfDirectory(
-                at: marketplaceURL,
+                at: pluginSourceURL,
                 includingPropertiesForKeys: [.isDirectoryKey],
                 options: [.skipsHiddenFiles]
             ) else { continue }
@@ -145,25 +145,25 @@ struct ClaudeCodeAdapter: AgentAdapter {
                         let skillFile = resolved.appendingPathComponent("SKILL.md")
                         guard fm.fileExists(atPath: skillFile.path) else { continue }
 
-                        let id = "plugin:\(marketplace):\(pluginName):\(skillName)"
+                        let id = "plugin:\(pluginSource):\(pluginName):\(skillName)"
                         if let skill = buildSkill(
                             skillFile: skillFile,
                             skillDir: resolved,
                             id: id,
                             name: skillName,
-                            source: .plugin(marketplace: marketplace, pluginName: pluginName)
+                            source: .plugin(pluginSource: pluginSource, pluginName: pluginName)
                         ) {
                             skills.append(skill)
                         }
                     } else if entry.pathExtension == "md" {
                         let nameWithoutExt = entry.deletingPathExtension().lastPathComponent
-                        let id = "plugin:\(marketplace):\(pluginName):\(nameWithoutExt)"
+                        let id = "plugin:\(pluginSource):\(pluginName):\(nameWithoutExt)"
                         if let skill = buildSkill(
                             skillFile: resolved,
                             skillDir: skillsDir,
                             id: id,
                             name: nameWithoutExt,
-                            source: .plugin(marketplace: marketplace, pluginName: pluginName)
+                            source: .plugin(pluginSource: pluginSource, pluginName: pluginName)
                         ) {
                             skills.append(skill)
                         }

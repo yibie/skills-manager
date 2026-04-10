@@ -24,16 +24,16 @@ struct SidebarView: View {
         var sources = Set<String>()
         for skill in skills {
             switch skill.source {
-            case .plugin(let marketplace, _): sources.insert(marketplace)
+            case .plugin(let pluginSource, _): sources.insert(pluginSource)
             default: break
             }
         }
         return sources.sorted()
     }
 
-    private func pluginCount(for marketplace: String) -> Int {
+    private func pluginCount(for pluginSource: String) -> Int {
         skills.filter {
-            if case .plugin(let m, _) = $0.source { return m == marketplace }
+            if case .plugin(let source, _) = $0.source { return source == pluginSource }
             return false
         }.count
     }
@@ -57,21 +57,24 @@ struct SidebarView: View {
                     SidebarRow(
                         filter: .agent(agent),
                         count: agentCount(for: agent),
-                        selectedFilter: selectedFilter
+                        selectedFilter: selectedFilter,
+                        showsIcon: false
                     )
                 }
                 if agentNames.isEmpty {
-                    SidebarRow(filter: .agent("Claude Code"), count: 0, selectedFilter: selectedFilter)
+                    SidebarRow(filter: .agent("Claude Code"), count: 0, selectedFilter: selectedFilter, showsIcon: false)
                 }
             }
 
             Section("Sources") {
-                SidebarRow(filter: .source("Local"), count: skills.filter { $0.source == .local }.count, selectedFilter: selectedFilter)
-                ForEach(pluginSources, id: \.self) { marketplace in
+                SidebarRow(filter: .source("Local"), count: skills.filter { $0.source == .local }.count, selectedFilter: selectedFilter, showsIcon: false)
+                ForEach(pluginSources, id: \.self) { pluginSource in
                     SidebarRow(
-                        filter: .source(marketplace.capitalized),
-                        count: pluginCount(for: marketplace),
-                        selectedFilter: selectedFilter
+                        filter: .source(pluginSource),
+                        count: pluginCount(for: pluginSource),
+                        selectedFilter: selectedFilter,
+                        titleOverride: pluginSource,
+                        showsIcon: false
                     )
                 }
             }
@@ -93,11 +96,19 @@ private struct SidebarRow: View {
     let filter: SidebarFilter
     let count: Int
     let selectedFilter: SidebarFilter
+    var titleOverride: String? = nil
+    var showsIcon: Bool = true
 
     var body: some View {
-        Label(filter.title, systemImage: filter.icon)
-            .badge(count)
-            .tag(filter)
+        Group {
+            if showsIcon {
+                Label(titleOverride ?? filter.title, systemImage: filter.icon)
+            } else {
+                Text(titleOverride ?? filter.title)
+            }
+        }
+        .badge(count)
+        .tag(filter)
     }
 }
 

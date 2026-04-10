@@ -1,5 +1,7 @@
 # Phase 5: Universal Agent Support Implementation Plan
 
+> **Historical note (2026-04):** This plan references the earlier marketplace-era naming in some snippets. The current product uses **https://skills.sh/** for Discover; plugin-cache skills are only a local Library source.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Support 40+ coding agents (Cursor, Windsurf, Gemini CLI, GitHub Copilot, Codex, etc.) using the same canonical `.agents/skills/` + symlink architecture as vercel-labs/skills.

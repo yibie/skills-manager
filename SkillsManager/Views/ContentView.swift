@@ -10,41 +10,45 @@ struct ContentView: View {
     @State private var store = SkillStore()
     @State private var selectedFilter: SidebarFilter = .all
     @State private var selectedSkill: Skill? = nil
-    @State private var sandboxInitialSkill: Skill? = nil
-    @State private var sandboxPreviewSkills: [Skill] = []
+    @State private var selectedDiscoverSkillID: String? = nil
+    @State private var pendingDiscoverTrySkill: DiscoverSkill? = nil
+    @State private var pendingDiscoverInstallSkill: DiscoverSkill? = nil
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var isProjectPickerPresented = false
 
+    private var resolvedDiscoverSkills: [DiscoverSkill] {
+        store.discoverableSkills.map { store.discoverableSkillDetails[$0.id] ?? $0 }
+    }
+
+    private var selectedDiscoverSkill: DiscoverSkill? {
+        guard let selectedDiscoverSkillID else { return nil }
+        return resolvedDiscoverSkills.first { $0.id == selectedDiscoverSkillID }
+    }
+
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView(selectedFilter: $selectedFilter, skills: store.skills, discoverableCount: store.discoverablePlugins.count, projectSkillCount: store.projectSkills.count, currentProjectURL: store.currentProjectURL)
+            SidebarView(selectedFilter: $selectedFilter, skills: store.skills, discoverableCount: store.discoverableSkillTotal, projectSkillCount: store.projectSkills.count, currentProjectURL: store.currentProjectURL)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 220)
         } content: {
             if selectedFilter == .discover {
                 DiscoverView(
-                    plugins: store.discoverablePlugins,
-                    isLoading: store.isLoadingPlugins,
+                    category: store.discoverCategory,
+                    skills: resolvedDiscoverSkills,
+                    totalCount: store.discoverableSkillTotal,
+                    installedSkills: store.skills,
+                    isLoading: store.isLoadingDiscover,
                     isSyncing: store.isSyncing,
-                    onInstall: { plugin in await store.install(plugin: plugin) },
-                    onUninstall: { plugin in await store.uninstall(plugin: plugin) },
-                    onRefresh: { await store.syncAndReloadPlugins() },
-                    onTrySandbox: { plugin in
-                        if plugin.isInstalled {
-                            // Already installed — use existing skills, match by marketplace + name
-                            sandboxPreviewSkills = []
-                            sandboxInitialSkill = store.skills.first {
-                                if case .plugin(let m, let name) = $0.source {
-                                    return m == plugin.marketplace && name == plugin.name
-                                }
-                                return false
-                            }
-                        } else {
-                            // Not installed — preview all skills without installing
-                            let previews = await store.previewPluginSkills(plugin)
-                            sandboxPreviewSkills = previews
-                            sandboxInitialSkill = previews.first
-                        }
-                    }
+                    installingSkillIDs: Set(store.discoverInstallActivities.compactMap { $0.status == .running ? $0.skillID : nil }),
+                    selectedSkillID: $selectedDiscoverSkillID,
+                    onSelectCategory: { category in await store.setDiscoverCategory(category) },
+                    onLoadDetail: { entry in await store.loadDiscoverSkillDetail(entry) },
+                    onTry: { entry in
+                        await store.loadDiscoverSkillDetail(entry)
+                        pendingDiscoverTrySkill = store.discoverableSkillDetails[entry.id] ?? entry
+                    },
+                    onInstall: { entry in pendingDiscoverInstallSkill = entry },
+                    onUninstall: { entry in await store.uninstallDiscoverSkill(entry) },
+                    onRefresh: { await store.refreshDiscoverableSkillsDirectory() }
                 )
             } else if selectedFilter == .project {
                 ProjectSkillsView(
@@ -64,26 +68,21 @@ struct ContentView: View {
                 )
             }
         } detail: {
-            if selectedFilter == .discover, sandboxInitialSkill != nil {
-                SandboxView(
-                    initialSkill: sandboxInitialSkill,
-                    availableSkills: store.skills + sandboxPreviewSkills,
-                    onKeep: { skill in
-                        // Preview skills (id starts with "preview:") need real plugin installation
-                        if skill.id.hasPrefix("preview:"),
-                           case .plugin(let marketplace, let pluginName) = skill.source,
-                           let plugin = store.discoverablePlugins.first(where: {
-                               $0.marketplace == marketplace && $0.name == pluginName
-                           }) {
-                            await store.install(plugin: plugin)
-                        } else {
-                            await store.installSkill(skill)
-                        }
+            if selectedFilter == .discover {
+                DiscoverDetailView(
+                    entry: selectedDiscoverSkill,
+                    isInstalled: selectedDiscoverSkill.map { entry in
+                        store.skills.contains { $0.name == entry.skillId || $0.name == entry.name }
+                    } ?? false,
+                    isInstalling: selectedDiscoverSkill.map { store.isInstallingDiscoverSkill($0) } ?? false,
+                    installActivities: store.orderedDiscoverInstallActivities(prioritizing: selectedDiscoverSkillID),
+                    onLoadDetail: { entry in await store.loadDiscoverSkillDetail(entry) },
+                    onTry: { entry in
+                        await store.loadDiscoverSkillDetail(entry)
+                        pendingDiscoverTrySkill = store.discoverableSkillDetails[entry.id] ?? entry
                     },
-                    onDismiss: {
-                        sandboxInitialSkill = nil
-                        sandboxPreviewSkills = []
-                    }
+                    onInstall: { entry in pendingDiscoverInstallSkill = entry },
+                    onUninstall: { entry in await store.uninstallDiscoverSkill(entry) }
                 )
             } else {
                 SkillDetailView(
@@ -110,8 +109,7 @@ struct ContentView: View {
         }
         .onChange(of: selectedFilter) {
             selectedSkill = nil
-            sandboxInitialSkill = nil
-            sandboxPreviewSkills = []
+            selectedDiscoverSkillID = nil
         }
         .fileImporter(
             isPresented: $isProjectPickerPresented,
@@ -131,10 +129,21 @@ struct ContentView: View {
                 .help("Open a project folder to scan for local skills")
             }
         }
+        .sheet(item: $pendingDiscoverInstallSkill) { skill in
+            DiscoverInstallToAgentView(skill: skill) { agentIDs in
+                await store.installDiscoverSkill(skill, agentIDs: agentIDs)
+            }
+        }
+        .sheet(item: $pendingDiscoverTrySkill) { skill in
+            DiscoverTryView(skill: skill) {
+                pendingDiscoverTrySkill = nil
+                pendingDiscoverInstallSkill = skill
+            }
+        }
         .task {
             async let skills: Void = store.reloadSkills()
-            async let plugins: Void = store.reloadDiscoverablePlugins()
-            _ = await (skills, plugins)
+            async let discover: Void = store.reloadDiscoverableSkillsDirectory()
+            _ = await (skills, discover)
             store.merge(records: skillRecords)
         }
         .onChange(of: skillRecords) {

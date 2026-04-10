@@ -7,16 +7,11 @@ struct SkillDetailView: View {
     var onPromote: (Skill) async -> Void = { _ in }
     var onInstallToAgent: (Skill, [String]) async -> Void = { _, _ in }
 
-    @State private var showVersionHistory = false
-    @State private var commits: [GitCommit] = []
-
     var body: some View {
         Group {
             if let skill {
                 DetailContent(
                     skill: skill,
-                    showVersionHistory: $showVersionHistory,
-                    commits: $commits,
                     onToggleStar: onToggleStar,
                     // Fire-and-forget tasks: errors surface via SkillStore.errorMessage, not thrown here.
                     onPromote: { Task { await onPromote(skill) } },
@@ -42,8 +37,6 @@ struct SkillDetailView: View {
 
 private struct DetailContent: View {
     let skill: Skill
-    @Binding var showVersionHistory: Bool
-    @Binding var commits: [GitCommit]
     let onToggleStar: () -> Void
     let onPromote: () -> Void
     let onInstallToAgent: ([String]) -> Void
@@ -62,9 +55,6 @@ private struct DetailContent: View {
             .padding(20)
         }
         .toolbar { toolbarContent }
-        .sheet(isPresented: $showVersionHistory) {
-            VersionHistoryView(commits: commits)
-        }
         .sheet(isPresented: $showInstallToAgent) {
             InstallToAgentView(skill: skill, onInstall: onInstallToAgent)
         }
@@ -112,10 +102,10 @@ private struct DetailContent: View {
     private var sourceBadge: some View {
         let label: String
         switch skill.source {
-        case .local:                          label = "Local"
-        case .symlinked:                      label = "Symlinked"
-        case .plugin(let marketplace, _):     label = marketplace.capitalized
-        case .projectLocal:                   label = "Project"
+        case .local:                           label = "Local"
+        case .symlinked:                       label = "Symlinked"
+        case .plugin(let pluginSource, _):     label = pluginSource
+        case .projectLocal:                    label = "Project"
         }
         return Text(label)
             .font(.caption)
@@ -179,15 +169,6 @@ private struct DetailContent: View {
             }
             .foregroundStyle(skill.isStarred ? .yellow : .secondary)
             .help(skill.isStarred ? "Remove from starred" : "Add to starred")
-        }
-
-        ToolbarItem(placement: .primaryAction) {
-            Button {
-                showVersionHistory = true
-            } label: {
-                Label("Version History", systemImage: "clock.arrow.circlepath")
-            }
-            .help("Show version history")
         }
 
         // "Promote to Global" only for project-local skills
