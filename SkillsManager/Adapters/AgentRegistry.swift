@@ -111,6 +111,7 @@ enum AgentRegistry {
         .init(id: "windsurf",       displayName: "Windsurf",        icon: "wind",             globalSkillsDir: home.appendingPathComponent(".codeium/windsurf/skills"),     detectPath: ".codeium/windsurf"),
         .init(id: "zencoder",       displayName: "Zencoder",        icon: "z.circle",         globalSkillsDir: home.appendingPathComponent(".zencoder/skills"),             detectPath: ".zencoder"),
         .init(id: "adal",           displayName: "AdaL",            icon: "a.circle",         globalSkillsDir: home.appendingPathComponent(".adal/skills"),                 detectPath: ".adal"),
+        .init(id: "openclaw",       displayName: "OpenClaw",        icon: "hammer",           globalSkillsDir: home.appendingPathComponent(".openclaw/workspace-main/skills"), detectPath: ".openclaw"),
     ]
 
     /// Returns agents whose config directory exists on disk right now.

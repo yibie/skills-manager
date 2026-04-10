@@ -45,6 +45,7 @@ struct SkillListView: View {
             return skills.filter { skill in
                 switch skill.source {
                 case .local: name.lowercased() == "local"
+                case .openClaw: name.lowercased() == "openclaw"
                 case .symlinked: name.lowercased() == "symlinked"
                 case .plugin(let pluginSource, _): pluginSource.lowercased() == name.lowercased()
                 case .projectLocal: false

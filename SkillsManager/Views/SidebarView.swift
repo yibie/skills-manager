@@ -68,6 +68,15 @@ struct SidebarView: View {
 
             Section("Sources") {
                 SidebarRow(filter: .source("Local"), count: skills.filter { $0.source == .local }.count, selectedFilter: selectedFilter, showsIcon: false)
+                SidebarRow(
+                    filter: .source("OpenClaw"),
+                    count: skills.filter {
+                        if case .openClaw = $0.source { return true }
+                        return false
+                    }.count,
+                    selectedFilter: selectedFilter,
+                    showsIcon: false
+                )
                 ForEach(pluginSources, id: \.self) { pluginSource in
                     SidebarRow(
                         filter: .source(pluginSource),

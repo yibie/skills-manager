@@ -102,10 +102,11 @@ private struct DetailContent: View {
     private var sourceBadge: some View {
         let label: String
         switch skill.source {
-        case .local:                           label = "Local"
-        case .symlinked:                       label = "Symlinked"
-        case .plugin(let pluginSource, _):     label = pluginSource
-        case .projectLocal:                    label = "Project"
+        case .local:                          label = "Local"
+        case .openClaw:                       label = "OpenClaw"
+        case .symlinked:                      label = "Symlinked"
+        case .plugin(let pluginSource, _):    label = pluginSource
+        case .projectLocal:                   label = "Project"
         }
         return Text(label)
             .font(.caption)

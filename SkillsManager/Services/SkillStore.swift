@@ -28,17 +28,20 @@ final class SkillStore {
     private let universalAdapter: UniversalAdapter
     private let directoryService: SkillsDirectoryService
     private let discoverInstaller: DiscoverInstaller
+    private let openClawAdapter: OpenClawAdapter
     private var loadingDiscoverSkillDetails = Set<String>()
 
     init(
         claudeAdapter: ClaudeCodeAdapter = ClaudeCodeAdapter(),
         universalAdapter: UniversalAdapter = UniversalAdapter(),
         directoryService: SkillsDirectoryService = SkillsDirectoryService(),
+        openClawAdapter: OpenClawAdapter = OpenClawAdapter(),
         discoverInstaller: DiscoverInstaller? = nil
     ) {
         self.claudeAdapter = claudeAdapter
         self.universalAdapter = universalAdapter
         self.directoryService = directoryService
+        self.openClawAdapter = openClawAdapter
         self.discoverInstaller = discoverInstaller ?? SkillStore.defaultDiscoverInstaller
     }
 
@@ -50,10 +53,11 @@ final class SkillStore {
         do {
             async let claudeSkills = claudeAdapter.scanSkills()
             async let universalSkills = universalAdapter.scanSkills()
-            let (claude, universal) = try await (claudeSkills, universalSkills)
+            async let openClawSkills = openClawAdapter.scanSkills()
+            let (claude, universal, openclaw) = try await (claudeSkills, universalSkills, openClawSkills)
             var seen = Set<String>()
             var merged: [Skill] = []
-            for skill in claude + universal {
+            for skill in claude + universal + openclaw {
                 if seen.insert(skill.id).inserted { merged.append(skill) }
             }
             skills = merged
@@ -206,6 +210,8 @@ final class SkillStore {
             } else if skill.canonicalPath != nil {
                 do { try SymlinkInstaller.uninstall(skillName: skill.name) } catch { errorMessage = error.localizedDescription }
             }
+        case .openClaw:
+            do { try fm.removeItem(at: skill.directoryPath.standardized) } catch { errorMessage = error.localizedDescription }
         case .plugin(let pluginSource, let pluginName):
             // Delete the skill's own subdirectory inside the local plugin cache.
             // skill.directoryPath is e.g. ~/.claude/plugins/cache/{pluginSource}/{plugin}/{version}/skills/{skillName}
