@@ -4,6 +4,17 @@ import Testing
 
 struct AgentDocsServiceTests {
     @Test
+    func loadFreshProjectDoesNotCreateAgentDocsDirectory() throws {
+        let project = try makeEmptyProject()
+
+        let snapshot = try AgentDocsService().load(projectURL: project)
+
+        #expect(snapshot.docs.isEmpty)
+        #expect(snapshot.manifest.targets.isEmpty)
+        #expect(!FileManager.default.fileExists(atPath: project.appendingPathComponent("agent-docs").path))
+    }
+
+    @Test
     func manifestRoundTripsAndDetectsExistingTargets() throws {
         let project = try makeProject()
         try "# Project\n".write(to: project.appendingPathComponent("CLAUDE.md"), atomically: true, encoding: .utf8)
@@ -89,8 +100,14 @@ struct AgentDocsServiceTests {
 }
 
 private func makeProject() throws -> URL {
+    let url = try makeEmptyProject()
+    try FileManager.default.createDirectory(at: url.appendingPathComponent("agent-docs"), withIntermediateDirectories: true)
+    return url
+}
+
+private func makeEmptyProject() throws -> URL {
     let url = FileManager.default.temporaryDirectory
         .appendingPathComponent("agent-docs-\(UUID().uuidString)")
-    try FileManager.default.createDirectory(at: url.appendingPathComponent("agent-docs"), withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
     return url
 }

@@ -6,6 +6,8 @@
 
 ## Findings
 
+- Agent Docs v1 does not remove managed blocks from entry files when a target is unchecked. The target sheet now says this explicitly; add block cleanup only if users need target removal to edit files.
+- Agent Docs v1 syncs docs in scanned filename order. `manifest.docs` is retained for schema compatibility, but drag sorting is not implemented.
 - `DiscoverView.swift` is 914 lines and contains multiple independent screens (`DiscoverDetailView`, `DiscoverTryView`). Split later for navigation and reviewability; not blocking Agent Docs.
 - `ContentView.swift` keeps growing as the split-view router. Agent Docs adds one more branch, but the existing dumb-view/closure pattern still holds. Consider extracting route-specific builders later.
 - `SidebarView.swift` still does installed-agent filesystem detection from computed view state. Agent Docs avoids copying that pattern; leave the existing behavior alone unless sidebar rendering becomes visibly slow.

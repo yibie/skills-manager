@@ -91,29 +91,35 @@ struct AgentDocTargetsView: View {
     }
 
     private var footer: some View {
-        HStack {
-            Text("\(selectedAgentIDs.count) selected")
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Removing a target stops future syncs but does not remove an existing managed block from that file.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Spacer()
-            Button("Save") {
-                isSaving = true
-                let targets = selectedAgentIDs.sorted().map { agentID in
-                    let entryFile = AgentEntryFileRegistry.entryFile(for: agentID)
-                    return AgentDocsManifest.Target(
-                        agentId: agentID,
-                        entryFile: entryFile,
-                        mode: modesByEntryFile[entryFile, default: .inject]
-                    )
+
+            HStack {
+                Text("\(selectedAgentIDs.count) selected")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Save") {
+                    isSaving = true
+                    let targets = selectedAgentIDs.sorted().map { agentID in
+                        let entryFile = AgentEntryFileRegistry.entryFile(for: agentID)
+                        return AgentDocsManifest.Target(
+                            agentId: agentID,
+                            entryFile: entryFile,
+                            mode: modesByEntryFile[entryFile, default: .inject]
+                        )
+                    }
+                    Task {
+                        await onSave(targets)
+                        dismiss()
+                    }
                 }
-                Task {
-                    await onSave(targets)
-                    dismiss()
-                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isSaving)
+                .keyboardShortcut(.defaultAction)
             }
-            .buttonStyle(.borderedProminent)
-            .disabled(isSaving)
-            .keyboardShortcut(.defaultAction)
         }
         .padding()
     }

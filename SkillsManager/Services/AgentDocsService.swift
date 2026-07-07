@@ -38,7 +38,9 @@ struct AgentDocsService {
     }
 
     func load(projectURL: URL) throws -> AgentDocsSnapshot {
-        try fileManager.createDirectory(at: docsURL(projectURL), withIntermediateDirectories: true)
+        guard fileManager.fileExists(atPath: docsURL(projectURL).path) else {
+            return AgentDocsSnapshot(docs: [], manifest: AgentDocsManifest(), statuses: [])
+        }
         var manifest = try loadManifest(projectURL: projectURL)
         let docs = try scanDocs(projectURL: projectURL)
         manifest.docs = docs.map { AgentDocsManifest.Doc(file: $0.file) }
@@ -62,6 +64,7 @@ struct AgentDocsService {
     }
 
     func updateTargets(projectURL: URL, targets: [AgentDocsManifest.Target]) throws -> AgentDocsSnapshot {
+        try fileManager.createDirectory(at: docsURL(projectURL), withIntermediateDirectories: true)
         var manifest = try loadManifest(projectURL: projectURL)
         manifest.targets = dedupeTargets(targets)
         try saveManifest(manifest, projectURL: projectURL)
