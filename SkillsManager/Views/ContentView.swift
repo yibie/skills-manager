@@ -13,9 +13,12 @@ struct ContentView: View {
     @State private var store = SkillStore()
     @State private var selectedFilter: SidebarFilter = .all
     @State private var selectedSkill: Skill? = nil
+    @State private var selectedAgentDoc: AgentDoc? = nil
     @State private var selectedDiscoverSkillID: String? = nil
     @State private var pendingDiscoverTrySkill: DiscoverSkill? = nil
     @State private var pendingDiscoverInstallSkill: DiscoverSkill? = nil
+    @State private var isNewAgentDocPresented = false
+    @State private var isAgentDocTargetsPresented = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var isProjectPickerPresented = false
 
@@ -41,7 +44,7 @@ struct ContentView: View {
         switch selectedFilter {
         case .project:
             return store.projectSkills.first { $0.id == selectedSkill.id } ?? selectedSkill
-        case .discover:
+        case .discover, .agentDocs:
             return selectedSkill
         case .all, .installed, .starred, .trial, .agent, .source:
             return store.skills.first { $0.id == selectedSkill.id } ?? selectedSkill
@@ -50,7 +53,14 @@ struct ContentView: View {
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView(selectedFilter: $selectedFilter, skills: store.skills, discoverableCount: store.discoverableSkillTotal, projectSkillCount: store.projectSkills.count, currentProjectURL: store.currentProjectURL)
+            SidebarView(
+                selectedFilter: $selectedFilter,
+                skills: store.skills,
+                discoverableCount: store.discoverableSkillTotal,
+                projectSkillCount: store.projectSkills.count,
+                agentDocCount: store.agentDocs.count,
+                currentProjectURL: store.currentProjectURL
+            )
                 .navigationSplitViewColumnWidth(min: 200, ideal: 220)
         } content: {
             if selectedFilter == .discover {
@@ -83,6 +93,20 @@ struct ContentView: View {
                     selectedSkill: $selectedSkill,
                     onPromote: { skill in await store.promoteSkill(skill) }
                 )
+            } else if selectedFilter == .agentDocs {
+                AgentDocsView(
+                    projectURL: store.currentProjectURL,
+                    docs: store.agentDocs,
+                    statuses: store.agentDocsStatus,
+                    isLoading: store.isLoadingAgentDocs,
+                    isSyncing: store.isSyncingAgentDocs,
+                    selectedDoc: $selectedAgentDoc,
+                    onRefresh: { await store.loadAgentDocs() },
+                    onSync: { await store.syncAgentDocs() },
+                    onNew: { isNewAgentDocPresented = true },
+                    onTargets: { isAgentDocTargetsPresented = true },
+                    onOpen: { doc in store.openDocInEditor(doc) }
+                )
             } else {
                 SkillListView(
                     skills: store.skills,
@@ -111,6 +135,8 @@ struct ContentView: View {
                     onUninstall: { entry in await store.uninstallDiscoverSkill(entry) },
                     onTranslate: { entry in await store.translateDescriptions(using: locale, scope: .discoverSkill(id: entry.id)) }
                 )
+            } else if selectedFilter == .agentDocs {
+                AgentDocDetailView(doc: selectedAgentDoc)
             } else {
                 SkillDetailView(
                     skill: currentSelectedSkill,
@@ -146,6 +172,7 @@ struct ContentView: View {
         }
         .onChange(of: selectedFilter) {
             selectedSkill = nil
+            selectedAgentDoc = nil
             selectedDiscoverSkillID = nil
         }
         .fileImporter(
@@ -184,6 +211,18 @@ struct ContentView: View {
             DiscoverTryView(skill: skill) {
                 pendingDiscoverTrySkill = nil
                 pendingDiscoverInstallSkill = skill
+            }
+        }
+        .sheet(isPresented: $isNewAgentDocPresented) {
+            NewAgentDocView { fileName, content in
+                await store.createAgentDoc(fileName: fileName, content: content)
+            }
+        }
+        .sheet(isPresented: $isAgentDocTargetsPresented) {
+            if let projectURL = store.currentProjectURL {
+                AgentDocTargetsView(projectURL: projectURL, manifest: store.agentDocsManifest) { targets in
+                    await store.setAgentDocTargets(targets)
+                }
             }
         }
         .task {

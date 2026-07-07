@@ -9,8 +9,11 @@ options:
 
 packages:
   swift-markdown:
-    url: https://github.com/apple/swift-markdown.git
+    url: https://github.com/swiftlang/swift-markdown.git
     from: "0.4.0"
+  MarkdownView:
+    url: https://github.com/LiYanan2004/MarkdownView
+    from: "2.6.1"
 
 targets:
   SkillsManager:
@@ -23,9 +26,12 @@ targets:
           - "**/*.md"
     resources:
       - path: SkillsManager/Assets.xcassets
+      - path: SkillsManager/Resources
     dependencies:
       - package: swift-markdown
         product: Markdown
+      - package: MarkdownView
+        product: MarkdownView
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.skillsmanager.SkillsManager

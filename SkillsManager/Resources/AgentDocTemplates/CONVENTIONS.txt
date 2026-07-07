@@ -1,0 +1,16 @@
+# Conventions
+
+## Code Style
+
+- Naming:
+- Error handling:
+- Tests:
+
+## Workflow
+
+- Before editing:
+- Before shipping:
+
+## Do Not
+
+- 

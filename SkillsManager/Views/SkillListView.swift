@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct SkillListView: View {
     private enum AllSkillsTab: String, CaseIterable, Identifiable {
@@ -40,7 +41,7 @@ struct SkillListView: View {
 
     private var filteredSkills: [Skill] {
         switch filter {
-        case .discover, .project:
+        case .discover, .project, .agentDocs:
             return []
         case .all:
             return selectedAllSkillsTab == .plugin ? pluginSkills : standaloneSkills
@@ -283,10 +284,10 @@ private struct SkillActionButtons: View {
             }
 
             Menu {
-                Button("Copy ID") { }
-                Button("Show in Finder") { }
+                Button("Copy ID") { copy(skill.id) }
+                Button("Show in Finder") { showInFinder() }
                 Divider()
-                Button("Copy Path") { }
+                Button("Copy Path") { copy(skill.directoryPath.path()) }
             } label: {
                 Text("More")
                     .font(.caption)
@@ -297,6 +298,15 @@ private struct SkillActionButtons: View {
             .help("More")
         }
         .padding(.top, 2)
+    }
+
+    private func copy(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+    }
+
+    private func showInFinder() {
+        NSWorkspace.shared.activateFileViewerSelecting([skill.directoryPath])
     }
 }
 

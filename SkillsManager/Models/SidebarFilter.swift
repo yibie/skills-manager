@@ -7,6 +7,7 @@ enum SidebarFilter: Hashable, Sendable {
     case starred
     case trial
     case project
+    case agentDocs
     case agent(String)
     case source(String)
 
@@ -18,6 +19,7 @@ enum SidebarFilter: Hashable, Sendable {
         case .starred:          "Starred"
         case .trial:            "Trial"
         case .project:          "Project"
+        case .agentDocs:        "Agent Docs"
         case .agent(let name):  name
         case .source(let name): name
         }
@@ -31,6 +33,7 @@ enum SidebarFilter: Hashable, Sendable {
         case .starred:   "star.fill"
         case .trial:     "flask"
         case .project:   "folder"
+        case .agentDocs: "doc.text"
         case .agent:     "cpu"
         case .source:    "shippingbox"
         }

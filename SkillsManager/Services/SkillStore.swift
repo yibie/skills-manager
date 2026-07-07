@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Observation
 import CryptoKit
@@ -188,10 +189,15 @@ final class SkillStore {
     var discoverCategory: DiscoverDirectoryCategory = .allTime
     var discoverInstallActivities: [DiscoverInstallActivity] = []
     var projectSkills: [Skill] = []
+    var agentDocs: [AgentDoc] = []
+    var agentDocsManifest = AgentDocsManifest()
+    var agentDocsStatus: [AgentDocTargetStatus] = []
     var currentProjectURL: URL?
     var isLoading = false
     var isLoadingDiscover = false
     var isLoadingProject = false
+    var isLoadingAgentDocs = false
+    var isSyncingAgentDocs = false
     var isSyncing = false
     var isTranslatingDescriptions = false
     var lastTranslationSummary: DescriptionTranslationSummary?
@@ -602,7 +608,9 @@ final class SkillStore {
 
     func openProject(url: URL) async {
         currentProjectURL = url
-        await loadProjectSkills()
+        async let skills: Void = loadProjectSkills()
+        async let docs: Void = loadAgentDocs()
+        _ = await (skills, docs)
     }
 
     func loadProjectSkills() async {
@@ -621,6 +629,76 @@ final class SkillStore {
         if hasRequestedDescriptionTranslation {
             _ = await translateMissingProjectDescriptions()
         }
+    }
+
+    func loadAgentDocs() async {
+        guard let projectURL = currentProjectURL else {
+            agentDocs = []
+            agentDocsManifest = AgentDocsManifest()
+            agentDocsStatus = []
+            return
+        }
+
+        isLoadingAgentDocs = true
+        defer { isLoadingAgentDocs = false }
+
+        do {
+            let snapshot = try await Task.detached(priority: .userInitiated) {
+                try AgentDocsService().load(projectURL: projectURL)
+            }.value
+            applyAgentDocsSnapshot(snapshot)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func createAgentDoc(fileName: String, content: String) async {
+        guard let projectURL = currentProjectURL else { return }
+        do {
+            let snapshot = try await Task.detached(priority: .userInitiated) {
+                try AgentDocsService().createDoc(projectURL: projectURL, fileName: fileName, content: content)
+            }.value
+            applyAgentDocsSnapshot(snapshot)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func setAgentDocTargets(_ targets: [AgentDocsManifest.Target]) async {
+        guard let projectURL = currentProjectURL else { return }
+        do {
+            let snapshot = try await Task.detached(priority: .userInitiated) {
+                try AgentDocsService().updateTargets(projectURL: projectURL, targets: targets)
+            }.value
+            applyAgentDocsSnapshot(snapshot)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func syncAgentDocs() async {
+        guard let projectURL = currentProjectURL else { return }
+        isSyncingAgentDocs = true
+        defer { isSyncingAgentDocs = false }
+
+        do {
+            let snapshot = try await Task.detached(priority: .userInitiated) {
+                try AgentDocsService().sync(projectURL: projectURL)
+            }.value
+            applyAgentDocsSnapshot(snapshot)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func openDocInEditor(_ doc: AgentDoc) {
+        NSWorkspace.shared.open(doc.url)
+    }
+
+    private func applyAgentDocsSnapshot(_ snapshot: AgentDocsSnapshot) {
+        agentDocs = snapshot.docs
+        agentDocsManifest = snapshot.manifest
+        agentDocsStatus = snapshot.statuses
     }
 
     /// Copies a project-local skill to ~/.claude/skills/.

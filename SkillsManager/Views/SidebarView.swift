@@ -5,6 +5,7 @@ struct SidebarView: View {
     let skills: [Skill]
     var discoverableCount: Int = 0
     var projectSkillCount: Int = 0
+    var agentDocCount: Int = 0
     var currentProjectURL: URL? = nil
 
     // Precomputed counts to avoid inline filtering in the view body
@@ -91,6 +92,7 @@ struct SidebarView: View {
             if currentProjectURL != nil {
                 Section("Project") {
                     SidebarRow(filter: .project, count: projectSkillCount, selectedFilter: selectedFilter)
+                    SidebarRow(filter: .agentDocs, count: agentDocCount, selectedFilter: selectedFilter)
                 }
             }
         }
@@ -129,6 +131,7 @@ private struct SidebarRow: View {
         skills: Skill.mockSkills,
         discoverableCount: 3,
         projectSkillCount: 2,
+        agentDocCount: 5,
         currentProjectURL: URL(fileURLWithPath: "/Users/user/my-project")
     )
     .frame(width: 220, height: 600)

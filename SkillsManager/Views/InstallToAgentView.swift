@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 struct InstallToAgentView: View {
@@ -8,17 +7,6 @@ struct InstallToAgentView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selected: Set<String> = []
     @State private var isInstalling = false
-    @State private var refreshToken = UUID()
-
-    private var installedAgents: [AgentDefinition] {
-        _ = refreshToken
-        return AgentRegistry.installedInstallTargets()
-    }
-
-    private var importableAgents: [AgentDefinition] {
-        _ = refreshToken
-        return AgentRegistry.missingInstallTargets()
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -38,34 +26,8 @@ struct InstallToAgentView: View {
 
             Divider()
 
-            if installedAgents.isEmpty {
-                importPanel
-                    .frame(minHeight: 200)
-            } else {
-                List(selection: $selected) {
-                    Section("Install Targets") {
-                        ForEach(installedAgents, id: \.id) { agent in
-                            Text(agent.displayName)
-                                .tag(agent.id)
-                        }
-                    }
-
-                    if !importableAgents.isEmpty {
-                        Section("Import Folder") {
-                            ForEach(importableAgents, id: \.id) { agent in
-                                HStack {
-                                    Text(agent.displayName)
-                                    Spacer()
-                                    Button("Import Folder") {
-                                        importFolder(for: agent)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                .listStyle(.inset)
-            }
+            AgentMultiSelectList(selected: $selected)
+                .frame(minHeight: 200)
 
             Divider()
 
@@ -88,40 +50,5 @@ struct InstallToAgentView: View {
             .padding()
         }
         .frame(width: 340, height: 420)
-    }
-
-    private var importPanel: some View {
-        VStack(spacing: 12) {
-            ContentUnavailableView(
-                "No Agents Detected",
-                systemImage: "desktopcomputer.trianglebadge.exclamationmark",
-                description: Text("Import a known coding agent folder to manage it here.")
-            )
-
-            if !importableAgents.isEmpty {
-                Menu("Import Folder") {
-                    ForEach(importableAgents, id: \.id) { agent in
-                        Button(agent.displayName) {
-                            importFolder(for: agent)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func importFolder(for agent: AgentDefinition) {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Import"
-        panel.message = "Choose the folder used by \(agent.displayName)."
-        panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser
-
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        AgentRegistry.importManagedFolder(agentID: agent.id, folderURL: url)
-        selected.insert(agent.id)
-        refreshToken = UUID()
     }
 }

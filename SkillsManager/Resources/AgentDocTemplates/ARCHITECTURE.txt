@@ -1,0 +1,18 @@
+# Architecture
+
+## System Shape
+
+- Core modules:
+- External dependencies:
+- Data flow:
+
+## Boundaries
+
+- Owns:
+- Does not own:
+- Integration points:
+
+## Decisions
+
+- Keep:
+- Revisit when:
