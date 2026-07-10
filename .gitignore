@@ -2,6 +2,7 @@
 *.o
 *.d
 DerivedData/
+.deriveddata/
 *.xcuserstate
 .DS_Store
 
@@ -17,3 +18,10 @@ SkillsManager.xcodeproj/project.xcworkspace/xcuserdata/
 # Intermediate logo files
 *_rgba.png
 .omx/
+
+# Local agent/tool state
+/.claude/settings.local.json
+/.*/skills/vercel-react-best-practices
+/skills/vercel-react-best-practices
+/skills-lock.json
+/tui/assets/demo.mp4
