@@ -6,8 +6,8 @@ struct AgentDefinition: Sendable {
     let icon: String         // SF Symbol name
     /// Absolute path to the agent's global skills directory.
     let globalSkillsDir: URL
-    /// Path that must exist in HOME for us to consider this agent installed.
-    let detectPath: String   // relative to homeDir, e.g. ".cursor"
+    /// Path used to detect the agent. Relative paths are resolved from HOME.
+    let detectPath: String
     let cliCommands: [String]
     let appBundleNames: [String]
 
@@ -48,17 +48,23 @@ enum AgentRegistry {
         "mcpjam",
         "mux",
         "neovate",
+        "opencode",
         "openhands",
         "qwen-code",
     ]
 
     static let home = FileManager.default.homeDirectoryForCurrentUser
-    static let xdgConfig: URL = {
-        if let xdg = ProcessInfo.processInfo.environment["XDG_CONFIG_HOME"] {
-            return URL(fileURLWithPath: xdg)
+    static let xdgConfig = xdgConfigDirectory(
+        environment: ProcessInfo.processInfo.environment,
+        home: home
+    )
+
+    static func xdgConfigDirectory(environment: [String: String], home: URL) -> URL {
+        guard let xdg = environment["XDG_CONFIG_HOME"], xdg.hasPrefix("/") else {
+            return home.appendingPathComponent(".config")
         }
-        return home.appendingPathComponent(".config")
-    }()
+        return URL(fileURLWithPath: xdg)
+    }
 
     /// The canonical "universal" directory all agents share.
     static var canonicalGlobalSkillsDir: URL {
@@ -99,7 +105,7 @@ enum AgentRegistry {
         .init(id: "mistral-vibe",   displayName: "Mistral Vibe",    icon: "waveform",         globalSkillsDir: home.appendingPathComponent(".vibe/skills"),                 detectPath: ".vibe"),
         .init(id: "mux",            displayName: "Mux",             icon: "m.circle",         globalSkillsDir: home.appendingPathComponent(".mux/skills"),                  detectPath: ".mux"),
         .init(id: "neovate",        displayName: "Neovate",         icon: "n.circle",         globalSkillsDir: home.appendingPathComponent(".neovate/skills"),              detectPath: ".neovate"),
-        .init(id: "opencode",       displayName: "OpenCode",        icon: "chevron.left.forwardslash.chevron.right", globalSkillsDir: xdgConfig.appendingPathComponent("opencode/skills"), detectPath: ".config/opencode"),
+        .init(id: "opencode",       displayName: "OpenCode",        icon: "chevron.left.forwardslash.chevron.right", globalSkillsDir: xdgConfig.appendingPathComponent("opencode/skills"), detectPath: xdgConfig.appendingPathComponent("opencode").path, cliCommands: ["opencode"]),
         .init(id: "openhands",      displayName: "OpenHands",       icon: "hand.raised.fill",       globalSkillsDir: home.appendingPathComponent(".openhands/skills"),            detectPath: ".openhands"),
         .init(id: "pi",             displayName: "Pi",              icon: "p.circle",         globalSkillsDir: home.appendingPathComponent(".pi/agent/skills"),             detectPath: ".pi/agent"),
         .init(id: "pochi",          displayName: "Pochi",           icon: "pawprint",         globalSkillsDir: home.appendingPathComponent(".pochi/skills"),                detectPath: ".pochi"),
@@ -114,9 +120,17 @@ enum AgentRegistry {
         .init(id: "openclaw",       displayName: "OpenClaw",        icon: "hammer",           globalSkillsDir: home.appendingPathComponent(".openclaw/workspace-main/skills"), detectPath: ".openclaw"),
     ]
 
-    /// Returns agents whose config directory exists on disk right now.
+    /// Returns agents detected by an imported/config path, CLI, or app bundle.
     static func installedAgents() -> [AgentDefinition] {
-        all.filter { FileManager.default.fileExists(atPath: home.appendingPathComponent($0.detectPath).path) }
+        let importedPaths = storedImportedAgentFolders()
+        return all.filter {
+            isInstalled(
+                $0,
+                importedPaths: importedPaths,
+                fileExists: { FileManager.default.fileExists(atPath: $0) },
+                executableExists: { ExecutableLocator.resolve(command: $0) != nil }
+            )
+        }
     }
 
     static func installedInstallTargets() -> [AgentDefinition] {
@@ -145,21 +159,37 @@ enum AgentRegistry {
 
     static func installedInstallTargets(
         importedPaths: [String: String],
-        fileExists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }
+        fileExists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) },
+        executableExists: (String) -> Bool = { ExecutableLocator.resolve(command: $0) != nil }
     ) -> [AgentDefinition] {
         all
             .filter { installTargetIDs.contains($0.id) }
-            .filter { fileExists(resolvedDetectPath(for: $0, importedPaths: importedPaths)) }
+            .filter {
+                isInstalled(
+                    $0,
+                    importedPaths: importedPaths,
+                    fileExists: fileExists,
+                    executableExists: executableExists
+                )
+            }
             .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
     }
 
     static func missingInstallTargets(
         importedPaths: [String: String],
-        fileExists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }
+        fileExists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) },
+        executableExists: (String) -> Bool = { ExecutableLocator.resolve(command: $0) != nil }
     ) -> [AgentDefinition] {
         all
             .filter { installTargetIDs.contains($0.id) }
-            .filter { !fileExists(resolvedDetectPath(for: $0, importedPaths: importedPaths)) }
+            .filter {
+                !isInstalled(
+                    $0,
+                    importedPaths: importedPaths,
+                    fileExists: fileExists,
+                    executableExists: executableExists
+                )
+            }
             .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
     }
 
@@ -167,7 +197,35 @@ enum AgentRegistry {
         if let imported = importedPaths[agent.id], !imported.isEmpty {
             return imported
         }
+        if agent.detectPath.hasPrefix("/") {
+            return agent.detectPath
+        }
         return home.appendingPathComponent(agent.detectPath).path
+    }
+
+    static func resolvedSkillsDir(for agent: AgentDefinition, importedPaths: [String: String] = storedImportedAgentFolders()) -> URL {
+        guard let imported = importedPaths[agent.id], !imported.isEmpty else {
+            return agent.globalSkillsDir
+        }
+        return URL(fileURLWithPath: imported)
+    }
+
+    private static func isInstalled(
+        _ agent: AgentDefinition,
+        importedPaths: [String: String],
+        fileExists: (String) -> Bool,
+        executableExists: (String) -> Bool
+    ) -> Bool {
+        if fileExists(resolvedDetectPath(for: agent, importedPaths: importedPaths)) {
+            return true
+        }
+        if agent.cliCommands.contains(where: executableExists) {
+            return true
+        }
+        return agent.appBundleNames.contains { bundleName in
+            fileExists(URL(fileURLWithPath: "/Applications").appendingPathComponent(bundleName).path)
+                || fileExists(home.appendingPathComponent("Applications").appendingPathComponent(bundleName).path)
+        }
     }
 
     static func agent(id: String) -> AgentDefinition? {
