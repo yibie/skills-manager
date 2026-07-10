@@ -4,9 +4,28 @@ struct UniversalAdapter: AgentAdapter {
 
     let agentName = "Universal"
     let agentIcon = "square.grid.2x2"
+    private let canonicalSkillsDirectory: URL
+    private let sharedSkillsDirectories: [URL]
+    private let installedAgentsOverride: [AgentDefinition]?
+    private let importedPathsOverride: [String: String]?
+
+    init(
+        canonicalSkillsDirectory: URL = AgentRegistry.canonicalGlobalSkillsDir,
+        sharedSkillsDirectories: [URL]? = nil,
+        installedAgents: [AgentDefinition]? = nil,
+        importedPaths: [String: String]? = nil
+    ) {
+        self.canonicalSkillsDirectory = canonicalSkillsDirectory
+        self.sharedSkillsDirectories = sharedSkillsDirectories ?? [
+            canonicalSkillsDirectory,
+            AgentRegistry.home.appendingPathComponent(".agents/skills"),
+        ]
+        installedAgentsOverride = installedAgents
+        importedPathsOverride = importedPaths
+    }
 
     var skillsDirectories: [URL] {
-        [AgentRegistry.canonicalGlobalSkillsDir]
+        sharedSkillsDirectories
     }
 
     func scanSkills() async throws -> [Skill] {
@@ -27,43 +46,27 @@ struct UniversalAdapter: AgentAdapter {
 
     private func scanAllAgentSkills() -> [Skill] {
         let fm = FileManager.default
-        let installedAgents = AgentRegistry.installedAgents()
+        let installedAgents = installedAgentsOverride ?? AgentRegistry.installedAgents()
+        let importedPaths = importedPathsOverride ?? AgentRegistry.storedImportedAgentFolders()
 
-        var inodeMap: [UInt64: (URL, [String])] = [:]
-        var nameMap: [String: (URL, [String])] = [:]
+        var entriesByPath: [String: (URL, [String])] = [:]
 
-        // Scan canonical dir first
-        scanDir(AgentRegistry.canonicalGlobalSkillsDir, agentID: nil,
-                inodeMap: &inodeMap, nameMap: &nameMap, fm: fm)
+        for directory in sharedSkillsDirectories {
+            scanDir(directory, agentID: nil, entriesByPath: &entriesByPath, fm: fm)
+        }
 
         // Scan each installed agent's dir
-        for agent in installedAgents {
-            scanDir(agent.globalSkillsDir, agentID: agent.id,
-                    inodeMap: &inodeMap, nameMap: &nameMap, fm: fm)
+        for agent in installedAgents where agent.id != "openclaw" {
+            scanDir(AgentRegistry.resolvedSkillsDir(for: agent, importedPaths: importedPaths), agentID: agent.id,
+                    entriesByPath: &entriesByPath, fm: fm)
         }
 
-        var skills: [Skill] = []
-        var seenNames = Set<String>()
-
-        for (_, (dirURL, agentIDs)) in inodeMap {
+        let skills = entriesByPath.values.compactMap { dirURL, agentIDs -> Skill? in
             let skillMD = dirURL.appendingPathComponent("SKILL.md")
             guard fm.fileExists(atPath: skillMD.path),
-                  let content = try? String(contentsOf: skillMD, encoding: .utf8) else { continue }
-            let skill = buildSkill(dirURL: dirURL, content: content, agentIDs: agentIDs)
-            if !seenNames.contains(skill.name) {
-                seenNames.insert(skill.name)
-                skills.append(skill)
-            }
-        }
-
-        for (name, (dirURL, agentIDs)) in nameMap {
-            guard !seenNames.contains(name) else { continue }
-            let skillMD = dirURL.appendingPathComponent("SKILL.md")
-            guard fm.fileExists(atPath: skillMD.path),
-                  let content = try? String(contentsOf: skillMD, encoding: .utf8) else { continue }
-            let skill = buildSkill(dirURL: dirURL, content: content, agentIDs: agentIDs)
-            seenNames.insert(skill.name)
-            skills.append(skill)
+                  let content = try? String(contentsOf: skillMD, encoding: .utf8)
+            else { return nil }
+            return buildSkill(dirURL: dirURL, content: content, agentIDs: agentIDs)
         }
 
         return skills.sorted { $0.displayName < $1.displayName }
@@ -72,8 +75,7 @@ struct UniversalAdapter: AgentAdapter {
     private func scanDir(
         _ dir: URL,
         agentID: String?,
-        inodeMap: inout [UInt64: (URL, [String])],
-        nameMap: inout [String: (URL, [String])],
+        entriesByPath: inout [String: (URL, [String])],
         fm: FileManager
     ) {
         guard let entries = try? fm.contentsOfDirectory(
@@ -87,29 +89,14 @@ struct UniversalAdapter: AgentAdapter {
             fm.fileExists(atPath: entry.path, isDirectory: &isDir)
             guard isDir.boolValue else { continue }
 
-            let name = entry.lastPathComponent
-            let resolvedPath = entry.resolvingSymlinksInPath().path
-            let attrs = try? fm.attributesOfItem(atPath: resolvedPath)
-            let inode = (attrs?[.systemFileNumber] as? UInt64) ?? 0
-
-            if inode > 0 {
-                if var existing = inodeMap[inode] {
-                    if let id = agentID, !existing.1.contains(id) {
-                        existing.1.append(id)
-                    }
-                    inodeMap[inode] = existing
-                } else {
-                    inodeMap[inode] = (entry, agentID.map { [$0] } ?? [])
+            let resolvedPath = entry.resolvingSymlinksInPath().standardizedFileURL.path
+            if var existing = entriesByPath[resolvedPath] {
+                if let agentID, !existing.1.contains(agentID) {
+                    existing.1.append(agentID)
                 }
+                entriesByPath[resolvedPath] = existing
             } else {
-                if var existing = nameMap[name] {
-                    if let id = agentID, !existing.1.contains(id) {
-                        existing.1.append(id)
-                    }
-                    nameMap[name] = existing
-                } else {
-                    nameMap[name] = (entry, agentID.map { [$0] } ?? [])
-                }
+                entriesByPath[resolvedPath] = (entry, agentID.map { [$0] } ?? [])
             }
         }
     }
@@ -129,9 +116,17 @@ struct UniversalAdapter: AgentAdapter {
         let agentDisplayNames = agentIDs.map { id in
             AgentRegistry.agent(id: id)?.displayName ?? id
         }
+        let canonical = canonicalSkillsDirectory.appendingPathComponent(dirName)
+        let resolvedDirectory = dirURL.resolvingSymlinksInPath().standardizedFileURL
+        let canonicalPath = resolvedDirectory.path
+            == canonical.resolvingSymlinksInPath().standardizedFileURL.path
+            && SymlinkInstaller.isManagedCanonicalDirectory(canonical)
+            ? canonical
+            : nil
+        let id = canonicalPath == nil ? "universal:\(resolvedDirectory.path)" : "universal:\(dirName)"
 
         return Skill(
-            id: "universal:\(dirName)",
+            id: id,
             name: dirName,
             displayName: displayName,
             baseDescription: description,
@@ -141,7 +136,7 @@ struct UniversalAdapter: AgentAdapter {
             version: fm["version"],
             filePath: dirURL.appendingPathComponent("SKILL.md"),
             directoryPath: dirURL,
-            canonicalPath: AgentRegistry.canonicalGlobalSkillsDir.appendingPathComponent(dirName),
+            canonicalPath: canonicalPath,
             compatibleAgents: agentDisplayNames.isEmpty ? ["Universal"] : agentDisplayNames,
             tags: tags,
             markdownContent: content,

@@ -73,7 +73,7 @@ struct AgentMultiSelectList: View {
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
         panel.prompt = "Import"
-        panel.message = "Choose the folder used by \(agent.displayName)."
+        panel.message = "Choose the skills folder used by \(agent.displayName)."
         panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser
 
         guard panel.runModal() == .OK, let url = panel.url else { return }

@@ -154,9 +154,13 @@ struct EnvironmentAndNetworkingTests {
     @Test
     func importedAgentFolderOverridesDetectionPath() {
         let imported = ["cursor": "/tmp/custom-cursor"]
-        let installed = AgentRegistry.installedInstallTargets(importedPaths: imported) { path in
-            path == "/tmp/custom-cursor" || path.hasSuffix("/.claude")
-        }
+        let installed = AgentRegistry.installedInstallTargets(
+            importedPaths: imported,
+            fileExists: { path in
+                path == "/tmp/custom-cursor" || path.hasSuffix("/.claude")
+            },
+            executableExists: { _ in false }
+        )
 
         #expect(installed.contains(where: { $0.id == "cursor" }))
         #expect(installed.contains(where: { $0.id == "claude-code" }))

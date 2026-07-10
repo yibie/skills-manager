@@ -2,25 +2,36 @@ import Foundation
 
 struct OpenClawAdapter: AgentAdapter {
 
+    struct Root: Sendable {
+        let id: String
+        let url: URL
+    }
+
     let agentName = "OpenClaw"
     let agentIcon = "claw"
+    private let roots: [Root]
 
-    private var home: URL { FileManager.default.homeDirectoryForCurrentUser }
+    init(home: URL = FileManager.default.homeDirectoryForCurrentUser) {
+        roots = [
+            Root(id: "clawd", url: home.appendingPathComponent("clawd/skills")),
+            Root(id: "npm-global", url: home.appendingPathComponent(".npm-global/lib/node_modules/openclaw/skills")),
+            Root(id: "workspace-main", url: home.appendingPathComponent(".openclaw/workspace-main/skills")),
+        ]
+    }
+
+    init(roots: [Root]) {
+        self.roots = roots
+    }
 
     var skillsDirectories: [URL] {
-        [
-            home.appendingPathComponent("clawd/skills"),
-            home.appendingPathComponent(".npm-global/lib/node_modules/openclaw/skills"),
-            home.appendingPathComponent(".openclaw/workspace-main/skills"),
-            home.appendingPathComponent(".agents/skills")
-        ]
+        roots.map(\.url)
     }
 
     func scanSkills() async throws -> [Skill] {
         await Task.detached(priority: .userInitiated) {
             var all: [Skill] = []
-            for dir in skillsDirectories {
-                all.append(contentsOf: scanSkills(in: dir))
+            for root in roots {
+                all.append(contentsOf: scanSkills(in: root))
             }
             return dedupe(all)
         }.value
@@ -34,12 +45,12 @@ struct OpenClawAdapter: AgentAdapter {
         // Read-only for now.
     }
 
-    private func scanSkills(in root: URL) -> [Skill] {
+    private func scanSkills(in root: Root) -> [Skill] {
         let fm = FileManager.default
-        guard fm.fileExists(atPath: root.path) else { return [] }
+        guard fm.fileExists(atPath: root.url.path) else { return [] }
 
         var results: [Skill] = []
-        if let enumerator = fm.enumerator(at: root, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles]) {
+        if let enumerator = fm.enumerator(at: root.url, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles]) {
             for case let url as URL in enumerator {
                 guard url.lastPathComponent == "SKILL.md" else { continue }
                 guard let skill = buildSkill(skillFile: url, root: root) else { continue }
@@ -49,13 +60,13 @@ struct OpenClawAdapter: AgentAdapter {
         return results
     }
 
-    private func buildSkill(skillFile: URL, root: URL) -> Skill? {
+    private func buildSkill(skillFile: URL, root: Root) -> Skill? {
         guard let content = try? String(contentsOf: skillFile, encoding: .utf8) else { return nil }
 
         let parsed = SkillParser.parse(content: content)
         let frontmatter = parsed.frontmatter
         let skillDir = skillFile.deletingLastPathComponent()
-        let relative = relativePath(of: skillDir, under: root) ?? skillDir.lastPathComponent
+        let relative = relativePath(of: skillDir, under: root.url) ?? skillDir.lastPathComponent
         let skillName = sanitize(relative)
         let displayName = frontmatter["name"] ?? skillDir.lastPathComponent
         let description = frontmatter["description"] ?? ""
@@ -66,13 +77,13 @@ struct OpenClawAdapter: AgentAdapter {
             .filter { !$0.isEmpty }
 
         return Skill(
-            id: "openclaw:\(root.lastPathComponent):\(relative)",
+            id: "openclaw:\(root.id):\(relative)",
             name: skillName,
             displayName: displayName,
             baseDescription: description,
             baseDescriptionLocale: DescriptionLocale.descriptionLocale(frontmatter: frontmatter, description: description),
             localizedDescription: nil,
-            source: .openClaw(root: root.lastPathComponent),
+            source: .openClaw(root: root.id),
             version: frontmatter["version"],
             filePath: skillFile,
             directoryPath: skillDir,

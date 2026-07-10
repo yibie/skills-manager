@@ -81,7 +81,7 @@ Skills Manager detects and scans every agent below through `AgentRegistry`. The 
 | Mistral Vibe | `mistral-vibe` | Scan |
 | Mux | `mux` | Yes |
 | Neovate | `neovate` | Yes |
-| OpenCode | `opencode` | Scan |
+| OpenCode | `opencode` | Yes |
 | OpenHands | `openhands` | Yes |
 | Pi | `pi` | Yes |
 | Pochi | `pochi` | Scan |
@@ -94,6 +94,10 @@ Skills Manager detects and scans every agent below through `AgentRegistry`. The 
 | Zencoder | `zencoder` | Scan |
 | AdaL | `adal` | Scan |
 | OpenClaw | `openclaw` | Scan |
+
+OpenCode uses `$XDG_CONFIG_HOME/opencode/skills` (or `~/.config/opencode/skills` when `XDG_CONFIG_HOME` is unset). **Import Folder** expects the agent's exact skills directory and uses it for both scanning and future installs.
+
+`$XDG_CONFIG_HOME/agents/skills` and `~/.agents/skills` are neutral shared roots. OpenClaw-specific discovery is limited to its `clawd`, npm-global, and workspace-main roots so shared skills are not mislabeled as OpenClaw.
 
 ## Discover and Translation
 

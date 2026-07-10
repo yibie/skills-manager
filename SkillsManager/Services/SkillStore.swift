@@ -249,11 +249,7 @@ final class SkillStore {
             async let universalSkills = universalAdapter.scanSkills()
             async let openClawSkills = openClawAdapter.scanSkills()
             let (claude, universal, openclaw) = try await (claudeSkills, universalSkills, openClawSkills)
-            var seen = Set<String>()
-            var merged: [Skill] = []
-            for skill in claude + universal + openclaw {
-                if seen.insert(skill.id).inserted { merged.append(skill) }
-            }
+            let merged = Self.mergeScannedSkills(claude + universal + openclaw)
             skills = await localizeSkills(merged)
             if hasRequestedDescriptionTranslation {
                 _ = await translateMissingSkillDescriptions()
@@ -261,6 +257,29 @@ final class SkillStore {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    nonisolated static func mergeScannedSkills(_ scanned: [Skill]) -> [Skill] {
+        var merged: [Skill] = []
+        var indexByPath: [String: Int] = [:]
+
+        for skill in scanned {
+            let path = skill.filePath.resolvingSymlinksInPath().standardizedFileURL.path
+            if let index = indexByPath[path] {
+                for agent in skill.compatibleAgents where !merged[index].compatibleAgents.contains(agent) {
+                    merged[index].compatibleAgents.append(agent)
+                }
+                if merged[index].canonicalPath == nil {
+                    merged[index].canonicalPath = skill.canonicalPath
+                }
+                indexByPath[path] = index
+            } else {
+                indexByPath[path] = merged.count
+                merged.append(skill)
+            }
+        }
+
+        return merged
     }
 
     func merge(records: [SkillRecord]) {
@@ -552,6 +571,9 @@ final class SkillStore {
                 do { try fm.removeItem(at: target) } catch { errorMessage = error.localizedDescription }
             } else if skill.canonicalPath != nil {
                 do { try SymlinkInstaller.uninstall(skillName: skill.name) } catch { errorMessage = error.localizedDescription }
+            } else {
+                errorMessage = "This skill is managed outside Skills Manager and was not deleted."
+                return
             }
         case .openClaw:
             do { try fm.removeItem(at: skill.directoryPath.standardized) } catch { errorMessage = error.localizedDescription }
