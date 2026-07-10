@@ -110,15 +110,13 @@ actor SkillsDirectoryService {
         return String(data: data, encoding: .utf8) ?? ""
     }
 
-    private func parseSkillsDirectoryHTML(_ html: String) -> (skills: [DiscoverSkill], total: Int) {
+    func parseSkillsDirectoryHTML(_ html: String) -> (skills: [DiscoverSkill], total: Int) {
         if let payload = parseSkillsDirectoryPayload(html) {
             return payload
         }
 
-        let escapedPattern = #"\{\\"source\\":\\"([^\\]+)\\",\\"skillId\\":\\"([^\\]+)\\",\\"name\\":\\"([^\\]+)\\",\\"installs\\":(\d+)\}"#
-        let directPattern = "\\{\"source\":\"([^\"]+)\",\"skillId\":\"([^\"]+)\",\"name\":\"([^\"]+)\",\"installs\":(\\d+)\\}"
-        let fallbackEntries = parseSkillsDirectoryMatches(html, pattern: escapedPattern)
-            + parseSkillsDirectoryMatches(html, pattern: directPattern)
+        let normalized = html.replacingOccurrences(of: "\\\"", with: "\"")
+        let fallbackEntries = parseSkillsDirectoryObjects(normalized)
         let skills = buildDiscoverSkills(from: fallbackEntries)
         return (skills, extractSkillsDirectoryTotal(html) ?? skills.count)
     }
@@ -159,26 +157,26 @@ actor SkillsDirectoryService {
         return (buildDiscoverSkills(from: payload.skills), payload.count)
     }
 
-    private func parseSkillsDirectoryMatches(_ html: String, pattern: String) -> [DirectoryEntryPayload] {
-        let regex = try? NSRegularExpression(pattern: pattern)
-        let range = NSRange(html.startIndex..., in: html)
-        let matches = regex?.matches(in: html, range: range) ?? []
+    private func parseSkillsDirectoryObjects(_ text: String) -> [DirectoryEntryPayload] {
+        var entries: [DirectoryEntryPayload] = []
+        var searchStart = text.startIndex
+        let marker = "{\"source\":"
 
-        return matches.compactMap { match in
-            guard
-                let sourceRange = Range(match.range(at: 1), in: html),
-                let skillIdRange = Range(match.range(at: 2), in: html),
-                let nameRange = Range(match.range(at: 3), in: html),
-                let installsRange = Range(match.range(at: 4), in: html)
-            else { return nil }
-
-            return DirectoryEntryPayload(
-                source: String(html[sourceRange]),
-                skillId: String(html[skillIdRange]),
-                name: String(html[nameRange]),
-                installs: Int(html[installsRange])
-            )
+        while let markerRange = text.range(of: marker, range: searchStart..<text.endIndex),
+              let object = extractBalancedJSONSection(
+                  in: text,
+                  startingAt: markerRange.lowerBound,
+                  opening: "{",
+                  closing: "}"
+              ) {
+            if let data = object.section.data(using: .utf8),
+               let entry = try? JSONDecoder().decode(DirectoryEntryPayload.self, from: data) {
+                entries.append(entry)
+            }
+            searchStart = text.index(after: object.endIndex)
         }
+
+        return entries
     }
 
     private func buildDiscoverSkills(from entries: [DirectoryEntryPayload]) -> [DiscoverSkill] {
@@ -232,13 +230,22 @@ actor SkillsDirectoryService {
         guard let markerRange = html.range(of: marker) else { return nil }
         guard let start = html[markerRange.upperBound...].firstIndex(of: opening) else { return nil }
 
+        return extractBalancedJSONSection(in: html, startingAt: start, opening: opening, closing: closing)?.section
+    }
+
+    private func extractBalancedJSONSection(
+        in text: String,
+        startingAt start: String.Index,
+        opening: Character,
+        closing: Character
+    ) -> (section: String, endIndex: String.Index)? {
         var depth = 0
         var isInsideString = false
         var isEscaped = false
         var index = start
 
-        while index < html.endIndex {
-            let character = html[index]
+        while index < text.endIndex {
+            let character = text[index]
 
             if isInsideString {
                 if isEscaped {
@@ -256,12 +263,12 @@ actor SkillsDirectoryService {
                 } else if character == closing {
                     depth -= 1
                     if depth == 0 {
-                        return String(html[start...index])
+                        return (String(text[start...index]), index)
                     }
                 }
             }
 
-            index = html.index(after: index)
+            index = text.index(after: index)
         }
 
         return nil
@@ -305,6 +312,7 @@ actor SkillsDirectoryService {
             .replacingOccurrences(of: "&gt;", with: ">")
             .replacingOccurrences(of: "&nbsp;", with: " ")
     }
+
 }
 
 enum SkillsDirectoryError: LocalizedError {
