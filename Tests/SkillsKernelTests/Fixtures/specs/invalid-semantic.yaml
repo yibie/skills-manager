@@ -1,0 +1,40 @@
+# 结构合法但语义非法:id 重复、count 用在 guidance 上、shadowing 引用不存在、
+# global 路径写成了项目相对。
+schema_version: 1
+
+platform:
+  id: semantically-broken
+  name: Semantically Broken
+
+metadata:
+  generated_by: ai
+  last_verified: "2026-07-14"
+
+resources:
+  - id: dup
+    type: guidance
+    scope: global
+    path: ~/.x/CLAUDE.md
+    path_kind: file
+    source: 测试
+    confidence: high
+    count:
+      method: json-keys
+      pointer: /foo
+      unit: things
+
+  - id: dup
+    type: guidance
+    scope: global
+    path: relative/but/global.md
+    path_kind: file
+    source: 测试
+    confidence: high
+
+shadowing:
+  - id: dangling
+    strategy: override
+    winner: dup
+    loser: ghost-resource
+    source: 测试
+    confidence: low
