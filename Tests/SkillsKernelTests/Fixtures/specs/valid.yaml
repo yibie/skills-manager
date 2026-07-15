@@ -108,3 +108,6 @@ unmodeled:
   ignore:
     - ~/.claude/projects
     - ~/.claude/.last-*
+    # agents 目录属于 inspect.yaml(M2)的测试范围,此 spec 不建模,忽略以保持期望值稳定
+    - ~/.claude/agents
+    - .claude/agents

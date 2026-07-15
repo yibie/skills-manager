@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skills-manager.dev/schemas/effective-agent.json",
+  "title": "Effective-Agent Report",
+  "description": "skm inspect 的输出契约:某平台 × 某项目下实际生效的 Agent Resource 集合及其来源/遮蔽关系。消费者:Swift 检视器 UI、TUI、任何下游工具。",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "platform",
+    "project",
+    "spec",
+    "summary",
+    "resources",
+    "unmodeled"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "description": "本报告格式的版本",
+      "type": "integer",
+      "enum": [1]
+    },
+    "generated_at": {
+      "description": "报告生成时间(ISO 8601)",
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}"
+    },
+    "platform": {
+      "type": "object",
+      "required": ["id", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "version_range": {
+          "description": "spec 声明的适用平台版本范围;spec 未声明时缺席",
+          "type": "string"
+        }
+      }
+    },
+    "project": {
+      "type": "object",
+      "required": ["path"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "description": "项目根的绝对路径",
+          "type": "string"
+        }
+      }
+    },
+    "spec": {
+      "description": "报告依据的 adapter spec 元数据(spec 是先验,文件系统是后验)",
+      "type": "object",
+      "required": ["schema_version", "generated_by", "last_verified"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "type": "integer" },
+        "generated_by": { "type": "string" },
+        "last_verified": {
+          "description": "spec 最后一次人工/AI 校验日期;越久远越可能说谎",
+          "type": "string"
+        },
+        "path": {
+          "description": "spec 文件路径(由 CLI 提供;进程内调用时可缺席)",
+          "type": "string"
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["resources", "active", "shadowed", "missing", "unmodeled"],
+      "additionalProperties": false,
+      "properties": {
+        "resources": {
+          "description": "资源实例总数(active + shadowed + missing)",
+          "type": "integer"
+        },
+        "active": { "type": "integer" },
+        "shadowed": { "type": "integer" },
+        "missing": { "type": "integer" },
+        "unmodeled": { "type": "integer" }
+      }
+    },
+    "resources": {
+      "description": "按资源类型分组的实例列表;四个键始终存在,无实例时为空数组",
+      "type": "object",
+      "required": ["identity", "guidance", "skill", "runtime-config"],
+      "additionalProperties": false,
+      "properties": {
+        "identity": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/resource_instance" }
+        },
+        "guidance": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/resource_instance" }
+        },
+        "skill": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/resource_instance" }
+        },
+        "runtime-config": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/resource_instance" }
+        }
+      }
+    },
+    "unmodeled": {
+      "description": "spec 未建模但邻域内存在的可疑条目(诚实的不确定性,不许隐藏)",
+      "type": "array",
+      "items": { "$ref": "#/$defs/unmodeled_entry" }
+    }
+  },
+  "$defs": {
+    "resource_instance": {
+      "description": "一个被枚举出的资源实例:一个 skill、一个 guidance 文件、一个 runtime-config 文件……",
+      "type": "object",
+      "required": ["rule_id", "path", "scope", "status", "required", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "description": "遮蔽比较用标识(skill 目录名 / agent 名 / 文件名)。status 为 missing 时无实例可标识,该字段缺席",
+          "type": "string"
+        },
+        "rule_id": {
+          "description": "产生该实例的 spec resource 规则 id",
+          "type": "string"
+        },
+        "path": {
+          "description": "来源文件绝对路径;missing 时为 spec 期望的展开路径(glob 规则为模式)",
+          "type": "string"
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["global", "project", "directory"]
+        },
+        "status": {
+          "description": "active=生效;shadowed=被同 key 的更高优先级实例遮蔽;missing=spec 声明但文件系统不存在",
+          "type": "string",
+          "enum": ["active", "shadowed", "missing"]
+        },
+        "required": {
+          "description": "spec 是否声明该规则为必需(显式透传,始终存在,不用缺省值隐藏)",
+          "type": "boolean"
+        },
+        "confidence": {
+          "description": "来源规则的 confidence 透传:low 表示该规则本身可能说谎",
+          "type": "string",
+          "enum": ["high", "medium", "low"]
+        },
+        "shadowed_by": {
+          "description": "仅 status 为 shadowed 时存在:被谁遮蔽及依据的规则",
+          "type": "object",
+          "required": ["shadow_rule_id", "winner_rule_id", "winner_path"],
+          "additionalProperties": false,
+          "properties": {
+            "shadow_rule_id": {
+              "description": "依据的 spec shadowing 规则 id",
+              "type": "string"
+            },
+            "winner_rule_id": {
+              "description": "遮蔽方实例所属的 resource 规则 id",
+              "type": "string"
+            },
+            "winner_path": {
+              "description": "遮蔽方实例的绝对路径",
+              "type": "string"
+            }
+          }
+        },
+        "count": {
+          "description": "runtime-config 的浅计数(存在性 + 计数,不解析语义);其余类型及无计数配置时缺席",
+          "type": "object",
+          "required": ["value", "unit"],
+          "additionalProperties": false,
+          "properties": {
+            "value": { "type": "integer" },
+            "unit": { "type": "string" }
+          }
+        }
+      }
+    },
+    "unmodeled_entry": {
+      "type": "object",
+      "required": ["path", "root", "scope"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "description": "可疑条目的绝对路径",
+          "type": "string"
+        },
+        "root": {
+          "description": "发现该条目的扫描根(绝对路径)",
+          "type": "string"
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["global", "project", "directory"]
+        }
+      }
+    }
+  }
+}

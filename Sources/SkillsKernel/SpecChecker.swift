@@ -32,6 +32,8 @@ public struct ResourceCheckResult: Sendable {
 public struct UnmodeledEntry: Sendable {
     public let path: String
     public let root: String
+    /// 扫描根在 spec 中声明的作用域(供 inspect 报告透传)。
+    public let scope: ResourceScope
 }
 
 /// `skm check` 的完整结果:spec(先验)对照文件系统(后验)。
@@ -212,7 +214,7 @@ public struct SpecChecker {
                 if ignorePatterns.contains(where: { matchesIgnore(childPath, pattern: $0) }) {
                     continue
                 }
-                entries.append(UnmodeledEntry(path: childPath, root: rootURL.path))
+                entries.append(UnmodeledEntry(path: childPath, root: rootURL.path, scope: root.scope))
             }
         }
         return entries
