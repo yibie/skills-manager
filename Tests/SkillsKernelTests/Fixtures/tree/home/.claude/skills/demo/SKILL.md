@@ -1,0 +1,4 @@
+---
+name: demo
+---
+# demo skill
