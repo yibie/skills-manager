@@ -7,6 +7,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // 保证 swift run 的裸二进制也注册为前台 GUI 应用并弹窗;对打包 app 无副作用
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
         NSApplication.shared.applicationIconImage = makeAppIcon()
     }
 

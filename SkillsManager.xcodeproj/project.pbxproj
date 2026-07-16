@@ -13,6 +13,7 @@
 		0BC298A026115FE9AC9A14DD /* SymlinkInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BB7B6A6241828E4EFD62F95 /* SymlinkInstaller.swift */; };
 		0E11B9E48BDCF65EE180FADD /* MEMORY.txt in Resources */ = {isa = PBXBuildFile; fileRef = 1AC15CB4C11B25ABCC2A4CC8 /* MEMORY.txt */; };
 		164C12203FA1D8638EB72C2F /* SandboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6BD0C5D68F6CEB4FE4C14CD /* SandboxView.swift */; };
+		224D1A66FA3599AF94D2A726 /* InspectorPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB7AD886048AEF1E79E73C2B /* InspectorPresentation.swift */; };
 		2532A8AD74AC05FE72D82528 /* VersionHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50069145DEE4F107B789596A /* VersionHistoryView.swift */; };
 		2639C198F4FBE87057F9AD62 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8813500160440D0FCB9E5DD9 /* FlowLayout.swift */; };
 		2873AA910098AE189DD6D040 /* AgentEntryFileRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2129FFAF3F40ED40F749F688 /* AgentEntryFileRegistry.swift */; };
@@ -46,6 +47,7 @@
 		94F47DEE84AF8AC4E88FEA03 /* SkillParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = E755FBEC77714122731E7A45 /* SkillParser.swift */; };
 		96428207D0C4C159CC581D38 /* LLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 522C4FF85D5865CEB9DEEF64 /* LLMService.swift */; };
 		969AE94BB0DE1FD72398A99D /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = 112275252DEF9637B772525E /* Markdown */; };
+		9B631B74CBACD068544F3E89 /* SkillsKernel in Frameworks */ = {isa = PBXBuildFile; productRef = 3F921A688C8DF22EAE64D649 /* SkillsKernel */; };
 		A22D268F985AF8E5CE19864E /* SkillsManagerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0525175ED2964BB6E2E0B1B0 /* SkillsManagerApp.swift */; };
 		A4031159D8844F05E8D8E9E6 /* SkillFormatConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE67140FC42B93008948827 /* SkillFormatConverter.swift */; };
 		AF8A6D103405710E4EEAEEE3 /* NetworkSessionFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E3BEEF1839A714FE5E62EC5 /* NetworkSessionFactory.swift */; };
@@ -56,10 +58,12 @@
 		B82F3B43E935D1499D1FFF22 /* OpenClawAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D967A5962BEEE7981921A4F /* OpenClawAdapter.swift */; };
 		C74ED18341F7EE56F00197B8 /* SkillDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C471621958512C86DD74AE10 /* SkillDetailView.swift */; };
 		C87738BC42E63E3CE956E613 /* ARCHITECTURE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 9D29098B7BD253920F28EE9B /* ARCHITECTURE.txt */; };
+		C97763192A86A617562AAB18 /* InspectorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA2BD64708D00C218E6E66C /* InspectorViewModel.swift */; };
 		CC1B15063364653AB8E743BD /* SkillCardComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F52D61563BCAA47F079745 /* SkillCardComponents.swift */; };
 		DAE61282D9FE7ADC6DBEB7CB /* DiscoverDirectoryCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 109884F853F35BE813AA1494 /* DiscoverDirectoryCache.swift */; };
 		DD04ABF51638C20A9718628F /* SOUL.txt in Resources */ = {isa = PBXBuildFile; fileRef = C83A70EEB7E8A34E16C9D4C8 /* SOUL.txt */; };
 		DF192D807118C9C9E4CCBEDA /* DiscoverInstallActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 009782B1278EBB6BF3791164 /* DiscoverInstallActivity.swift */; };
+		E15B723288F5053BA59FF8ED /* InspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 777FA5C1F7F6485BB8724567 /* InspectorView.swift */; };
 		E3FE2A4C45495F6363A6B5FE /* NewAgentDocView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D0D6389F97A04A62D49264 /* NewAgentDocView.swift */; };
 		EEDC36F24C473410A7C62EB0 /* description-translations.json in Resources */ = {isa = PBXBuildFile; fileRef = B4B151B9DCE4165CA174C3F7 /* description-translations.json */; };
 		F4E3A8CC9FDA4208487019FB /* AgentMultiSelectList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05198F91ECF1B27BD6EFBF07 /* AgentMultiSelectList.swift */; };
@@ -81,6 +85,7 @@
 		2129FFAF3F40ED40F749F688 /* AgentEntryFileRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentEntryFileRegistry.swift; sourceTree = "<group>"; };
 		2D967A5962BEEE7981921A4F /* OpenClawAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenClawAdapter.swift; sourceTree = "<group>"; };
 		2F161109A29CF7DCE1257393 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		2FB8794E6AAB4ABA63F47649 /* agent-a40681d9285a5696d */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "agent-a40681d9285a5696d"; path = .; sourceTree = SOURCE_ROOT; };
 		36F52D61563BCAA47F079745 /* SkillCardComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillCardComponents.swift; sourceTree = "<group>"; };
 		379DE78BB89407FAD9F6F520 /* DESIGN.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = DESIGN.txt; sourceTree = "<group>"; };
 		3BE38B49272B1AA0A1752A87 /* ClaudeCodeAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCodeAdapter.swift; sourceTree = "<group>"; };
@@ -94,6 +99,7 @@
 		57E8B78AFE5E90D7D1B044AC /* SidebarFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarFilter.swift; sourceTree = "<group>"; };
 		666D8599524120C18BABB3FF /* GitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitService.swift; sourceTree = "<group>"; };
 		71E86521947227FAD14E43AA /* SkillsManager.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SkillsManager.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		777FA5C1F7F6485BB8724567 /* InspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorView.swift; sourceTree = "<group>"; };
 		7C2C11FFC9FF1183A71189CA /* FileWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileWatcher.swift; sourceTree = "<group>"; };
 		7DBBBF8B70FCF8E665BA164F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7E21F4876DF0FEEB0B346AFA /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
@@ -104,11 +110,13 @@
 		8BB7B6A6241828E4EFD62F95 /* SymlinkInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymlinkInstaller.swift; sourceTree = "<group>"; };
 		8D4D79A6E3D895A4272F6459 /* AgentDocTargetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDocTargetsView.swift; sourceTree = "<group>"; };
 		8D71148B256CA7E29C4034F4 /* AgentAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentAdapter.swift; sourceTree = "<group>"; };
+		8EA2BD64708D00C218E6E66C /* InspectorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorViewModel.swift; sourceTree = "<group>"; };
 		917460B59F02B0CE2DCBBB08 /* DiscoverDirectoryCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverDirectoryCategory.swift; sourceTree = "<group>"; };
 		9D29098B7BD253920F28EE9B /* ARCHITECTURE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = ARCHITECTURE.txt; sourceTree = "<group>"; };
 		9FE67140FC42B93008948827 /* SkillFormatConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillFormatConverter.swift; sourceTree = "<group>"; };
 		A9D0D6389F97A04A62D49264 /* NewAgentDocView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewAgentDocView.swift; sourceTree = "<group>"; };
 		A9EEAF71C03E3193B9568101 /* UniversalAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniversalAdapter.swift; sourceTree = "<group>"; };
+		AB7AD886048AEF1E79E73C2B /* InspectorPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorPresentation.swift; sourceTree = "<group>"; };
 		AE3EC76806268EE893174340 /* AgentDocTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDocTemplate.swift; sourceTree = "<group>"; };
 		AFF0465C82F147C7332064AC /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
 		B11B49FC95FC15D490981568 /* AgentDocsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDocsService.swift; sourceTree = "<group>"; };
@@ -137,12 +145,21 @@
 			files = (
 				969AE94BB0DE1FD72398A99D /* Markdown in Frameworks */,
 				740F7FEE9C6D9FFAE3A6264C /* MarkdownView in Frameworks */,
+				9B631B74CBACD068544F3E89 /* SkillsKernel in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		1DA63D6B242CD7B694E54A40 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				2FB8794E6AAB4ABA63F47649 /* agent-a40681d9285a5696d */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
 		2565A1AA7F123AF3D4BEA6FA /* Views */ = {
 			isa = PBXGroup;
 			children = (
@@ -153,6 +170,7 @@
 				BC251E68A274FA576778D3FD /* DiscoverInstallToAgentView.swift */,
 				42BA7574CDF65767B64E1FEE /* DiscoverView.swift */,
 				8813500160440D0FCB9E5DD9 /* FlowLayout.swift */,
+				777FA5C1F7F6485BB8724567 /* InspectorView.swift */,
 				B9F4DD17FD00BD98E6D23656 /* InstallToAgentView.swift */,
 				A9D0D6389F97A04A62D49264 /* NewAgentDocView.swift */,
 				F000347C95927A1B1EE9704F /* ProjectSkillsView.swift */,
@@ -177,6 +195,7 @@
 				917460B59F02B0CE2DCBBB08 /* DiscoverDirectoryCategory.swift */,
 				009782B1278EBB6BF3791164 /* DiscoverInstallActivity.swift */,
 				1BCDCC5D3CA0926A51A3D84B /* DiscoverSkill.swift */,
+				AB7AD886048AEF1E79E73C2B /* InspectorPresentation.swift */,
 				5274AE0EE82A46941B29B3F1 /* SandboxSlot.swift */,
 				57E8B78AFE5E90D7D1B044AC /* SidebarFilter.swift */,
 				5427F0708C634AC8F5F4B080 /* Skill.swift */,
@@ -225,6 +244,7 @@
 		CC56A8FD91FC65855EEC6C19 = {
 			isa = PBXGroup;
 			children = (
+				1DA63D6B242CD7B694E54A40 /* Packages */,
 				9AA84F2246F4627905E1788F /* SkillsManager */,
 				E3C5A2C60A157CCF5CCA5040 /* Products */,
 			);
@@ -247,6 +267,7 @@
 				B2C31663B12DB3C2223CF2CD /* ExecutableLocator.swift */,
 				7C2C11FFC9FF1183A71189CA /* FileWatcher.swift */,
 				666D8599524120C18BABB3FF /* GitService.swift */,
+				8EA2BD64708D00C218E6E66C /* InspectorViewModel.swift */,
 				CC4AC87ED906F4D954E16850 /* InstallService.swift */,
 				522C4FF85D5865CEB9DEEF64 /* LLMService.swift */,
 				7E3BEEF1839A714FE5E62EC5 /* NetworkSessionFactory.swift */,
@@ -291,6 +312,7 @@
 			packageProductDependencies = (
 				112275252DEF9637B772525E /* Markdown */,
 				8980C0F5A28CCBCBD7B8FD64 /* MarkdownView */,
+				3F921A688C8DF22EAE64D649 /* SkillsKernel */,
 			);
 			productName = SkillsManager;
 			productReference = 71E86521947227FAD14E43AA /* SkillsManager.app */;
@@ -322,6 +344,7 @@
 			packageReferences = (
 				A22BE2FDA232337B922B7519 /* XCRemoteSwiftPackageReference "MarkdownView" */,
 				A7EDEDCD1FB39179B0BC0C99 /* XCRemoteSwiftPackageReference "swift-markdown" */,
+				CF927F4B556542B5C4CDC964 /* XCLocalSwiftPackageReference "." */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E3C5A2C60A157CCF5CCA5040 /* Products */;
@@ -379,6 +402,9 @@
 				67760A8B31C1AA2B7744DF2D /* FileWatcher.swift in Sources */,
 				2639C198F4FBE87057F9AD62 /* FlowLayout.swift in Sources */,
 				0947139B78E3F9D9857F730A /* GitService.swift in Sources */,
+				224D1A66FA3599AF94D2A726 /* InspectorPresentation.swift in Sources */,
+				E15B723288F5053BA59FF8ED /* InspectorView.swift in Sources */,
+				C97763192A86A617562AAB18 /* InspectorViewModel.swift in Sources */,
 				79C92DE48CAF4F5BBAEDF299 /* InstallService.swift in Sources */,
 				30A6A3694F3DA4EA5B1103E4 /* InstallToAgentView.swift in Sources */,
 				96428207D0C4C159CC581D38 /* LLMService.swift in Sources */,
@@ -597,6 +623,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		CF927F4B556542B5C4CDC964 /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		A22BE2FDA232337B922B7519 /* XCRemoteSwiftPackageReference "MarkdownView" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -621,6 +654,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A7EDEDCD1FB39179B0BC0C99 /* XCRemoteSwiftPackageReference "swift-markdown" */;
 			productName = Markdown;
+		};
+		3F921A688C8DF22EAE64D649 /* SkillsKernel */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SkillsKernel;
 		};
 		8980C0F5A28CCBCBD7B8FD64 /* MarkdownView */ = {
 			isa = XCSwiftPackageProductDependency;
