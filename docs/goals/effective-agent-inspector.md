@@ -1,6 +1,12 @@
 # Goal: Effective-Agent 检视器
 
 > 状态:已批准(2026-07-14)。本文档是开发 agent 的执行依据,按里程碑逐个交付。
+>
+> **进展**(2026-07-17):
+> - M1 ✅ 已合入 main(spec 格式 + claude-code.yaml 种子 spec + skm validate/check)
+> - M2 ✅ 已合入 main(skm inspect 输出 Effective-Agent JSON,契约见 effective-agent-schema.json)
+> - M3 🔍 开发完成,在分支 `worktree-agent-a40681d9285a5696d` 等待视觉验收后合并
+> - M4–M6 ⬜ 未开始
 
 ## 背景与产品决策
 
