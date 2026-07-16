@@ -20,6 +20,7 @@ let package = Package(
             dependencies: [
                 .product(name: "Markdown", package: "swift-markdown"),
                 .product(name: "MarkdownView", package: "MarkdownView"),
+                "SkillsKernel",
             ],
             path: "SkillsManager",
             exclude: [
@@ -41,7 +42,12 @@ let package = Package(
             dependencies: [
                 .product(name: "Yams", package: "Yams"),
             ],
-            path: "Sources/SkillsKernel"
+            path: "Sources/SkillsKernel",
+            resources: [
+                // platform-specs/ 的资源副本,保证脱离仓库目录运行也能加载 spec;
+                // 与仓库源文件的同步由 BundledSpecsTests 看护
+                .copy("Resources/platform-specs"),
+            ]
         ),
         .executableTarget(
             name: "skm",
