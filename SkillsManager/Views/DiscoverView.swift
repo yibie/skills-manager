@@ -636,12 +636,9 @@ struct DiscoverTryView: View {
     @Environment(\.dismiss) private var dismiss
 
     @AppStorage(AppSettings.llmProviderKey) private var providerRaw = LLMProvider.claude.rawValue
-    @AppStorage(AppSettings.claudeApiKeyKey) private var claudeKey = ""
     @AppStorage(AppSettings.sandboxModelKey) private var claudeModel = AppSettings.defaultModel
-    @AppStorage(AppSettings.openAIApiKeyKey) private var openAIKey = ""
     @AppStorage(AppSettings.openAIModelKey) private var openAIModel = AppSettings.defaultOpenAIModel
     @AppStorage(AppSettings.openAIBaseURLKey) private var openAIBaseURL = ""
-    @AppStorage(AppSettings.openRouterApiKeyKey) private var openRouterKey = ""
     @AppStorage(AppSettings.openRouterModelKey) private var openRouterModel = AppSettings.defaultOpenRouterModel
     @AppStorage(AppSettings.ollamaBaseURLKey) private var ollamaURL = ""
     @AppStorage(AppSettings.ollamaModelKey) private var ollamaModel = AppSettings.defaultOllamaModel
@@ -662,11 +659,11 @@ struct DiscoverTryView: View {
     private var llmConfig: LLMConfig {
         switch activeProvider {
         case .claude:
-            return LLMConfig(provider: .claude, apiKey: claudeKey, model: claudeModel, baseURL: "")
+            return LLMConfig(provider: .claude, apiKey: KeychainService.string(forKey: AppSettings.claudeApiKeyKey) ?? "", model: claudeModel, baseURL: "")
         case .openAI:
-            return LLMConfig(provider: .openAI, apiKey: openAIKey, model: openAIModel, baseURL: openAIBaseURL)
+            return LLMConfig(provider: .openAI, apiKey: KeychainService.string(forKey: AppSettings.openAIApiKeyKey) ?? "", model: openAIModel, baseURL: openAIBaseURL)
         case .openRouter:
-            return LLMConfig(provider: .openRouter, apiKey: openRouterKey, model: openRouterModel, baseURL: "")
+            return LLMConfig(provider: .openRouter, apiKey: KeychainService.string(forKey: AppSettings.openRouterApiKeyKey) ?? "", model: openRouterModel, baseURL: "")
         case .ollama:
             return LLMConfig(
                 provider: .ollama,

@@ -7,6 +7,18 @@ struct ProjectSkillsView: View {
     @Binding var selectedSkill: Skill?
     let onPromote: (Skill) async -> Void
 
+    @State private var searchText = ""
+
+    private var searchedSkills: [Skill] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return skills }
+        return skills.filter { skill in
+            skill.name.localizedCaseInsensitiveContains(query)
+                || skill.displayName.localizedCaseInsensitiveContains(query)
+                || skill.description.localizedCaseInsensitiveContains(query)
+        }
+    }
+
     var body: some View {
         Group {
             if isLoading {
@@ -14,8 +26,14 @@ struct ProjectSkillsView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if skills.isEmpty {
                 emptyState
+            } else if searchedSkills.isEmpty {
+                ContentUnavailableView(
+                    "No Results",
+                    systemImage: "magnifyingglass",
+                    description: Text("No skills match \"\(searchText)\".")
+                )
             } else {
-                List(skills, selection: $selectedSkill) { skill in
+                List(searchedSkills, selection: $selectedSkill) { skill in
                     ProjectSkillRow(
                         skill: skill,
                         onPromote: { Task { await onPromote(skill) } }
@@ -28,6 +46,7 @@ struct ProjectSkillsView: View {
         }
         .navigationTitle(projectURL.map { "Project: \($0.lastPathComponent)" } ?? "Project")
         .frame(minWidth: 260)
+        .searchable(text: $searchText, prompt: "Search project skills")
     }
 
     private var emptyState: some View {

@@ -275,7 +275,8 @@ enum DescriptionLocale {
 }
 
 enum AppSettings {
-    // NOTE: Keys are stored in UserDefaults (@AppStorage) for developer tool simplicity.
+    // NOTE: API keys are stored in the Keychain (see KeychainService); these are only
+    // the account names. Non-secret preferences stay in UserDefaults (@AppStorage).
     static let claudeApiKeyKey      = "claudeApiKey"
     static let sandboxModelKey      = "sandboxModel"
     static let defaultModel         = "claude-haiku-4-5"
@@ -303,6 +304,18 @@ enum AppSettings {
     static let manualDescriptionLocaleKey = "manualDescriptionLocale"
 
     static let importedAgentFoldersKey = "importedAgentFolders"
+
+    /// One-time migration: move API keys previously stored in UserDefaults into the
+    /// Keychain, then remove the plaintext copies. Safe to call on every launch.
+    static func migrateApiKeysToKeychainIfNeeded(defaults: UserDefaults = .standard) {
+        for key in [claudeApiKeyKey, openAIApiKeyKey, openRouterApiKeyKey] {
+            guard let value = defaults.string(forKey: key), !value.isEmpty else { continue }
+            if KeychainService.string(forKey: key) == nil {
+                KeychainService.setString(value, forKey: key)
+            }
+            defaults.removeObject(forKey: key)
+        }
+    }
 
     static func currentDescriptionLocale(defaults: UserDefaults = .standard, locale: Locale = .autoupdatingCurrent) -> String {
         let mode = DescriptionLanguageMode(rawValue: defaults.string(forKey: descriptionLanguageModeKey) ?? "") ?? .system
@@ -336,21 +349,21 @@ enum AppSettings {
         case .claude:
             return LLMConfig(
                 provider: .claude,
-                apiKey: defaults.string(forKey: claudeApiKeyKey) ?? "",
+                apiKey: KeychainService.string(forKey: claudeApiKeyKey) ?? "",
                 model: defaults.string(forKey: sandboxModelKey) ?? defaultModel,
                 baseURL: ""
             )
         case .openAI:
             return LLMConfig(
                 provider: .openAI,
-                apiKey: defaults.string(forKey: openAIApiKeyKey) ?? "",
+                apiKey: KeychainService.string(forKey: openAIApiKeyKey) ?? "",
                 model: defaults.string(forKey: openAIModelKey) ?? defaultOpenAIModel,
                 baseURL: defaults.string(forKey: openAIBaseURLKey) ?? ""
             )
         case .openRouter:
             return LLMConfig(
                 provider: .openRouter,
-                apiKey: defaults.string(forKey: openRouterApiKeyKey) ?? "",
+                apiKey: KeychainService.string(forKey: openRouterApiKeyKey) ?? "",
                 model: defaults.string(forKey: openRouterModelKey) ?? defaultOpenRouterModel,
                 baseURL: ""
             )

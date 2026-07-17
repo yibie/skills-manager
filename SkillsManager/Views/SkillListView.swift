@@ -21,9 +21,11 @@ struct SkillListView: View {
     @Binding var selectedSkill: Skill?
     let onInstall: (Skill) async -> Void
     let onUninstall: (Skill) async -> Void
+    let onToggleStar: (Skill) -> Void
 
     @State private var listSelection: Set<Skill> = []
     @State private var selectedAllSkillsTab: AllSkillsTab = .local
+    @State private var searchText = ""
 
     private var pluginSkills: [Skill] {
         skills.filter {
@@ -66,14 +68,34 @@ struct SkillListView: View {
         }
     }
 
+    private var searchedSkills: [Skill] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return filteredSkills }
+        return filteredSkills.filter { skill in
+            skill.name.localizedCaseInsensitiveContains(query)
+                || skill.displayName.localizedCaseInsensitiveContains(query)
+                || skill.description.localizedCaseInsensitiveContains(query)
+                || skill.compatibleAgents.contains { $0.localizedCaseInsensitiveContains(query) }
+                || skill.tags.contains { $0.localizedCaseInsensitiveContains(query) }
+        }
+    }
+
     var body: some View {
         Group {
-            if filteredSkills.isEmpty {
-                ContentUnavailableView(
-                    filter == .all && selectedAllSkillsTab == .plugin ? "No Plugin Skills" : "No Skills",
-                    systemImage: "tray",
-                    description: Text(filter == .all && selectedAllSkillsTab == .plugin ? "No plugin-provided skills are available." : "No skills match the current filter.")
-                )
+            if searchedSkills.isEmpty {
+                if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !filteredSkills.isEmpty {
+                    ContentUnavailableView(
+                        "No Results",
+                        systemImage: "magnifyingglass",
+                        description: Text("No skills match \"\(searchText)\".")
+                    )
+                } else {
+                    ContentUnavailableView(
+                        filter == .all && selectedAllSkillsTab == .plugin ? "No Plugin Skills" : "No Skills",
+                        systemImage: "tray",
+                        description: Text(filter == .all && selectedAllSkillsTab == .plugin ? "No plugin-provided skills are available." : "No skills match the current filter.")
+                    )
+                }
             } else {
                 VStack(spacing: 0) {
                     if filter == .all {
@@ -88,11 +110,12 @@ struct SkillListView: View {
                     }
 
                     List(selection: $listSelection) {
-                        ForEach(filteredSkills) { skill in
+                        ForEach(searchedSkills) { skill in
                             SkillRow(
                                 skill: skill,
                                 onInstall: { Task { await onInstall(skill) } },
-                                onUninstall: { Task { await onUninstall(skill) } }
+                                onUninstall: { Task { await onUninstall(skill) } },
+                                onToggleStar: { onToggleStar(skill) }
                             )
                             .listRowSeparator(.hidden)
                             .tag(skill)
@@ -122,6 +145,7 @@ struct SkillListView: View {
         }
         .navigationTitle(filter.title)
         .frame(minWidth: 260)
+        .searchable(text: $searchText, prompt: "Search skills")
         // Sync single-selection → detail panel
         .onChange(of: listSelection) {
             selectedSkill = listSelection.count == 1 ? listSelection.first : nil
@@ -197,6 +221,7 @@ private struct SkillRow: View {
     let skill: Skill
     let onInstall: () -> Void
     let onUninstall: () -> Void
+    let onToggleStar: () -> Void
 
     var body: some View {
         SkillCard(
@@ -206,14 +231,33 @@ private struct SkillRow: View {
             if skill.isDescriptionTranslated {
                 SkillMetaBadge(text: "Translated", tint: .blue)
             }
-            if skill.isStarred {
-                SkillMetaBadge(text: "Starred", tint: .yellow)
-            }
             sourceTypeBadge
             sourceDetailBadge
             installStateBadge
         } actions: {
-            SkillActionButtons(skill: skill, onInstall: onInstall, onUninstall: onUninstall)
+            SkillActionButtons(
+                skill: skill,
+                onInstall: onInstall,
+                onUninstall: onUninstall,
+                onToggleStar: onToggleStar
+            )
+        }
+        .contextMenu {
+            Button(skill.isStarred ? "Unstar" : "Star") { onToggleStar() }
+            Divider()
+            switch skill.installState {
+            case .notInstalled:
+                Button("Install") { onInstall() }
+            case .installed:
+                Button("Uninstall", role: .destructive) { onUninstall() }
+            case .trial:
+                Button("Keep") { onInstall() }
+                Button("Discard", role: .destructive) { onUninstall() }
+            }
+            Divider()
+            Button("Copy ID") { copyToPasteboard(skill.id) }
+            Button("Show in Finder") { showSkillInFinder(skill) }
+            Button("Copy Path") { copyToPasteboard(skill.directoryPath.path()) }
         }
     }
 
@@ -270,9 +314,18 @@ private struct SkillActionButtons: View {
     let skill: Skill
     let onInstall: () -> Void
     let onUninstall: () -> Void
+    let onToggleStar: () -> Void
 
     var body: some View {
         HStack(spacing: 6) {
+            Button(action: onToggleStar) {
+                Image(systemName: skill.isStarred ? "star.fill" : "star")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .foregroundStyle(skill.isStarred ? .yellow : .secondary)
+            .help(skill.isStarred ? "Unstar" : "Star")
+
             switch skill.installState {
             case .notInstalled:
                 TextActionButton(label: "Install", action: onInstall)
@@ -284,10 +337,10 @@ private struct SkillActionButtons: View {
             }
 
             Menu {
-                Button("Copy ID") { copy(skill.id) }
-                Button("Show in Finder") { showInFinder() }
+                Button("Copy ID") { copyToPasteboard(skill.id) }
+                Button("Show in Finder") { showSkillInFinder(skill) }
                 Divider()
-                Button("Copy Path") { copy(skill.directoryPath.path()) }
+                Button("Copy Path") { copyToPasteboard(skill.directoryPath.path()) }
             } label: {
                 Text("More")
                     .font(.caption)
@@ -299,15 +352,15 @@ private struct SkillActionButtons: View {
         }
         .padding(.top, 2)
     }
+}
 
-    private func copy(_ text: String) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
-    }
+private func copyToPasteboard(_ text: String) {
+    NSPasteboard.general.clearContents()
+    NSPasteboard.general.setString(text, forType: .string)
+}
 
-    private func showInFinder() {
-        NSWorkspace.shared.activateFileViewerSelecting([skill.directoryPath])
-    }
+private func showSkillInFinder(_ skill: Skill) {
+    NSWorkspace.shared.activateFileViewerSelecting([skill.directoryPath])
 }
 
 private struct TextActionButton: View {
@@ -333,7 +386,8 @@ private struct TextActionButton: View {
         filter: .all,
         selectedSkill: $selected,
         onInstall: { _ in },
-        onUninstall: { _ in }
+        onUninstall: { _ in },
+        onToggleStar: { _ in }
     )
     .frame(width: 300, height: 500)
 }

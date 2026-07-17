@@ -113,7 +113,8 @@ struct ContentView: View {
                     filter: selectedFilter,
                     selectedSkill: $selectedSkill,
                     onInstall: { skill in await store.installSkill(skill) },
-                    onUninstall: { skill in await store.uninstallSkill(skill) }
+                    onUninstall: { skill in await store.uninstallSkill(skill) },
+                    onToggleStar: { skill in toggleStar(for: skill) }
                 )
             }
         } detail: {
@@ -143,16 +144,7 @@ struct ContentView: View {
                     isTranslatingDescription: store.isTranslatingDescriptions,
                     onToggleStar: {
                         guard let skill = currentSelectedSkill else { return }
-                        let skillID = skill.id
-                        let descriptor = FetchDescriptor<SkillRecord>(
-                            predicate: #Predicate { $0.skillID == skillID }
-                        )
-                        if let record = try? modelContext.fetch(descriptor).first {
-                            record.isStarred.toggle()
-                        } else {
-                            let record = SkillRecord(skillID: skillID, isStarred: true, installState: skill.installState.rawValue)
-                            modelContext.insert(record)
-                        }
+                        toggleStar(for: skill)
                     },
                     onPromote: { skill in await store.promoteSkill(skill) },
                     onInstallToAgent: { skill, agentIDs in
@@ -231,6 +223,7 @@ struct ContentView: View {
             _ = await (skills, discover)
             store.merge(records: skillRecords)
             store.startDiscoverDirectoryRefreshLoop()
+            store.startWatchingSkillDirectories()
         }
         .onChange(of: skillRecords) {
             store.merge(records: skillRecords)
@@ -261,6 +254,27 @@ struct ContentView: View {
         } message: {
             Text(store.errorMessage ?? "")
         }
+        .focusedSceneValue(\.skillCommandActions, SkillCommandActions(
+            refresh: { Task { await store.reloadSkills() } },
+            toggleStar: currentSelectedSkill.map { skill in { toggleStar(for: skill) } },
+            isStarred: currentSelectedSkill?.isStarred ?? false
+        ))
+    }
+
+    /// Toggles a skill's star in both SwiftData and the state file shared with the TUI.
+    private func toggleStar(for skill: Skill) {
+        let newValue = !skill.isStarred
+        let skillID = skill.id
+        let descriptor = FetchDescriptor<SkillRecord>(
+            predicate: #Predicate { $0.skillID == skillID }
+        )
+        if let record = try? modelContext.fetch(descriptor).first {
+            record.isStarred = newValue
+        } else {
+            let record = SkillRecord(skillID: skillID, isStarred: newValue, installState: skill.installState.rawValue)
+            modelContext.insert(record)
+        }
+        store.setSkillStarred(skill, isStarred: newValue)
     }
 }
 

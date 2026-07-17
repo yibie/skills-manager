@@ -3,14 +3,14 @@ import SwiftUI
 struct SettingsView: View {
     @AppStorage(AppSettings.llmProviderKey)      private var providerRaw   = LLMProvider.claude.rawValue
     // Claude
-    @AppStorage(AppSettings.claudeApiKeyKey)     private var claudeKey     = ""
+    @State private var claudeKey = ""
     @AppStorage(AppSettings.sandboxModelKey)     private var claudeModel   = AppSettings.defaultModel
     // OpenAI
-    @AppStorage(AppSettings.openAIApiKeyKey)     private var openAIKey     = ""
+    @State private var openAIKey = ""
     @AppStorage(AppSettings.openAIModelKey)      private var openAIModel   = AppSettings.defaultOpenAIModel
     @AppStorage(AppSettings.openAIBaseURLKey)    private var openAIBaseURL = ""
     // OpenRouter
-    @AppStorage(AppSettings.openRouterApiKeyKey) private var orKey         = ""
+    @State private var orKey = ""
     @AppStorage(AppSettings.openRouterModelKey)  private var orModel       = AppSettings.defaultOpenRouterModel
     // Ollama
     @AppStorage(AppSettings.ollamaBaseURLKey)    private var ollamaURL     = ""
@@ -60,6 +60,14 @@ struct SettingsView: View {
         .padding()
         .navigationTitle("Settings")
         .animation(.default, value: providerRaw)
+        .onAppear {
+            claudeKey = KeychainService.string(forKey: AppSettings.claudeApiKeyKey) ?? ""
+            openAIKey = KeychainService.string(forKey: AppSettings.openAIApiKeyKey) ?? ""
+            orKey = KeychainService.string(forKey: AppSettings.openRouterApiKeyKey) ?? ""
+        }
+        .onChange(of: claudeKey) { KeychainService.setString(claudeKey, forKey: AppSettings.claudeApiKeyKey) }
+        .onChange(of: openAIKey) { KeychainService.setString(openAIKey, forKey: AppSettings.openAIApiKeyKey) }
+        .onChange(of: orKey) { KeychainService.setString(orKey, forKey: AppSettings.openRouterApiKeyKey) }
     }
 
     // MARK: - Provider sections

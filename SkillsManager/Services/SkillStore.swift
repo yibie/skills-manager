@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import Foundation
 import Observation
 import CryptoKit
@@ -218,6 +219,14 @@ final class SkillStore {
     private var loadingDiscoverSkillDetails = Set<String>()
     private var hasRequestedDescriptionTranslation = false
     private let discoverDetailRefreshInterval: TimeInterval = 7 * 24 * 60 * 60
+    /// Last SwiftData records handed to `merge(records:)`; re-applied after every rescan.
+    private var persistedRecords: [SkillRecord] = []
+
+    // MARK: - Real-time directory monitoring
+
+    private let fileWatcher = FileWatcher()
+    private var fileWatcherCancellable: AnyCancellable?
+    private var fileWatcherReloadTask: Task<Void, Never>?
 
     init(
         claudeAdapter: ClaudeCodeAdapter = ClaudeCodeAdapter(),
@@ -251,6 +260,7 @@ final class SkillStore {
             let (claude, universal, openclaw) = try await (claudeSkills, universalSkills, openClawSkills)
             let merged = Self.mergeScannedSkills(claude + universal + openclaw)
             skills = await localizeSkills(merged)
+            applyPersistedSkillState()
             if hasRequestedDescriptionTranslation {
                 _ = await translateMissingSkillDescriptions()
             }
@@ -283,13 +293,63 @@ final class SkillStore {
     }
 
     func merge(records: [SkillRecord]) {
-        let lookup = Dictionary(uniqueKeysWithValues: records.map { ($0.skillID, $0) })
+        persistedRecords = records
+        applyPersistedSkillState()
+    }
+
+    /// Re-applies SwiftData records and the TUI-shared star file to the in-memory
+    /// skills. Runs after every scan so stars and install states survive reloads.
+    private func applyPersistedSkillState() {
+        let lookup = Dictionary(uniqueKeysWithValues: persistedRecords.map { ($0.skillID, $0) })
+        let sharedStarred = SharedStarredState.starredNames()
         for index in skills.indices {
-            let id = skills[index].id
-            if let record = lookup[id] {
-                skills[index].isStarred = record.isStarred
+            let record = lookup[skills[index].id]
+            skills[index].isStarred = (record?.isStarred ?? false) || sharedStarred.contains(skills[index].name)
+            if let record {
                 skills[index].installState = InstallState(rawValue: record.installState) ?? .notInstalled
             }
+        }
+    }
+
+    /// Sets a skill's star and writes through to the state file shared with the TUI.
+    /// The SwiftData record is updated by the caller (the view owns the ModelContext).
+    func setSkillStarred(_ skill: Skill, isStarred: Bool) {
+        if let index = skills.firstIndex(where: { $0.id == skill.id }) {
+            skills[index].isStarred = isStarred
+        }
+        SharedStarredState.setStarred(isStarred, skillName: skill.name)
+    }
+
+    // MARK: - Real-time directory monitoring
+
+    /// Watches every known agent skills directory and reloads the library when one
+    /// changes on disk (e.g. an install done from a terminal). Changes are debounced
+    /// so a batch of file writes collapses into a single rescan.
+    func startWatchingSkillDirectories() {
+        refreshWatchedSkillDirectories()
+        guard fileWatcherCancellable == nil else { return }
+        fileWatcherCancellable = fileWatcher.$lastChange
+            .dropFirst()
+            .sink { [weak self] _ in
+                self?.scheduleWatchedSkillsReload()
+            }
+    }
+
+    private func refreshWatchedSkillDirectories() {
+        let directories = claudeAdapter.skillsDirectories
+            + universalAdapter.skillsDirectories
+            + openClawAdapter.skillsDirectories
+        fileWatcher.watch(directories: directories)
+    }
+
+    private func scheduleWatchedSkillsReload() {
+        fileWatcherReloadTask?.cancel()
+        fileWatcherReloadTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            guard !Task.isCancelled, let self else { return }
+            await self.reloadSkills()
+            // Pick up skills directories that appeared since the last pass.
+            self.refreshWatchedSkillDirectories()
         }
     }
 

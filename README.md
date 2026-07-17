@@ -22,10 +22,10 @@ Coding agent skills are scattered everywhere. Each agent has its own format, ins
 
 - **Discover** skills from [skills.sh](https://skills.sh/) and community repositories, including full-site search beyond the initially loaded list
 - **Install** to one or multiple agents at once
-- **Test** skills in the built-in LLM sandbox before committing
-- **Manage** installed skills — update, remove, star favorites
-- **Monitor** all your agents and their skill directories in real time
-- **Translate** discovered skill summaries with bundled Chinese descriptions and on-demand LLM fallback for newly loaded entries
+- **Try** skills with your own LLM (Claude, OpenAI, OpenRouter, Ollama, or LM Studio) before installing
+- **Manage** installed skills — remove, star favorites (stars are shared with the terminal UI)
+- **Monitor** agent skill directories and refresh automatically when they change on disk
+- **Translate** discovered skill summaries with a bundled 8-language catalog and on-demand LLM fallback for newly loaded entries
 
 ## Requirements
 
@@ -103,11 +103,11 @@ OpenCode uses `$XDG_CONFIG_HOME/opencode/skills` (or `~/.config/opencode/skills`
 
 Discover starts fast from a local cache at `~/.skills-manager/cache/discover-directory.json`, then refreshes from skills.sh in the background. Search uses the skills.sh full-site API when online and falls back to cached query snapshots when offline.
 
-The app bundles a generated description translation catalog for Chinese summaries and still keeps an on-demand translation button as a temporary fallback for newly loaded or uncached descriptions. Local Ollama and LM Studio endpoints are normalized to IPv4 loopback (`127.0.0.1`) at runtime to avoid macOS `localhost` resolving to IPv6 `::1`.
+The app bundles a generated description translation catalog covering 8 languages (English, Simplified/Traditional Chinese, Japanese, Korean, French, German, Spanish) and still keeps an on-demand translation button as a temporary fallback for newly loaded or uncached descriptions. Local Ollama and LM Studio endpoints are normalized to IPv4 loopback (`127.0.0.1`) at runtime to avoid macOS `localhost` resolving to IPv6 `::1`.
 
 ## Architecture
 
-Pure local architecture — no backend, works offline except for network-backed features like Discover refresh/search, detail loading, translation fallback, and sandbox LLM calls. Reads and writes agent config files directly and uses local Git history for version management.
+Pure local architecture — no backend, works offline except for network-backed features like Discover refresh/search, detail loading, translation fallback, and LLM Try calls. Reads and writes agent config files directly. The terminal UI additionally keeps a local Git history of skill installs for version management (diff and rollback).
 
 Built with SwiftUI + Swift 6, SwiftData, macOS 14+.
 
@@ -141,10 +141,10 @@ skills-manager
 The Blessed TUI currently supports:
 - three-panel keyboard-first navigation
 - discover via [skills.sh](https://skills.sh/)
-- install / uninstall / star
+- install / uninstall / star (direct install currently targets Claude Code; Discover installs can target multiple agents; stars sync with the macOS app via `~/.skills-manager/tui-state.json`)
 - source-file opening and discover source-page opening
 - search, detail overlays, full refresh
-- version history is temporarily disabled
+- version history with diff and rollback (press `H`)
 - local / plugin differentiation, including Codex plugin cache and Pi package resources
 
 ## Roadmap

@@ -4,6 +4,11 @@ import SwiftData
 @main
 struct SkillsManagerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
+    init() {
+        AppSettings.migrateApiKeysToKeychainIfNeeded()
+    }
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             SkillRecord.self,
@@ -25,6 +30,9 @@ struct SkillsManagerApp: App {
             ContentView()
         }
         .modelContainer(sharedModelContainer)
+        .commands {
+            SkillCommands()
+        }
 
         Settings {
             SettingsView()
