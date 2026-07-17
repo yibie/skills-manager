@@ -15,6 +15,7 @@ struct ContentView: View {
     @State private var selectedFilter: SidebarFilter = .all
     @State private var selectedSkill: Skill? = nil
     @State private var selectedAgentDoc: AgentDoc? = nil
+    @State private var selectedConflict: SkillConflict? = nil
     @State private var selectedDiscoverSkillID: String? = nil
     @State private var pendingDiscoverTrySkill: DiscoverSkill? = nil
     @State private var pendingDiscoverInstallSkill: DiscoverSkill? = nil
@@ -45,7 +46,7 @@ struct ContentView: View {
         switch selectedFilter {
         case .project:
             return store.projectSkills.first { $0.id == selectedSkill.id } ?? selectedSkill
-        case .discover, .agentDocs, .inspector:
+        case .discover, .agentDocs, .inspector, .conflicts:
             return selectedSkill
         case .all, .installed, .starred, .trial, .agent, .source:
             return store.skills.first { $0.id == selectedSkill.id } ?? selectedSkill
@@ -60,6 +61,7 @@ struct ContentView: View {
                 discoverableCount: store.discoverableSkillTotal,
                 projectSkillCount: store.projectSkills.count,
                 agentDocCount: store.agentDocs.count,
+                conflictCount: store.conflicts.count,
                 currentProjectURL: store.currentProjectURL
             )
                 .navigationSplitViewColumnWidth(min: 200, ideal: 220)
@@ -110,6 +112,11 @@ struct ContentView: View {
                 )
             } else if selectedFilter == .inspector {
                 InspectorView(model: inspectorModel)
+            } else if selectedFilter == .conflicts {
+                ConflictsView(
+                    conflicts: store.conflicts,
+                    selectedConflict: $selectedConflict
+                )
             } else {
                 SkillListView(
                     skills: store.skills,
@@ -143,6 +150,8 @@ struct ContentView: View {
                 AgentDocDetailView(doc: selectedAgentDoc)
             } else if selectedFilter == .inspector {
                 InspectorDetailView(model: inspectorModel)
+            } else if selectedFilter == .conflicts {
+                ConflictsDetailView(conflict: selectedConflict)
             } else {
                 SkillDetailView(
                     skill: currentSelectedSkill,
@@ -171,6 +180,7 @@ struct ContentView: View {
             selectedSkill = nil
             selectedAgentDoc = nil
             selectedDiscoverSkillID = nil
+            selectedConflict = nil
         }
         .fileImporter(
             isPresented: $isProjectPickerPresented,

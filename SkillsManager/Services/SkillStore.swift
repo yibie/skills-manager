@@ -183,6 +183,7 @@ final class SkillStore {
     // MARK: - State
 
     var skills: [Skill] = []
+    var conflicts: [SkillConflict] = []
     var discoverableSkills: [DiscoverSkill] = []
     var discoverSearchResults: [DiscoverSkill] = []
     var discoverableSkillDetails: [String: DiscoverSkill] = [:]
@@ -258,7 +259,9 @@ final class SkillStore {
             async let universalSkills = universalAdapter.scanSkills()
             async let openClawSkills = openClawAdapter.scanSkills()
             let (claude, universal, openclaw) = try await (claudeSkills, universalSkills, openClawSkills)
-            let merged = Self.mergeScannedSkills(claude + universal + openclaw)
+            let scanned = claude + universal + openclaw
+            conflicts = SkillConflictDetection.detect(in: scanned)
+            let merged = Self.mergeScannedSkills(scanned)
             skills = await localizeSkills(merged)
             applyPersistedSkillState()
             if hasRequestedDescriptionTranslation {
@@ -660,6 +663,14 @@ final class SkillStore {
 
         // Remove from memory immediately — row disappears without a reload
         skills.removeAll { $0.id == skill.id }
+
+        // Keep the conflict list consistent with the removal.
+        let removedPath = skill.directoryPath.resolvingSymlinksInPath().standardizedFileURL.path
+        conflicts = conflicts.compactMap { conflict in
+            let remaining = conflict.instances.filter { $0.path != removedPath }
+            guard remaining.count != conflict.instances.count else { return conflict }
+            return remaining.count > 1 ? SkillConflict(name: conflict.name, instances: remaining) : nil
+        }
     }
 
     /// Convenience batch variant used by multi-select.

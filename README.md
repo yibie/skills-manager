@@ -23,8 +23,9 @@ Coding agent skills are scattered everywhere. Each agent has its own format, ins
 - **Discover** skills from [skills.sh](https://skills.sh/) and community repositories, including full-site search beyond the initially loaded list
 - **Install** to one or multiple agents at once
 - **Try** skills with your own LLM (Claude, OpenAI, OpenRouter, Ollama, or LM Studio) before installing
-- **Manage** installed skills — remove, star favorites (stars are shared with the terminal UI)
+- **Manage** installed skills — remove, star favorites (stars are shared with the terminal UI), and spot diverged same-name copies across agents (Conflicts)
 - **Monitor** agent skill directories and refresh automatically when they change on disk
+- **Inspect** what an agent actually loads for a project — the Effective-Agent tree with active / shadowed / missing / unmodeled annotations (sidebar → Tools → 检视器)
 - **Translate** discovered skill summaries with a bundled 8-language catalog and on-demand LLM fallback for newly loaded entries
 
 ## Requirements
@@ -150,7 +151,7 @@ The Blessed TUI currently supports:
 ## Roadmap
 
 - [ ] Auto-update detection for discovered skills
-- [ ] Skill conflict detection across agents
+- [x] Skill conflict detection across agents
 - [ ] Export / import skill sets
 - [ ] Team sync via shared skills repository
 

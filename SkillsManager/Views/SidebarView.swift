@@ -6,6 +6,7 @@ struct SidebarView: View {
     var discoverableCount: Int = 0
     var projectSkillCount: Int = 0
     var agentDocCount: Int = 0
+    var conflictCount: Int = 0
     var currentProjectURL: URL? = nil
 
     // Precomputed counts to avoid inline filtering in the view body
@@ -51,6 +52,9 @@ struct SidebarView: View {
                 SidebarRow(filter: .installed, count: installedCount, selectedFilter: selectedFilter)
                 SidebarRow(filter: .starred, count: starredCount, selectedFilter: selectedFilter)
                 SidebarRow(filter: .trial, count: trialCount, selectedFilter: selectedFilter)
+                if conflictCount > 0 {
+                    SidebarRow(filter: .conflicts, count: conflictCount, selectedFilter: selectedFilter)
+                }
             }
 
             Section("Agents") {

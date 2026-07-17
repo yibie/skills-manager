@@ -5,7 +5,7 @@
 > **进展**(2026-07-17):
 > - M1 ✅ 已合入 main(spec 格式 + claude-code.yaml 种子 spec + skm validate/check)
 > - M2 ✅ 已合入 main(skm inspect 输出 Effective-Agent JSON,契约见 effective-agent-schema.json)
-> - M3 🔍 开发完成,在分支 `worktree-agent-a40681d9285a5696d` 等待视觉验收后合并
+> - M3 ✅ 已合入 main(应用内检视器视图,视觉验收通过:空态/加载态/详情渲染正常)
 > - M4–M6 ⬜ 未开始
 
 ## 背景与产品决策

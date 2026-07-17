@@ -6,6 +6,7 @@ enum SidebarFilter: Hashable, Sendable {
     case installed
     case starred
     case trial
+    case conflicts
     case project
     case agentDocs
     case inspector
@@ -19,6 +20,7 @@ enum SidebarFilter: Hashable, Sendable {
         case .installed:        "Installed"
         case .starred:          "Starred"
         case .trial:            "Trial"
+        case .conflicts:        "Conflicts"
         case .project:          "Project"
         case .agentDocs:        "Agent Docs"
         case .inspector:        "检视器"
@@ -34,6 +36,7 @@ enum SidebarFilter: Hashable, Sendable {
         case .installed: "checkmark.circle"
         case .starred:   "star.fill"
         case .trial:     "flask"
+        case .conflicts: "exclamationmark.triangle"
         case .project:   "folder"
         case .agentDocs: "doc.text"
         case .inspector: "eye"

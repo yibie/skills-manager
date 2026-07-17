@@ -43,7 +43,7 @@ struct SkillListView: View {
 
     private var filteredSkills: [Skill] {
         switch filter {
-        case .discover, .project, .agentDocs, .inspector:
+        case .discover, .project, .agentDocs, .inspector, .conflicts:
             return []
         case .all:
             return selectedAllSkillsTab == .plugin ? pluginSkills : standaloneSkills
