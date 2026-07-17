@@ -11,6 +11,7 @@ struct ContentView: View {
     @AppStorage(AppSettings.manualDescriptionLocaleKey) private var manualDescriptionLocale = ""
 
     @State private var store = SkillStore()
+    @State private var inspectorModel = InspectorViewModel()
     @State private var selectedFilter: SidebarFilter = .all
     @State private var selectedSkill: Skill? = nil
     @State private var selectedAgentDoc: AgentDoc? = nil
@@ -44,7 +45,7 @@ struct ContentView: View {
         switch selectedFilter {
         case .project:
             return store.projectSkills.first { $0.id == selectedSkill.id } ?? selectedSkill
-        case .discover, .agentDocs:
+        case .discover, .agentDocs, .inspector:
             return selectedSkill
         case .all, .installed, .starred, .trial, .agent, .source:
             return store.skills.first { $0.id == selectedSkill.id } ?? selectedSkill
@@ -107,6 +108,8 @@ struct ContentView: View {
                     onTargets: { isAgentDocTargetsPresented = true },
                     onOpen: { doc in store.openDocInEditor(doc) }
                 )
+            } else if selectedFilter == .inspector {
+                InspectorView(model: inspectorModel)
             } else {
                 SkillListView(
                     skills: store.skills,
@@ -138,6 +141,8 @@ struct ContentView: View {
                 )
             } else if selectedFilter == .agentDocs {
                 AgentDocDetailView(doc: selectedAgentDoc)
+            } else if selectedFilter == .inspector {
+                InspectorDetailView(model: inspectorModel)
             } else {
                 SkillDetailView(
                     skill: currentSelectedSkill,
