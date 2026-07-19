@@ -117,6 +117,28 @@ struct ContentView: View {
                     conflicts: store.conflicts,
                     selectedConflict: $selectedConflict
                 )
+            } else if case .agent(let name) = selectedFilter {
+                AgentHomeView(
+                    agentName: name,
+                    skills: store.skills,
+                    conflicts: store.conflicts,
+                    specEntry: AgentHomeSupport.specEntry(
+                        forAgentID: AgentRegistry.all.first { $0.displayName == name }?.id,
+                        in: inspectorModel.specs
+                    ),
+                    selectedSkill: $selectedSkill,
+                    onInstall: { skill in await store.installSkill(skill) },
+                    onUninstall: { skill in await store.uninstallSkill(skill) },
+                    onToggleStar: { skill in toggleStar(for: skill) },
+                    onOpenInspector: {
+                        if let definition = AgentRegistry.all.first(where: { $0.displayName == name }),
+                           let entry = AgentHomeSupport.specEntry(forAgentID: definition.id, in: inspectorModel.specs) {
+                            inspectorModel.selectedSpecID = entry.id
+                        }
+                        selectedFilter = .inspector
+                    },
+                    onShowConflicts: { selectedFilter = .conflicts }
+                )
             } else {
                 SkillListView(
                     skills: store.skills,

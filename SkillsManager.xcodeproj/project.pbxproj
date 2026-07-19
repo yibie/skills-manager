@@ -61,6 +61,7 @@
 		C87738BC42E63E3CE956E613 /* ARCHITECTURE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 9D29098B7BD253920F28EE9B /* ARCHITECTURE.txt */; };
 		C97763192A86A617562AAB18 /* InspectorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA2BD64708D00C218E6E66C /* InspectorViewModel.swift */; };
 		CC1B15063364653AB8E743BD /* SkillCardComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36F52D61563BCAA47F079745 /* SkillCardComponents.swift */; };
+		D3D6586B7B3645C0A98E2818 /* AgentHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7367BA83EB998E8C889334EA /* AgentHomeView.swift */; };
 		DAE61282D9FE7ADC6DBEB7CB /* DiscoverDirectoryCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 109884F853F35BE813AA1494 /* DiscoverDirectoryCache.swift */; };
 		DD04ABF51638C20A9718628F /* SOUL.txt in Resources */ = {isa = PBXBuildFile; fileRef = C83A70EEB7E8A34E16C9D4C8 /* SOUL.txt */; };
 		DF192D807118C9C9E4CCBEDA /* DiscoverInstallActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 009782B1278EBB6BF3791164 /* DiscoverInstallActivity.swift */; };
@@ -97,6 +98,7 @@
 		5427F0708C634AC8F5F4B080 /* Skill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Skill.swift; sourceTree = "<group>"; };
 		57E8B78AFE5E90D7D1B044AC /* SidebarFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarFilter.swift; sourceTree = "<group>"; };
 		71E86521947227FAD14E43AA /* SkillsManager.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SkillsManager.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7367BA83EB998E8C889334EA /* AgentHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentHomeView.swift; sourceTree = "<group>"; };
 		777FA5C1F7F6485BB8724567 /* InspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorView.swift; sourceTree = "<group>"; };
 		7C2C11FFC9FF1183A71189CA /* FileWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileWatcher.swift; sourceTree = "<group>"; };
 		7C4C20C0D4C370A7AFAA1BD1 /* SkillCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillCommands.swift; sourceTree = "<group>"; };
@@ -167,6 +169,7 @@
 			children = (
 				12943C439F6FC3F2BF4452B1 /* AgentDocsView.swift */,
 				8D4D79A6E3D895A4272F6459 /* AgentDocTargetsView.swift */,
+				7367BA83EB998E8C889334EA /* AgentHomeView.swift */,
 				05198F91ECF1B27BD6EFBF07 /* AgentMultiSelectList.swift */,
 				F67A39EF6AF1B4C7E1569671 /* ConflictsView.swift */,
 				2F161109A29CF7DCE1257393 /* ContentView.swift */,
@@ -389,6 +392,7 @@
 				4BFB23D2FABDBE68C5BEC0C9 /* AgentDocsService.swift in Sources */,
 				38434466546D19124A7C0EEB /* AgentDocsView.swift in Sources */,
 				2873AA910098AE189DD6D040 /* AgentEntryFileRegistry.swift in Sources */,
+				D3D6586B7B3645C0A98E2818 /* AgentHomeView.swift in Sources */,
 				F4E3A8CC9FDA4208487019FB /* AgentMultiSelectList.swift in Sources */,
 				B523517C4CB7E62064E84CCF /* AgentRegistry.swift in Sources */,
 				758801517F2A42748B68DD20 /* AppDelegate.swift in Sources */,
