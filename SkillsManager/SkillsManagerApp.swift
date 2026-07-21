@@ -12,6 +12,7 @@ struct SkillsManagerApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             SkillRecord.self,
+            CollectionRecord.self,
         ])
         let config = ModelConfiguration(
             "SkillsManager",
