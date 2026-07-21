@@ -204,6 +204,8 @@ final class SkillStore {
     var isTranslatingDescriptions = false
     var lastTranslationSummary: DescriptionTranslationSummary?
     var errorMessage: String?
+    /// 挂载状态缓存:key 见 mountStatusKey;由 refreshMountStatuses 重建。
+    var mountStatuses: [String: MountStatus] = [:]
 
     // MARK: - Services
 
@@ -1464,6 +1466,33 @@ final class SkillStore {
                 }
             }
         }
+    }
+
+    // MARK: - Collection mount status
+
+    func mountStatus(collectionID: UUID, agentID: String) -> MountStatus {
+        mountStatuses["\(collectionID.uuidString):\(agentID)"] ?? .unmounted
+    }
+
+    /// 以磁盘为准重建所有「组 × agent」的状态灯数据。skills 刷新或分组变更后调用。
+    func refreshMountStatuses(collections: [CollectionRecord]) {
+        var map: [String: MountStatus] = [:]
+        for collection in collections {
+            let members = collection.memberSkillIDs.compactMap { id in skills.first { $0.id == id } }
+            for agentID in Set(collection.mountedAgentIDs) {
+                guard let definition = AgentRegistry.agent(id: agentID) else { continue }
+                let linked = ActivationService.probeLinkedCount(
+                    memberSkills: members,
+                    agentSkillsDir: AgentRegistry.resolvedSkillsDir(for: definition)
+                )
+                map["\(collection.id.uuidString):\(agentID)"] = ActivationService.status(
+                    intentMounted: true,
+                    linkedCount: linked,
+                    memberCount: members.count
+                )
+            }
+        }
+        mountStatuses = map
     }
 }
 

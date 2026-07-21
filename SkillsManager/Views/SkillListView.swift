@@ -22,6 +22,9 @@ struct SkillListView: View {
     let onInstall: (Skill) async -> Void
     let onUninstall: (Skill) async -> Void
     let onToggleStar: (Skill) -> Void
+    var onAddToCollection: ((Skill) -> Void)? = nil
+    var onRemoveFromCollection: ((Skill) -> Void)? = nil
+    var memberIDs: Set<String>? = nil  // filter == .collection 时的成员白名单;nil 视为空
 
     @State private var listSelection: Set<Skill> = []
     @State private var selectedAllSkillsTab: AllSkillsTab = .local
@@ -43,7 +46,7 @@ struct SkillListView: View {
 
     private var filteredSkills: [Skill] {
         switch filter {
-        case .discover, .project, .agentDocs, .conflicts:
+        case .controlCenter, .discover, .project, .agentDocs, .conflicts:
             return []
         case .all:
             return selectedAllSkillsTab == .plugin ? pluginSkills : standaloneSkills
@@ -65,6 +68,8 @@ struct SkillListView: View {
                 case .projectLocal: false
                 }
             }
+        case .collection:
+            return skills.filter { memberIDs?.contains($0.id) ?? false }
         }
     }
 

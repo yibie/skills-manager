@@ -46,6 +46,10 @@ struct SidebarView: View {
 
     var body: some View {
         List(selection: $selectedFilter) {
+            Section {
+                SidebarRow(filter: .controlCenter, count: 0, selectedFilter: selectedFilter)
+            }
+
             Section("Library") {
                 SidebarRow(filter: .discover, count: discoverableCount, selectedFilter: selectedFilter)
                 SidebarRow(filter: .all, count: allCount, selectedFilter: selectedFilter)

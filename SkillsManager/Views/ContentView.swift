@@ -7,11 +7,12 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.locale) private var locale
     @Query private var skillRecords: [SkillRecord]
+    @Query(sort: \CollectionRecord.sortOrder) private var collectionRecords: [CollectionRecord]
     @AppStorage(AppSettings.descriptionLanguageModeKey) private var descriptionLanguageMode = DescriptionLanguageMode.system.rawValue
     @AppStorage(AppSettings.manualDescriptionLocaleKey) private var manualDescriptionLocale = ""
 
     @State private var store = SkillStore()
-    @State private var selectedFilter: SidebarFilter = .all
+    @State private var selectedFilter: SidebarFilter = .controlCenter
     @State private var selectedSkill: Skill? = nil
     @State private var selectedAgentDoc: AgentDoc? = nil
     @State private var selectedConflict: SkillConflict? = nil
@@ -45,9 +46,9 @@ struct ContentView: View {
         switch selectedFilter {
         case .project:
             return store.projectSkills.first { $0.id == selectedSkill.id } ?? selectedSkill
-        case .discover, .agentDocs, .conflicts:
+        case .discover, .agentDocs, .conflicts, .controlCenter:
             return selectedSkill
-        case .all, .installed, .starred, .trial, .agent, .source:
+        case .all, .installed, .starred, .trial, .agent, .source, .collection:
             return store.skills.first { $0.id == selectedSkill.id } ?? selectedSkill
         }
     }
@@ -65,7 +66,30 @@ struct ContentView: View {
             )
                 .navigationSplitViewColumnWidth(min: 200, ideal: 220)
         } content: {
-            if selectedFilter == .discover {
+            if selectedFilter == .controlCenter {
+                ControlCenterView(
+                    collections: collectionRecords,
+                    skills: store.skills,
+                    detectedAgents: AgentRegistry.installedAgents(),
+                    statusFor: { store.mountStatus(collectionID: $0.id, agentID: $1) },
+                    onOpen: { selectedFilter = .collection($0.id, name: $0.name) },
+                    onCreate: { name in createCollection(name: name) },
+                    onToggleAgent: { collection, agentID, mount in
+                        setMounted(collection: collection, agentID: agentID, mount: mount)
+                    },
+                    onReapply: { collection, agentID in
+                        setMounted(collection: collection, agentID: agentID, mount: true)
+                    },
+                    onRename: { collection, name in
+                        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !trimmed.isEmpty { collection.name = trimmed }
+                    },
+                    onDelete: { collection in
+                        modelContext.delete(collection)
+                        store.refreshMountStatuses(collections: collectionRecords)
+                    }
+                )
+            } else if selectedFilter == .discover {
                 DiscoverView(
                     category: store.discoverCategory,
                     skills: resolvedDiscoverSkills,
@@ -136,7 +160,13 @@ struct ContentView: View {
                 )
             }
         } detail: {
-            if selectedFilter == .discover {
+            if selectedFilter == .controlCenter {
+                ContentUnavailableView(
+                    "选择分组",
+                    systemImage: "rectangle.on.rectangle",
+                    description: Text("在控制台打开分组查看成员,或从 Library 选择技能。")
+                )
+            } else if selectedFilter == .discover {
                 DiscoverDetailView(
                     entry: selectedDiscoverSkill,
                     isInstalled: selectedDiscoverSkill.map { entry in
@@ -242,12 +272,16 @@ struct ContentView: View {
             async let skills: Void = store.reloadSkills()
             async let discover: Void = store.reloadDiscoverableSkillsDirectory()
             _ = await (skills, discover)
+            store.refreshMountStatuses(collections: collectionRecords)
             store.merge(records: skillRecords)
             store.startDiscoverDirectoryRefreshLoop()
             store.startWatchingSkillDirectories()
         }
         .onChange(of: skillRecords) {
             store.merge(records: skillRecords)
+        }
+        .onChange(of: collectionRecords) {
+            store.refreshMountStatuses(collections: collectionRecords)
         }
         .onChange(of: descriptionLanguageMode) {
             Task {
@@ -280,6 +314,41 @@ struct ContentView: View {
             toggleStar: currentSelectedSkill.map { skill in { toggleStar(for: skill) } },
             isStarred: currentSelectedSkill?.isStarred ?? false
         ))
+    }
+
+    // MARK: - Collections
+
+    private func createCollection(name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let record = CollectionRecord(name: trimmed, sortOrder: collectionRecords.count)
+        modelContext.insert(record)
+        store.refreshMountStatuses(collections: collectionRecords)
+    }
+
+    /// 挂载/卸载 组→agent:先执行磁盘操作,再更新装载意图,最后刷新扫描与状态灯。
+    private func setMounted(collection: CollectionRecord, agentID: String, mount: Bool) {
+        guard let definition = AgentRegistry.agent(id: agentID) else { return }
+        let members = collection.memberSkillIDs.compactMap { id in store.skills.first { $0.id == id } }
+        let dir = AgentRegistry.resolvedSkillsDir(for: definition)
+        if mount {
+            do {
+                let report = try ActivationService.mount(skills: members, agentSkillsDir: dir)
+                if !collection.mountedAgentIDs.contains(agentID) {
+                    collection.mountedAgentIDs.append(agentID)
+                }
+                if !report.skipped.isEmpty { store.errorMessage = report.summaryText }
+            } catch {
+                store.errorMessage = error.localizedDescription
+                return
+            }
+        } else {
+            let report = ActivationService.unmount(skills: members, agentSkillsDir: dir)
+            collection.mountedAgentIDs.removeAll { $0 == agentID }
+            if !report.skipped.isEmpty { store.errorMessage = report.summaryText }
+        }
+        Task { await store.reloadSkills() }
+        store.refreshMountStatuses(collections: collectionRecords)
     }
 
     /// Toggles a skill's star in both SwiftData and the state file shared with the TUI.
