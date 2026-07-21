@@ -93,10 +93,6 @@ struct SidebarView: View {
                 }
             }
 
-            Section("Tools") {
-                SidebarRow(filter: .inspector, count: 0, selectedFilter: selectedFilter)
-            }
-
             if currentProjectURL != nil {
                 Section("Project") {
                     SidebarRow(filter: .project, count: projectSkillCount, selectedFilter: selectedFilter)

@@ -9,7 +9,6 @@ enum SidebarFilter: Hashable, Sendable {
     case conflicts
     case project
     case agentDocs
-    case inspector
     case agent(String)
     case source(String)
 
@@ -23,7 +22,6 @@ enum SidebarFilter: Hashable, Sendable {
         case .conflicts:        "Conflicts"
         case .project:          "Project"
         case .agentDocs:        "Agent Docs"
-        case .inspector:        "检视器"
         case .agent(let name):  name
         case .source(let name): name
         }
@@ -39,7 +37,6 @@ enum SidebarFilter: Hashable, Sendable {
         case .conflicts: "exclamationmark.triangle"
         case .project:   "folder"
         case .agentDocs: "doc.text"
-        case .inspector: "eye"
         case .agent:     "cpu"
         case .source:    "shippingbox"
         }

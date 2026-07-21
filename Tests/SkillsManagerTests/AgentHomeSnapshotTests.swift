@@ -1,16 +1,15 @@
 import AppKit
 import SwiftUI
 import Testing
-import SkillsKernel
 @testable import SkillsManager
 
 /// Offscreen visual-acceptance harness for the agent home page: renders
-/// AgentHomeView with and without a matching adapter spec to /tmp for eyeballing:
+/// AgentHomeView (header card + optional conflict card + skill list) to /tmp
+/// for eyeballing:
 ///   swift test --filter AgentHomeSnapshot
-/// Unlike InspectorSnapshotTests, the hosting view is placed in a real (parked
-/// offscreen) NSWindow and the run loop is pumped before caching — AgentHomeView
-/// embeds a full SkillListView and its buttons/card borders otherwise render
-/// incompletely (missing buttons, ghost duplicates).
+/// The hosting view is placed in a real (parked offscreen) NSWindow and the run
+/// loop is pumped before caching — AgentHomeView embeds a full SkillListView
+/// and its buttons/card borders otherwise render incompletely.
 struct AgentHomeSnapshotTests {
     @MainActor
     private func renderPNG<V: View>(_ view: V, size: NSSize) throws -> Data {
@@ -33,24 +32,8 @@ struct AgentHomeSnapshotTests {
         return try #require(rep.representation(using: .png, properties: [:]))
     }
 
-    @MainActor
-    private func agentHome(agentName: String, specEntry: SpecCatalogEntry?, conflicts: [SkillConflict]) -> AgentHomeView {
-        AgentHomeView(
-            agentName: agentName,
-            skills: Skill.mockSkills,
-            conflicts: conflicts,
-            specEntry: specEntry,
-            selectedSkill: .constant(nil),
-            onInstall: { _ in },
-            onUninstall: { _ in },
-            onToggleStar: { _ in },
-            onOpenInspector: {},
-            onShowConflicts: {}
-        )
-    }
-
     @Test @MainActor
-    func agentHomeWithSpec() throws {
+    func agentHomeWithConflict() throws {
         let conflict = SkillConflict(
             name: "commit",
             instances: [
@@ -58,25 +41,16 @@ struct AgentHomeSnapshotTests {
                 SkillConflictInstance(path: "/b/commit", agents: ["Cursor"], contentHash: "bbbb"),
             ]
         )
-        let spec = SpecCatalogEntry(
-            url: URL(fileURLWithPath: "/specs/claude-code.yaml"),
-            platformID: "claude-code",
-            platformName: "Claude Code",
-            loadError: nil
-        )
-        let png = try renderPNG(
-            agentHome(agentName: "Claude Code", specEntry: spec, conflicts: [conflict]),
-            size: NSSize(width: 560, height: 800)
-        )
-        try png.write(to: URL(fileURLWithPath: "/tmp/agent-home-with-spec.png"))
-    }
-
-    @Test @MainActor
-    func agentHomeWithoutSpec() throws {
-        let png = try renderPNG(
-            agentHome(agentName: "Cursor", specEntry: nil, conflicts: []),
-            size: NSSize(width: 560, height: 800)
-        )
-        try png.write(to: URL(fileURLWithPath: "/tmp/agent-home-without-spec.png"))
+        let png = try renderPNG(AgentHomeView(
+            agentName: "Claude Code",
+            skills: Skill.mockSkills,
+            conflicts: [conflict],
+            selectedSkill: .constant(nil),
+            onInstall: { _ in },
+            onUninstall: { _ in },
+            onToggleStar: { _ in },
+            onShowConflicts: {}
+        ), size: NSSize(width: 560, height: 800))
+        try png.write(to: URL(fileURLWithPath: "/tmp/agent-home.png"))
     }
 }

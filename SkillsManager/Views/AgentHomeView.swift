@@ -1,20 +1,13 @@
 import SwiftUI
 import AppKit
-import SkillsKernel
 
 // MARK: - Agent 主页(IA 重组 v1)
-// 侧边栏 Agents 从过滤器升级为目的地:每个 agent 一个主页——看懂它(检视器
-// 深链),打理它(skills 列表 + 冲突)。无 adapter spec 的平台诚实降级,不假装
-// 能检视。Skills 区完整复用 SkillListView(搜索/星标/右键/批量)。
+// 侧边栏 Agents 从过滤器升级为目的地:每个 agent 一个主页——看懂它(检测状态、
+// skills 目录),打理它(skills 列表 + 冲突)。Skills 区完整复用 SkillListView
+// (搜索/星标/右键/批量)。
 
 /// AgentHomeView 的纯逻辑,抽出来便于单元测试。
 enum AgentHomeSupport {
-    /// 按平台 id 匹配可用 spec(解析失败的条目不参与匹配)。
-    static func specEntry(forAgentID agentID: String?, in specs: [SpecCatalogEntry]) -> SpecCatalogEntry? {
-        guard let agentID else { return nil }
-        return specs.first { $0.platformID == agentID && $0.loadError == nil }
-    }
-
     /// 涉及某 agent 的冲突(该 agent 的目录里有分叉副本)。
     static func conflicts(involving agentName: String, from conflicts: [SkillConflict]) -> [SkillConflict] {
         conflicts.filter { conflict in
@@ -27,13 +20,10 @@ struct AgentHomeView: View {
     let agentName: String
     let skills: [Skill]
     let conflicts: [SkillConflict]
-    /// 该平台匹配到的 spec;nil = 暂无 adapter spec。
-    let specEntry: SpecCatalogEntry?
     @Binding var selectedSkill: Skill?
     let onInstall: (Skill) async -> Void
     let onUninstall: (Skill) async -> Void
     let onToggleStar: (Skill) -> Void
-    let onOpenInspector: () -> Void
     let onShowConflicts: () -> Void
 
     private var definition: AgentDefinition? {
@@ -52,7 +42,6 @@ struct AgentHomeView: View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 10) {
                 headerCard
-                inspectorCard
                 if !agentConflicts.isEmpty {
                     conflictsCard
                 }
@@ -115,42 +104,6 @@ struct AgentHomeView: View {
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 .help("Copy skills directory path")
-            }
-        }
-        .cardStyle()
-    }
-
-    // MARK: "实际加载"卡片
-
-    @ViewBuilder
-    private var inspectorCard: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "eye")
-                .foregroundStyle(.secondary)
-            if specEntry != nil {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("实际加载")
-                        .font(.callout)
-                        .fontWeight(.medium)
-                    Text("该平台有 adapter spec,可在检视器中渲染它实际加载的资源树。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button("在检视器中打开", action: onOpenInspector)
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-            } else {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("实际加载")
-                        .font(.callout)
-                        .fontWeight(.medium)
-                    Text("该平台暂无 adapter spec——资源树检视将随 M4 逐步覆盖(Codex、OpenClaw、Hermes、Pi 优先)。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer()
             }
         }
         .cardStyle()
