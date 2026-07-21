@@ -1,5 +1,0 @@
-{
-  "model": "opus",
-  "enabledPlugins": {"a@m": true},
-  "hooks": {"PreToolUse": [], "Stop": []}
-}

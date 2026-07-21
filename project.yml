@@ -8,10 +8,6 @@ options:
   createIntermediateGroups: true
 
 packages:
-  # 本地根 Package:提供 SkillsKernel(Effective-Agent 检视器内核,
-  # 含 platform-specs 打包资源;Bundle.module 由 SPM 自动处理)
-  SkillsManagerPackage:
-    path: .
   swift-markdown:
     url: https://github.com/swiftlang/swift-markdown.git
     from: "0.4.0"
@@ -36,8 +32,6 @@ targets:
         product: Markdown
       - package: MarkdownView
         product: MarkdownView
-      - package: SkillsManagerPackage
-        product: SkillsKernel
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.skillsmanager.SkillsManager
