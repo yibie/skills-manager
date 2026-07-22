@@ -54,7 +54,7 @@ enum ActivationService {
     }
 
     /// 挂载:确保每个技能有 canonical 副本,再在 agentSkillsDir 建 link。
-    /// 冲突(目标已有同名实体)跳过该技能并记录,不阻塞整组。
+    /// 逐技能错误(冲突、IO 失败等)记入 skipped,不阻塞整组;仅 agentSkillsDir 创建失败抛出。
     static func mount(
         skills: [Skill],
         agentSkillsDir: URL,
@@ -69,8 +69,8 @@ enum ActivationService {
                 let link = agentSkillsDir.appendingPathComponent(SymlinkInstaller.sanitize(skill.name))
                 try createLink(from: canonical, at: link, fm: fm)
                 report.changed.append(skill.id)
-            } catch ActivationError.conflict(let url) {
-                report.skipped.append(.init(skillID: skill.id, reason: "目标已存在 \(url.lastPathComponent)"))
+            } catch {
+                report.skipped.append(.init(skillID: skill.id, reason: error.localizedDescription))
             }
         }
         return report
@@ -112,8 +112,8 @@ enum ActivationService {
         skill.canonicalPath ?? canonicalDir.appendingPathComponent(SymlinkInstaller.sanitize(skill.name))
     }
 
-    /// 确保技能在 canonical 有实体副本:.local 实体迁移(原处留 link);
-    /// 其他来源(plugin 等只读缓存)写内容副本。已有 canonical 直接返回。
+    /// 确保技能在 canonical 有实体副本:.local 专属目录迁移(原处留 link);
+    /// 散文件或只读来源(plugin 等)写内容副本。已有 canonical 直接返回。
     private static func ensureCanonical(skill: Skill, canonicalDir: URL, fm: FileManager) throws -> URL {
         let dest = canonicalDir.appendingPathComponent(SymlinkInstaller.sanitize(skill.name))
         if let existing = skill.canonicalPath,
@@ -128,26 +128,45 @@ enum ActivationService {
         }
 
         try fm.createDirectory(at: canonicalDir, withIntermediateDirectories: true)
-        if case .local = skill.source,
-           (try? fm.attributesOfItem(atPath: skill.directoryPath.path)) != nil {
-            // 迁移实体:原位置变 link,原 agent 无感知
-            try fm.moveItem(at: skill.directoryPath, to: dest)
+        // 只有专属技能目录(SKILL.md 的直接父目录 == directoryPath)才允许迁移;
+        // 散文件(如 ~/.claude/skills/commit.md,directoryPath 是共享根)只能拷贝,
+        // 否则会把用户整个共享 skills 目录搬走。
+        let isDedicatedDirectory = skill.filePath.lastPathComponent == "SKILL.md"
+            && skill.filePath.deletingLastPathComponent().standardizedFileURL.path
+                == skill.directoryPath.standardizedFileURL.path
+        var shouldMigrate = false
+        if case .local = skill.source {
+            shouldMigrate = isDedicatedDirectory
+                && (try? fm.attributesOfItem(atPath: skill.directoryPath.path)) != nil
+        }
+        if shouldMigrate {
+            // 迁移实体:原位置变 link,原 agent 无感知;中途失败尽力回滚
+            do {
+                try fm.moveItem(at: skill.directoryPath, to: dest)
+                try "1\n".write(
+                    to: dest.appendingPathComponent(SymlinkInstaller.managedMarkerName),
+                    atomically: true,
+                    encoding: .utf8
+                )
+                // link 留在技能原入口位置(directoryPath 原样使用,不解析符号链接)
+                try fm.createSymbolicLink(atPath: skill.directoryPath.path, withDestinationPath: dest.path)
+            } catch {
+                try? fm.moveItem(at: dest, to: skill.directoryPath)
+                throw error
+            }
         } else {
-            // 只读来源:写内容副本
+            // 散文件或只读来源:写内容副本
             try fm.createDirectory(at: dest, withIntermediateDirectories: true)
             try skill.markdownContent.write(
                 to: dest.appendingPathComponent("SKILL.md"),
                 atomically: true,
                 encoding: .utf8
             )
-        }
-        try "1\n".write(
-            to: dest.appendingPathComponent(SymlinkInstaller.managedMarkerName),
-            atomically: true,
-            encoding: .utf8
-        )
-        if case .local = skill.source {
-            try fm.createSymbolicLink(atPath: skill.directoryPath.path, withDestinationPath: dest.path)
+            try "1\n".write(
+                to: dest.appendingPathComponent(SymlinkInstaller.managedMarkerName),
+                atomically: true,
+                encoding: .utf8
+            )
         }
         return dest
     }

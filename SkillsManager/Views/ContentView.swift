@@ -333,6 +333,10 @@ struct ContentView: View {
         .onChange(of: collectionRecords) {
             store.refreshMountStatuses(collections: collectionRecords)
         }
+        .onChange(of: store.skills) {
+            // 文件 watcher 重扫 / ⌘R 后重算状态灯(如 link 被手动删掉 → 黄灯)
+            store.refreshMountStatuses(collections: collectionRecords)
+        }
         .onChange(of: descriptionLanguageMode) {
             Task {
                 await store.refreshLocalizedDescriptions(using: locale)
@@ -389,16 +393,23 @@ struct ContentView: View {
                 }
                 if !report.skipped.isEmpty { store.errorMessage = report.summaryText }
             } catch {
+                // 仅 agent skills 目录创建失败会抛出;逐技能错误已计入 report.skipped
                 store.errorMessage = error.localizedDescription
-                return
             }
         } else {
             let report = ActivationService.unmount(skills: members, agentSkillsDir: dir)
             collection.mountedAgentIDs.removeAll { $0 == agentID }
             if !report.skipped.isEmpty { store.errorMessage = report.summaryText }
         }
-        Task { await store.reloadSkills() }
         store.refreshMountStatuses(collections: collectionRecords)
+        Task {
+            await store.reloadSkills()
+            // 迁移会把 path-keyed id 变成 name-keyed id:重扫后按名重对成员 id
+            collection.memberSkillIDs = CollectionSupport.reconcileMemberIDs(
+                collection.memberSkillIDs, skills: store.skills
+            )
+            store.refreshMountStatuses(collections: collectionRecords)
+        }
     }
 
     /// Toggles a skill's star in both SwiftData and the state file shared with the TUI.

@@ -59,6 +59,7 @@ SwiftData 新增 `CollectionRecord`(与 `SkillRecord` 并列,不碰 skills 磁�
 - **卸载**:删目标 agent 里的 link;canonical 永远保留,库不丢东西
 - **冲突**:目标目录已有同名实体(非指向 canonical 的 link)→ 跳过该技能并汇报,不阻塞整组
 - 纯函数 `reconcile(intent: [String], disk: [String])` 计算意图与磁盘差异,供 UI 状态灯使用
+- **已知限制**:组成员可重叠——卸载组 A 会删掉与已挂载组 B 共享的 link;B 通过黄灯 + "按意图重新应用"自愈。成员 id 在挂载后重扫时按名字重对(迁移会把 path-keyed id 变成 name-keyed id)
 
 ## 5. 信息架构与 UI
 

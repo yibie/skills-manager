@@ -72,6 +72,48 @@ struct ActivationServiceTests {
         #expect(ActivationService.probeLinkedCount(memberSkills: [skill], agentSkillsDir: agentDir, canonicalDir: canonical) == 1)
     }
 
+    // MARK: 散文件技能:绝不迁移共享根,只拷贝内容
+
+    @Test
+    func mountLooseFileSkillCopiesOnlyAndLeavesSharedParentUntouched() throws {
+        let root = try makeSandbox()
+        let sharedDir = root.appendingPathComponent("claude-skills") // 共享根,装多个技能
+        let agentDir = root.appendingPathComponent("codex-skills")
+        let canonical = root.appendingPathComponent("canonical")
+        try FileManager.default.createDirectory(at: sharedDir, withIntermediateDirectories: true)
+        // 散文件技能:commit.md 直接在共享根下(ClaudeCodeAdapter 的松散形态)
+        let looseFile = sharedDir.appendingPathComponent("commit.md")
+        try "# commit".write(to: looseFile, atomically: true, encoding: .utf8)
+        // 共享根里的其他技能
+        let other = try makeLocalSkill(name: "review", originDir: sharedDir)
+
+        let looseSkill = Skill(
+            id: "local:commit", name: "commit", displayName: "commit",
+            baseDescription: "", baseDescriptionLocale: "en", localizedDescription: nil,
+            source: .local, version: nil,
+            filePath: looseFile, directoryPath: sharedDir, // directoryPath 是共享根
+            compatibleAgents: [], tags: [], markdownContent: "# commit", frontmatter: [:]
+        )
+
+        let report = try ActivationService.mount(skills: [looseSkill], agentSkillsDir: agentDir, canonicalDir: canonical)
+        #expect(report.changed == ["local:commit"])
+        #expect(report.skipped.isEmpty)
+
+        let fm = FileManager.default
+        // canonical 只持有拷贝来的那一个文件
+        #expect(try fm.contentsOfDirectory(atPath: canonical.path) == ["commit"])
+        #expect(try String(contentsOf: canonical.appendingPathComponent("commit/SKILL.md"), encoding: .utf8) == "# commit")
+        #expect(fm.fileExists(atPath: canonical.appendingPathComponent("commit/\(SymlinkInstaller.managedMarkerName)").path))
+        // 共享根未被搬走:仍是实体目录,散文件与其他技能原样保留
+        let attrs = try fm.attributesOfItem(atPath: sharedDir.path)
+        #expect(attrs[.type] as? FileAttributeType == .typeDirectory)
+        #expect(fm.fileExists(atPath: looseFile.path))
+        #expect(fm.fileExists(atPath: other.directoryPath.appendingPathComponent("SKILL.md").path))
+        // 目标 agent 正常挂上 link
+        let agentDest = try fm.destinationOfSymbolicLink(atPath: agentDir.appendingPathComponent("commit").path)
+        #expect(agentDest == canonical.appendingPathComponent("commit").path)
+    }
+
     // MARK: 冲突:目标已有同名实体 → 跳过不阻塞
 
     @Test
@@ -93,6 +135,28 @@ struct ActivationServiceTests {
         #expect(report.skipped[0].skillID == "local:commit")
         // 冲突目录原样保留
         #expect(try String(contentsOf: conflictDir.appendingPathComponent("SKILL.md"), encoding: .utf8) == "other")
+    }
+
+    // MARK: 逐技能 IO 错误:记入 skipped 并继续,不抛出
+
+    @Test
+    func mountCapturesPerSkillIOErrorsAndContinues() throws {
+        let root = try makeSandbox()
+        let origin = root.appendingPathComponent("claude-skills")
+        let agentDir = root.appendingPathComponent("codex-skills")
+        let canonicalFile = root.appendingPathComponent("canonical")
+        // canonical 路径被普通文件占用 → ensureCanonical 内部 IO 失败(非 conflict)
+        try "occupied".write(to: canonicalFile, atomically: true, encoding: .utf8)
+        let skillA = try makeLocalSkill(name: "commit", originDir: origin)
+        let skillB = try makeLocalSkill(name: "done", originDir: origin)
+
+        let report = try ActivationService.mount(skills: [skillA, skillB], agentSkillsDir: agentDir, canonicalDir: canonicalFile)
+        #expect(report.changed.isEmpty)
+        #expect(report.skipped.count == 2)
+        #expect(report.skipped.allSatisfy { !$0.reason.isEmpty })
+        // 原技能目录未被搬走
+        #expect(FileManager.default.fileExists(atPath: skillA.directoryPath.appendingPathComponent("SKILL.md").path))
+        #expect(FileManager.default.fileExists(atPath: skillB.directoryPath.appendingPathComponent("SKILL.md").path))
     }
 
     // MARK: 卸载:只删 link,canonical 保留;实体目录不动
