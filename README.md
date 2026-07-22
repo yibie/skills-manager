@@ -24,9 +24,9 @@ Coding agent skills are scattered everywhere. Each agent has its own format, ins
 - **Install** to one or multiple agents at once
 - **Try** skills with your own LLM (Claude, OpenAI, OpenRouter, Ollama, or LM Studio) before installing
 - **Manage** installed skills — remove, star favorites (stars are shared with the terminal UI), and spot diverged same-name copies across agents (Conflicts)
+- **Group skills into collections** and mount a collection into an agent only when needed — symlinks in, links out, the library stays put (sidebar → 控制台)
 - **Monitor** agent skill directories and refresh automatically when they change on disk
-- **Inspect** what an agent actually loads for a project — the Effective-Agent tree with active / shadowed / missing / unmodeled annotations (sidebar → Tools → 检视器)
-- **Agent home pages** — clicking an agent in the sidebar opens its home: detection status and skills directory (Show in Finder / Copy Path), an inspector deep link when the platform has an adapter spec, conflicts involving that agent, and its full skill list
+- **Agent home pages** — clicking an agent in the sidebar opens its home: detection status and skills directory (Show in Finder / Copy Path), conflicts involving that agent, and its full skill list
 - **Translate** discovered skill summaries with a bundled 8-language catalog and on-demand LLM fallback for newly loaded entries
 
 ## Requirements

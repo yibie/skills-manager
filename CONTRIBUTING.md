@@ -9,10 +9,8 @@ Issues and PRs are welcome. This document covers the development setup and the c
   - `Services/` — business logic (SkillStore is the central state hub)
   - `Adapters/` — agent registry and per-agent scanners
   - `Views/` — SwiftUI views
-- `Sources/SkillsKernel` + `Sources/skm` — the Effective-Agent inspector kernel and its CLI (independent of the app)
 - `tui/` — the terminal UI (blessed; see `tui/docs/blessed-engine.md` before touching keyboard handling)
-- `Tests/` — swift-testing suites for the app and the kernel
-- `platform-specs/` — declarative agent platform specs consumed by `skm`
+- `Tests/` — swift-testing suites for the app
 
 ## Build and run
 
@@ -38,13 +36,13 @@ npm exec skills-manager
 
 ## Tests
 
-Run the full test suite (app + kernel) before opening a PR:
+Run the full test suite before opening a PR:
 
 ```bash
 swift test
 ```
 
-If you change install/uninstall, scanning, or settings behavior, add or update a test in `Tests/SkillsManagerTests`. Kernel changes go with tests in `Tests/SkillsKernelTests`.
+If you change install/uninstall, scanning, or settings behavior, add or update a test in `Tests/SkillsManagerTests`.
 
 ## Conventions
 

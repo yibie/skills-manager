@@ -26,7 +26,7 @@ struct SkillConflict: Identifiable, Hashable, Sendable {
 ///
 /// Only user-managed sources participate (local / symlinked / OpenClaw): plugin
 /// cache copies are read-only third-party content, and project-local skills are
-/// intentional project overrides (shadowing is the Inspector's job to show).
+/// intentional project overrides (shadowing a shared copy is by design, not a conflict).
 /// Copies that resolve to the same directory (e.g. symlinks into the canonical
 /// root) are one instance by construction, and identical content is not a conflict.
 enum SkillConflictDetection {

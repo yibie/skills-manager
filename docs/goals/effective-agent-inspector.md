@@ -1,3 +1,5 @@
+> **STATUS: CANCELLED (2026-07-21)** — 检视器方向经复盘判定为伪需求,M4(45 平台 spec 覆盖)取消,实现已移除。本文档仅作历史存档。见 docs/superpowers/specs/2026-07-21-collections-control-center-design.md。
+
 # Goal: Effective-Agent 检视器
 
 > 状态:已批准(2026-07-14)。本文档是开发 agent 的执行依据,按里程碑逐个交付。
