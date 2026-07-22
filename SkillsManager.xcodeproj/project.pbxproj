@@ -69,6 +69,7 @@
 		E3FE2A4C45495F6363A6B5FE /* NewAgentDocView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D0D6389F97A04A62D49264 /* NewAgentDocView.swift */; };
 		E7F0F97D81158B6249DCD118 /* ActivationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21990AC9C07FF8EC42405D37 /* ActivationService.swift */; };
 		EEDC36F24C473410A7C62EB0 /* description-translations.json in Resources */ = {isa = PBXBuildFile; fileRef = B4B151B9DCE4165CA174C3F7 /* description-translations.json */; };
+		F1AE16771D504723C953335A /* CollectionSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4566AEFD1D0E380D76D2047 /* CollectionSupport.swift */; };
 		F4E3A8CC9FDA4208487019FB /* AgentMultiSelectList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05198F91ECF1B27BD6EFBF07 /* AgentMultiSelectList.swift */; };
 		F65E3F18110FF168816B0597 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B204889413D1B5B1DE273D2 /* SettingsView.swift */; };
 		F687CD1AB96C040B97EBBB65 /* AgentDocTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE3EC76806268EE893174340 /* AgentDocTemplate.swift */; };
@@ -139,6 +140,7 @@
 		E8D77BD375AECD6E0F14C13A /* SkillsDirectoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillsDirectoryService.swift; sourceTree = "<group>"; };
 		ED29C0FD04ADF31DF622AD6C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		F000347C95927A1B1EE9704F /* ProjectSkillsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSkillsView.swift; sourceTree = "<group>"; };
+		F4566AEFD1D0E380D76D2047 /* CollectionSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionSupport.swift; sourceTree = "<group>"; };
 		F67A39EF6AF1B4C7E1569671 /* ConflictsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConflictsView.swift; sourceTree = "<group>"; };
 		FF29A37BE085370B84900B28 /* AgentRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentRegistry.swift; sourceTree = "<group>"; };
 		FF81F058B00F5224DD515ED1 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -263,6 +265,7 @@
 				21990AC9C07FF8EC42405D37 /* ActivationService.swift */,
 				B11B49FC95FC15D490981568 /* AgentDocsService.swift */,
 				18E520ED45DC34F0AE73390A /* AgentDocTemplateService.swift */,
+				F4566AEFD1D0E380D76D2047 /* CollectionSupport.swift */,
 				109884F853F35BE813AA1494 /* DiscoverDirectoryCache.swift */,
 				B2C31663B12DB3C2223CF2CD /* ExecutableLocator.swift */,
 				7C2C11FFC9FF1183A71189CA /* FileWatcher.swift */,
@@ -394,6 +397,7 @@
 				937C0843E5A8018B36B11316 /* Collection.swift in Sources */,
 				46E9706555825CD59454BF7B /* CollectionDetailView.swift in Sources */,
 				75552FBF2A57AE5444C642F6 /* CollectionPickerSheet.swift in Sources */,
+				F1AE16771D504723C953335A /* CollectionSupport.swift in Sources */,
 				79B9A3B7540185B31E155166 /* ConflictsView.swift in Sources */,
 				5427BC541444486E97ABECF1 /* ContentView.swift in Sources */,
 				4634F006DD8E11C4CD87FFE4 /* ControlCenterView.swift in Sources */,
