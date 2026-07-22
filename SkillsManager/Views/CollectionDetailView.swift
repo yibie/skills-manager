@@ -22,6 +22,15 @@ struct CollectionDetailView: View {
 
     private var memberIDs: Set<String> { Set(collection.memberSkillIDs) }
 
+    /// 只显示已挂载的胶囊;其余 30+ 个 agent 收进「挂载到…」菜单,避免开关墙。
+    private var mountedAgents: [AgentDefinition] {
+        detectedAgents.filter { collection.mountedAgentIDs.contains($0.id) }
+    }
+
+    private var unmountedAgents: [AgentDefinition] {
+        detectedAgents.filter { !collection.mountedAgentIDs.contains($0.id) }
+    }
+
     private var missingCount: Int {
         let known = Set(skills.map(\.id))
         return collection.memberSkillIDs.filter { !known.contains($0) }.count
@@ -45,8 +54,19 @@ struct CollectionDetailView: View {
                 }
 
                 FlowLayout(hSpacing: 8, vSpacing: 8) {
-                    ForEach(detectedAgents, id: \.id) { agent in
+                    ForEach(mountedAgents, id: \.id) { agent in
                         agentCapsule(agent)
+                    }
+                    if !unmountedAgents.isEmpty {
+                        Menu {
+                            ForEach(unmountedAgents, id: \.id) { agent in
+                                Button(agent.displayName) { onToggleAgent(agent.id, true) }
+                            }
+                        } label: {
+                            Label("挂载到…", systemImage: "plus")
+                                .font(.callout)
+                        }
+                        .menuStyle(.borderlessButton)
                     }
                 }
                 Text("打开开关 = 组内技能 symlink 进该 agent;关闭 = 仅移除链接,技能保留在库中")
