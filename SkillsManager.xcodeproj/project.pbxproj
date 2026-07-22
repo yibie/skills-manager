@@ -40,6 +40,7 @@
 		7A8064994B4633978FA3E334 /* DiscoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42BA7574CDF65767B64E1FEE /* DiscoverView.swift */; };
 		7C0C9E9A97FA6E85F1819B7B /* ProjectScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52C4A4957C14CE0EEBB00D79 /* ProjectScanner.swift */; };
 		7E6931289A067C712BB9B78B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7DBBBF8B70FCF8E665BA164F /* Assets.xcassets */; };
+		7FC0DFA9836D1F4EF3CD11EB /* ConsoleTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC2FCF802DF868565CEBE2BB /* ConsoleTheme.swift */; };
 		85E646533EC754C4C02414FE /* ClaudeCodeAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BE38B49272B1AA0A1752A87 /* ClaudeCodeAdapter.swift */; };
 		88C96D78640B3797E6941111 /* SkillConflict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1805640FBFB693B69073972A /* SkillConflict.swift */; };
 		89B2E44F4D139759398F63B0 /* DiscoverInstallToAgentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC251E68A274FA576778D3FD /* DiscoverInstallToAgentView.swift */; };
@@ -135,6 +136,7 @@
 		C12D2413CCD83C7EC8E03F9C /* Skill+Mock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Skill+Mock.swift"; sourceTree = "<group>"; };
 		C471621958512C86DD74AE10 /* SkillDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillDetailView.swift; sourceTree = "<group>"; };
 		C83A70EEB7E8A34E16C9D4C8 /* SOUL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = SOUL.txt; sourceTree = "<group>"; };
+		CC2FCF802DF868565CEBE2BB /* ConsoleTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleTheme.swift; sourceTree = "<group>"; };
 		CC4AC87ED906F4D954E16850 /* InstallService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallService.swift; sourceTree = "<group>"; };
 		E755FBEC77714122731E7A45 /* SkillParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillParser.swift; sourceTree = "<group>"; };
 		E8D77BD375AECD6E0F14C13A /* SkillsDirectoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillsDirectoryService.swift; sourceTree = "<group>"; };
@@ -169,6 +171,7 @@
 				173609835B7213D0EB893C9C /* CollectionDetailView.swift */,
 				183DA5D7635A6FFFFFE8A47C /* CollectionPickerSheet.swift */,
 				F67A39EF6AF1B4C7E1569671 /* ConflictsView.swift */,
+				CC2FCF802DF868565CEBE2BB /* ConsoleTheme.swift */,
 				2F161109A29CF7DCE1257393 /* ContentView.swift */,
 				B34114BB47E113874555B997 /* ControlCenterView.swift */,
 				BC251E68A274FA576778D3FD /* DiscoverInstallToAgentView.swift */,
@@ -399,6 +402,7 @@
 				75552FBF2A57AE5444C642F6 /* CollectionPickerSheet.swift in Sources */,
 				F1AE16771D504723C953335A /* CollectionSupport.swift in Sources */,
 				79B9A3B7540185B31E155166 /* ConflictsView.swift in Sources */,
+				7FC0DFA9836D1F4EF3CD11EB /* ConsoleTheme.swift in Sources */,
 				5427BC541444486E97ABECF1 /* ContentView.swift in Sources */,
 				4634F006DD8E11C4CD87FFE4 /* ControlCenterView.swift in Sources */,
 				DAE61282D9FE7ADC6DBEB7CB /* DiscoverDirectoryCache.swift in Sources */,
