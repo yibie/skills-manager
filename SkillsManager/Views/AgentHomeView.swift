@@ -106,7 +106,7 @@ struct AgentHomeView: View {
                 .help("Copy skills directory path")
             }
         }
-        .cardStyle()
+        .paperCard()
     }
 
     // MARK: 冲突卡片
@@ -129,23 +129,10 @@ struct AgentHomeView: View {
                 .buttonStyle(.bordered)
                 .controlSize(.small)
         }
-        .cardStyle()
+        .paperCard()
     }
 
     private func abbreviate(_ path: String) -> String {
         (path as NSString).abbreviatingWithTildeInPath
-    }
-}
-
-private extension View {
-    func cardStyle() -> some View {
-        self
-            .padding(10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.secondary.opacity(0.14), lineWidth: 1)
-            )
-            .clipShape(.rect(cornerRadius: 8))
     }
 }

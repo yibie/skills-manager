@@ -30,7 +30,7 @@ struct CollectionDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 10) {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Image(systemName: "folder.fill")
                         .font(.title2)
                         .foregroundStyle(.secondary)
@@ -44,11 +44,9 @@ struct CollectionDetailView: View {
                         .controlSize(.small)
                 }
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(detectedAgents, id: \.id) { agent in
-                            agentCapsule(agent)
-                        }
+                FlowLayout(hSpacing: 8, vSpacing: 8) {
+                    ForEach(detectedAgents, id: \.id) { agent in
+                        agentCapsule(agent)
                     }
                 }
                 Text("打开开关 = 组内技能 symlink 进该 agent;关闭 = 仅移除链接,技能保留在库中")
@@ -85,29 +83,30 @@ struct CollectionDetailView: View {
     private func agentCapsule(_ agent: AgentDefinition) -> some View {
         let mounted = collection.mountedAgentIDs.contains(agent.id)
         let status = statusFor(agent.id)
-        return HStack(spacing: 7) {
+        return HStack(spacing: 8) {
             Circle()
-                .fill(status == .mounted ? Color.green : status == .diverged ? Color.orange : Color.secondary.opacity(0.4))
+                .fill(status == .mounted ? ConsoleTheme.statusOk : status == .diverged ? ConsoleTheme.statusWarn : ConsoleTheme.statusOff)
                 .frame(width: 8, height: 8)
             Text(agent.displayName).font(.callout)
             if status == .diverged {
                 Button("重新应用") { onReapply(agent.id) }
                     .buttonStyle(.bordered)
-                    .controlSize(.mini)
+                    .controlSize(.small)
             }
             Toggle("", isOn: Binding(
                 get: { mounted },
                 set: { onToggleAgent(agent.id, $0) }
             ))
             .toggleStyle(.switch)
-            .controlSize(.mini)
+            .controlSize(.small)
             .labelsHidden()
+            .tint(ConsoleTheme.accent)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+                .stroke(ConsoleTheme.cardBorder, lineWidth: 1)
         )
     }
 }

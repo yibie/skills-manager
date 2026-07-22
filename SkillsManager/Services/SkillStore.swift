@@ -204,7 +204,7 @@ final class SkillStore {
     var isTranslatingDescriptions = false
     var lastTranslationSummary: DescriptionTranslationSummary?
     var errorMessage: String?
-    /// 挂载状态缓存:key 见 mountStatusKey;由 refreshMountStatuses 重建。
+    /// 挂载状态缓存:key 为内联的 "<collectionUUID>:<agentID>" 格式;由 refreshMountStatuses 重建。
     var mountStatuses: [String: MountStatus] = [:]
 
     // MARK: - Services

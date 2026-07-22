@@ -39,12 +39,14 @@ struct ControlCenterView: View {
                     Text("控制台").font(.title2).fontWeight(.semibold)
                     Spacer()
                     Button("＋ 新建分组") { isNamingPresented = true }
+                        .buttonStyle(.borderedProminent)
+                        .tint(ConsoleTheme.accent)
                 }
                 Text(summaryText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 16)], spacing: 16) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: ConsoleTheme.gridSpacing)], spacing: ConsoleTheme.gridSpacing) {
                     ForEach(collections, id: \.id) { collection in
                         CollectionCard(
                             collection: collection,
@@ -64,9 +66,10 @@ struct ControlCenterView: View {
                             Text("新建分组").font(.callout)
                         }
                         .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, minHeight: 180)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .frame(minHeight: 170)
                         .background(
-                            RoundedRectangle(cornerRadius: 10)
+                            RoundedRectangle(cornerRadius: ConsoleTheme.cardRadius)
                                 .stroke(style: StrokeStyle(lineWidth: 1, dash: [6]))
                                 .foregroundStyle(Color.secondary.opacity(0.4))
                         )
@@ -76,6 +79,7 @@ struct ControlCenterView: View {
             }
             .padding(20)
         }
+        .background(ConsoleTheme.pageBackground)
         .navigationTitle("控制台")
         .alert("新建分组", isPresented: $isNamingPresented) {
             TextField("组名", text: $newName)
@@ -117,7 +121,7 @@ private struct CollectionCard: View {
             return ("挂载于 \(names.joined(separator: "、")) · 状态正常", false)
         }
         let names = diverged.compactMap { id in detectedAgents.first { $0.id == id }?.displayName }
-        return ("\(names.joined(separator: "、")):与磁盘不一致", true)
+        return ("\(names.joined(separator: "、"))：与磁盘不一致", true)
     }
 
     var body: some View {
@@ -137,9 +141,11 @@ private struct CollectionCard: View {
                     Button("删除分组", role: .destructive, action: onDelete)
                 } label: {
                     Image(systemName: "ellipsis")
+                        .frame(width: 24, height: 24)
+                        .contentShape(Rectangle())
                 }
+                .menuIndicator(.hidden)
                 .menuStyle(.borderlessButton)
-                .frame(width: 20)
             }
             Text("\(collection.memberSkillIDs.count) 个技能")
                 .font(.caption)
@@ -148,7 +154,7 @@ private struct CollectionCard: View {
             Divider()
 
             ForEach(collection.mountedAgentIDs, id: \.self) { agentID in
-                HStack(spacing: 7) {
+                HStack(spacing: 8) {
                     statusDot(statusFor(agentID))
                     Text(detectedAgents.first { $0.id == agentID }?.displayName ?? agentID)
                         .font(.callout)
@@ -156,16 +162,18 @@ private struct CollectionCard: View {
                     if statusFor(agentID) == .diverged {
                         Button("重新应用") { onReapply(agentID) }
                             .buttonStyle(.bordered)
-                            .controlSize(.mini)
+                            .controlSize(.small)
                     }
                     Toggle("", isOn: Binding(
                         get: { true },
                         set: { _ in onToggleAgent(agentID, false) }
                     ))
                     .toggleStyle(.switch)
-                    .controlSize(.mini)
+                    .controlSize(.small)
                     .labelsHidden()
+                    .tint(ConsoleTheme.accent)
                 }
+                .frame(height: ConsoleTheme.mountRowHeight)
             }
 
             if !unmountedAgents.isEmpty {
@@ -180,17 +188,17 @@ private struct CollectionCard: View {
                 .menuStyle(.borderlessButton)
             }
 
+            Spacer(minLength: 0)
+
             Text(statusText.text)
                 .font(.caption2)
-                .foregroundStyle(statusText.isWarning ? Color.orange : Color.secondary)
+                .foregroundStyle(statusText.isWarning ? ConsoleTheme.statusWarn : Color.secondary)
+                .lineLimit(1)
                 .padding(.top, 2)
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
-        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .paperCard()
+        .frame(minHeight: 170)
         .contentShape(Rectangle())
         .onTapGesture(perform: onOpen)
         .alert("重命名分组", isPresented: $isRenamePresented) {
@@ -202,7 +210,7 @@ private struct CollectionCard: View {
 
     private func statusDot(_ status: MountStatus) -> some View {
         Circle()
-            .fill(status == .mounted ? Color.green : status == .diverged ? Color.orange : Color.secondary.opacity(0.4))
+            .fill(status == .mounted ? ConsoleTheme.statusOk : status == .diverged ? ConsoleTheme.statusWarn : ConsoleTheme.statusOff)
             .frame(width: 8, height: 8)
     }
 }
