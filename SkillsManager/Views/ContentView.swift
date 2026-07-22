@@ -19,6 +19,7 @@ struct ContentView: View {
     @State private var selectedDiscoverSkillID: String? = nil
     @State private var pendingDiscoverTrySkill: DiscoverSkill? = nil
     @State private var pendingDiscoverInstallSkill: DiscoverSkill? = nil
+    @State private var pendingCollectionSkill: Skill? = nil
     @State private var isNewAgentDocPresented = false
     @State private var isAgentDocTargetsPresented = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
@@ -182,7 +183,8 @@ struct ContentView: View {
                     selectedSkill: $selectedSkill,
                     onInstall: { skill in await store.installSkill(skill) },
                     onUninstall: { skill in await store.uninstallSkill(skill) },
-                    onToggleStar: { skill in toggleStar(for: skill) }
+                    onToggleStar: { skill in toggleStar(for: skill) },
+                    onAddToCollection: { skill in pendingCollectionSkill = skill }
                 )
             }
         } detail: {
@@ -293,6 +295,28 @@ struct ContentView: View {
                     await store.setAgentDocTargets(targets)
                 }
             }
+        }
+        .sheet(item: $pendingCollectionSkill) { skill in
+            CollectionPickerSheet(
+                collections: collectionRecords,
+                onPick: { collection in
+                    if !collection.memberSkillIDs.contains(skill.id) {
+                        collection.memberSkillIDs.append(skill.id)
+                        store.refreshMountStatuses(collections: collectionRecords)
+                    }
+                },
+                onCreate: { name in
+                    let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !trimmed.isEmpty else { return }
+                    let record = CollectionRecord(
+                        name: trimmed,
+                        sortOrder: collectionRecords.count,
+                        memberSkillIDs: [skill.id]
+                    )
+                    modelContext.insert(record)
+                    store.refreshMountStatuses(collections: collectionRecords)
+                }
+            )
         }
         .task {
             async let skills: Void = store.reloadSkills()
