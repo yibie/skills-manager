@@ -18,13 +18,13 @@ struct SkillListView: View {
 
     let skills: [Skill]
     let filter: SidebarFilter
+    var memberIDs: Set<String>? = nil  // filter == .collection 时的成员白名单;nil 视为空
     @Binding var selectedSkill: Skill?
     let onInstall: (Skill) async -> Void
     let onUninstall: (Skill) async -> Void
     let onToggleStar: (Skill) -> Void
     var onAddToCollection: ((Skill) -> Void)? = nil
     var onRemoveFromCollection: ((Skill) -> Void)? = nil
-    var memberIDs: Set<String>? = nil  // filter == .collection 时的成员白名单;nil 视为空
 
     @State private var listSelection: Set<Skill> = []
     @State private var selectedAllSkillsTab: AllSkillsTab = .local
@@ -120,7 +120,9 @@ struct SkillListView: View {
                                 skill: skill,
                                 onInstall: { Task { await onInstall(skill) } },
                                 onUninstall: { Task { await onUninstall(skill) } },
-                                onToggleStar: { onToggleStar(skill) }
+                                onToggleStar: { onToggleStar(skill) },
+                                onAddToCollection: onAddToCollection.map { cb in { cb(skill) } },
+                                onRemoveFromCollection: onRemoveFromCollection.map { cb in { cb(skill) } }
                             )
                             .listRowSeparator(.hidden)
                             .tag(skill)
@@ -227,6 +229,8 @@ private struct SkillRow: View {
     let onInstall: () -> Void
     let onUninstall: () -> Void
     let onToggleStar: () -> Void
+    var onAddToCollection: (() -> Void)? = nil
+    var onRemoveFromCollection: (() -> Void)? = nil
 
     var body: some View {
         SkillCard(
@@ -249,6 +253,12 @@ private struct SkillRow: View {
         }
         .contextMenu {
             Button(skill.isStarred ? "Unstar" : "Star") { onToggleStar() }
+            if let onAddToCollection {
+                Button("Add to Collection…", action: onAddToCollection)
+            }
+            if let onRemoveFromCollection {
+                Button("Remove from Collection", role: .destructive, action: onRemoveFromCollection)
+            }
             Divider()
             switch skill.installState {
             case .notInstalled:

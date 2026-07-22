@@ -138,6 +138,32 @@ struct ContentView: View {
                     conflicts: store.conflicts,
                     selectedConflict: $selectedConflict
                 )
+            } else if case .collection(let id, _) = selectedFilter,
+                      let collection = collectionRecords.first(where: { $0.id == id }) {
+                CollectionDetailView(
+                    collection: collection,
+                    skills: store.skills,
+                    detectedAgents: AgentRegistry.installedAgents(),
+                    statusFor: { store.mountStatus(collectionID: id, agentID: $0) },
+                    selectedSkill: $selectedSkill,
+                    onToggleAgent: { agentID, mount in
+                        setMounted(collection: collection, agentID: agentID, mount: mount)
+                    },
+                    onReapply: { agentID in
+                        setMounted(collection: collection, agentID: agentID, mount: true)
+                    },
+                    onAddMembers: { ids in
+                        collection.memberSkillIDs.append(contentsOf: ids.filter { !collection.memberSkillIDs.contains($0) })
+                        store.refreshMountStatuses(collections: collectionRecords)
+                    },
+                    onRemoveMember: { skill in
+                        collection.memberSkillIDs.removeAll { $0 == skill.id }
+                        store.refreshMountStatuses(collections: collectionRecords)
+                    },
+                    onInstall: { skill in await store.installSkill(skill) },
+                    onUninstall: { skill in await store.uninstallSkill(skill) },
+                    onToggleStar: { skill in toggleStar(for: skill) }
+                )
             } else if case .agent(let name) = selectedFilter {
                 AgentHomeView(
                     agentName: name,
@@ -370,6 +396,6 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .modelContainer(for: SkillRecord.self, inMemory: true)
+        .modelContainer(for: [SkillRecord.self, CollectionRecord.self], inMemory: true)
         .frame(width: 1100, height: 700)
 }
