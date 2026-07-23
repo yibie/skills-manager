@@ -8,6 +8,7 @@ struct SkillDetailView: View {
     var onToggleStar: () -> Void = {}
     var onPromote: (Skill) async -> Void = { _ in }
     var onInstallToAgent: (Skill, [String]) async -> Void = { _, _ in }
+    var onUpdate: (Skill) async -> Void = { _ in }
     var onTranslate: (Skill) async -> Void = { _ in }
 
     var body: some View {
@@ -20,6 +21,7 @@ struct SkillDetailView: View {
                     // Fire-and-forget tasks: errors surface via SkillStore.errorMessage, not thrown here.
                     onPromote: { Task { await onPromote(skill) } },
                     onInstallToAgent: { agentIDs in Task { await onInstallToAgent(skill, agentIDs) } },
+                    onUpdate: { Task { await onUpdate(skill) } },
                     onTranslate: { Task { await onTranslate(skill) } }
                 )
             } else {
@@ -46,6 +48,7 @@ private struct DetailContent: View {
     let onToggleStar: () -> Void
     let onPromote: () -> Void
     let onInstallToAgent: ([String]) -> Void
+    let onUpdate: () -> Void
     let onTranslate: () -> Void
 
     @State private var showInstallToAgent = false
@@ -123,6 +126,9 @@ private struct DetailContent: View {
                 SkillMetaBadge(text: "Translated", tint: .blue)
             }
             sourceBadge
+            if [.skillsManager, .skillsCLI, .manual].contains(skill.provenance.provider) {
+                SkillMetaBadge(text: skill.provenance.provider.displayName)
+            }
         }
         .frame(maxWidth: 180, alignment: .trailing)
     }
@@ -149,6 +155,9 @@ private struct DetailContent: View {
                 promoteButton
             }
 
+            if skill.canUpdate {
+                updateButton
+            }
             installButton
         }
     }
@@ -212,6 +221,15 @@ private struct DetailContent: View {
         }
         .buttonStyle(.bordered)
         .controlSize(.small)
+    }
+
+    private var updateButton: some View {
+        Button(action: onUpdate) {
+            Label("Update", systemImage: "arrow.clockwise")
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .help("Update using \(skill.provenance.provider.displayName)")
     }
 
     private var agentPill: some View {

@@ -229,6 +229,7 @@ private struct DiscoverSkillRow: View {
     let onTry: () -> Void
     let onInstall: () -> Void
     let onUninstall: () -> Void
+    @State private var isConfirmingRemoval = false
 
     var body: some View {
         SkillCard(
@@ -250,7 +251,9 @@ private struct DiscoverSkillRow: View {
                     .controlSize(.small)
 
                 if isInstalled {
-                    Button("Uninstall", action: onUninstall)
+                    Button("Remove from Library…") {
+                        isConfirmingRemoval = true
+                    }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         .tint(.red)
@@ -275,6 +278,12 @@ private struct DiscoverSkillRow: View {
             if entry.summary == nil {
                 onLoadDetail()
             }
+        }
+        .alert("Remove “\(entry.name)” from Library?", isPresented: $isConfirmingRemoval) {
+            Button("Cancel", role: .cancel) {}
+            Button("Remove", role: .destructive, action: onUninstall)
+        } message: {
+            Text("The detected lifecycle provider will remove this skill and its managed agent links.")
         }
     }
 
@@ -354,6 +363,7 @@ private struct DiscoverDetailContent: View {
     let onInstall: () -> Void
     let onUninstall: () -> Void
     let onTranslate: () -> Void
+    @State private var isConfirmingRemoval = false
 
     var body: some View {
         ScrollView {
@@ -389,7 +399,9 @@ private struct DiscoverDetailContent: View {
                             .buttonStyle(.bordered)
 
                         if isInstalled {
-                            Button("Uninstall", action: onUninstall)
+                            Button("Remove from Library…") {
+                                isConfirmingRemoval = true
+                            }
                                 .buttonStyle(.bordered)
                                 .tint(.red)
                         } else {
@@ -436,13 +448,18 @@ private struct DiscoverDetailContent: View {
                     }
                 }
 
-                detailSection("Install Command") {
-                    Text(entry.installCommand)
-                        .font(.system(.body, design: .monospaced))
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(12)
-                        .background(.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                detailSection("Alternative CLI Command") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Skills Manager installs this skill natively. Use this command only when working outside the app.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(entry.installCommand)
+                            .font(.system(.body, design: .monospaced))
+                            .textSelection(.enabled)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
                 }
 
                 if let excerpt = entry.readmeExcerpt, !excerpt.isEmpty {
@@ -467,6 +484,12 @@ private struct DiscoverDetailContent: View {
                 }
             }
             .padding(20)
+        }
+        .alert("Remove “\(entry.name)” from Library?", isPresented: $isConfirmingRemoval) {
+            Button("Cancel", role: .cancel) {}
+            Button("Remove", role: .destructive, action: onUninstall)
+        } message: {
+            Text("The detected lifecycle provider will remove this skill and its managed agent links.")
         }
     }
 
@@ -691,7 +714,6 @@ struct DiscoverTryView: View {
             "",
             "Repository: \(skill.source)",
             "Skill ID: \(skill.skillId)",
-            "Install Command: \(skill.installCommand)",
             "",
             "Summary:",
             skill.summary ?? "No summary available.",
@@ -778,7 +800,6 @@ struct DiscoverTryView: View {
                             if let excerpt = skill.readmeExcerpt, !excerpt.isEmpty {
                                 contextBlock(title: "SKILL.md Excerpt", body: excerpt)
                             }
-                            contextBlock(title: "Install Command", body: skill.installCommand, monospaced: true)
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

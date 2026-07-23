@@ -214,6 +214,7 @@ final class SkillStore {
     private let directoryService: SkillsDirectoryService
     private let discoverCache: DiscoverDirectoryCache
     private let discoverInstaller: DiscoverInstaller
+    private let lifecycleService: SkillLifecycleService
     private let openClawAdapter: OpenClawAdapter
     private let descriptionLocalizer: any DescriptionLocalizing
     private let translationDebugLogger: TranslationDebugLogger
@@ -248,7 +249,15 @@ final class SkillStore {
         self.openClawAdapter = openClawAdapter
         self.descriptionLocalizer = descriptionLocalizer
         self.translationDebugLogger = translationDebugLogger
-        self.discoverInstaller = discoverInstaller ?? SkillStore.defaultDiscoverInstaller
+        let lifecycleService = SkillLifecycleService()
+        self.lifecycleService = lifecycleService
+        self.discoverInstaller = discoverInstaller ?? { skill, agentIDs, appendLog in
+            try await lifecycleService.installDiscover(
+                skill,
+                agentIDs: agentIDs,
+                appendLog: appendLog
+            )
+        }
     }
 
     // MARK: - Local skills
@@ -263,7 +272,7 @@ final class SkillStore {
             let (claude, universal, openclaw) = try await (claudeSkills, universalSkills, openClawSkills)
             let scanned = claude + universal + openclaw
             conflicts = SkillConflictDetection.detect(in: scanned)
-            let merged = Self.mergeScannedSkills(scanned)
+            let merged = lifecycleService.annotate(Self.mergeScannedSkills(scanned))
             skills = await localizeSkills(merged)
             applyPersistedSkillState()
             if hasRequestedDescriptionTranslation {
@@ -561,7 +570,7 @@ final class SkillStore {
                 skillID: skill.id,
                 skillName: skill.name,
                 targetAgents: agentIDs,
-                command: skill.installCommand,
+                command: "Skills Manager lifecycle",
                 startedAt: Date(),
                 finishedAt: nil,
                 status: .running,
@@ -570,7 +579,7 @@ final class SkillStore {
         )
 
         do {
-            appendDiscoverInstallLog("Starting install using `\(skill.installCommand)`", activityID: activityID)
+            appendDiscoverInstallLog("Starting install through Skills Manager", activityID: activityID)
             try await discoverInstaller(skill, agentIDs) { [weak self] line in
                 guard let self else { return }
                 Task { @MainActor in
@@ -590,9 +599,9 @@ final class SkillStore {
         await installDiscoverSkill(skill, agentIDs: defaultAgents)
     }
 
-    func uninstallDiscoverSkill(_ skill: DiscoverSkill) async {
+    func removeDiscoverSkillFromLibrary(_ skill: DiscoverSkill) async {
         guard let installed = skills.first(where: { $0.name == skill.skillId || $0.name == skill.name }) else { return }
-        await uninstallSkill(installed)
+        await removeSkillFromLibrary(installed)
     }
 
     func isInstallingDiscoverSkill(_ skill: DiscoverSkill) -> Bool {
@@ -623,47 +632,57 @@ final class SkillStore {
         }
     }
 
-    /// Deletes the skill from disk and removes it from the list immediately.
-    func uninstallSkill(_ skill: Skill) async {
-        let fm = FileManager.default
-        let home = fm.homeDirectoryForCurrentUser
+    /// Deletes a skill from the Library through its detected lifecycle provider.
+    /// Removing collection mounts is intentionally handled by ActivationService.
+    func removeSkillFromLibrary(_ skill: Skill) async {
+        do {
+            try await lifecycleService.removeFromLibrary(skill, appendLog: { _ in })
+            await reloadSkills()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
 
-        switch skill.source {
-        case .local:
-            let skillsBase = home.appendingPathComponent(".claude/skills").standardized
-            let target = skill.directoryPath.standardized
-            if target.path.hasPrefix(skillsBase.path + "/") {
-                do { try fm.removeItem(at: target) } catch { errorMessage = error.localizedDescription }
-            } else if skill.canonicalPath != nil {
-                do { try SymlinkInstaller.uninstall(skillName: skill.name) } catch { errorMessage = error.localizedDescription }
-            } else {
-                errorMessage = "This skill is managed outside Skills Manager and was not deleted."
-                return
-            }
-        case .openClaw:
-            do { try fm.removeItem(at: skill.directoryPath.standardized) } catch { errorMessage = error.localizedDescription }
-        case .plugin(let pluginSource, let pluginName):
-            // Delete the skill's own subdirectory inside the local plugin cache.
-            // skill.directoryPath is e.g. ~/.claude/plugins/cache/{pluginSource}/{plugin}/{version}/skills/{skillName}
-            // We only remove that leaf directory — the cached plugin bundle remains usable.
-            let cacheBase = home.appendingPathComponent(".claude/plugins/cache").standardized
-            let target = skill.directoryPath.standardized
-            if target.path.hasPrefix(cacheBase.path + "/\(pluginSource)/\(pluginName)/") {
-                do { try fm.removeItem(at: target) } catch { errorMessage = error.localizedDescription }
-            }
-        case .symlinked:
-            // Remove the symlink in ~/.claude/skills/ but leave the target intact
-            let skillsBase = home.appendingPathComponent(".claude/skills").standardized
-            let target = skill.directoryPath.standardized
-            if target.path.hasPrefix(skillsBase.path + "/") {
-                do { try fm.removeItem(at: target) } catch { errorMessage = error.localizedDescription }
-            }
-        case .projectLocal:
-            // Project-local skills are not managed here; use Promote instead
+    func updateSkill(_ skill: Skill) async {
+        let agentIDs = skill.compatibleAgents.compactMap { displayName in
+            AgentRegistry.all.first { $0.displayName == displayName }?.id
+        }
+        do {
+            try await lifecycleService.update(skill, agentIDs: agentIDs, appendLog: { _ in })
+            await reloadSkills()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Explicitly removes an unmanaged local skill using the recoverable macOS Trash.
+    func moveSkillToTrash(
+        _ skill: Skill,
+        trashItem: (URL) throws -> Void = { url in
+            var resultingURL: NSURL?
+            try FileManager.default.trashItem(at: url, resultingItemURL: &resultingURL)
+        }
+    ) async {
+        guard skill.canMoveToTrash else {
+            errorMessage = "This skill is managed by Skills Manager and should be uninstalled instead."
             return
         }
 
-        // Remove from memory immediately — row disappears without a reload
+        let target = skill.trashTargetURL
+        guard FileManager.default.fileExists(atPath: target.path) else {
+            errorMessage = "The skill no longer exists at \(target.path)."
+            return
+        }
+
+        do {
+            try trashItem(target)
+            removeSkillFromState(skill)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func removeSkillFromState(_ skill: Skill) {
         skills.removeAll { $0.id == skill.id }
 
         // Keep the conflict list consistent with the removal.
@@ -675,11 +694,6 @@ final class SkillStore {
         }
     }
 
-    /// Convenience batch variant used by multi-select.
-    func uninstallSkills(_ batch: [Skill]) async {
-        for skill in batch { await uninstallSkill(skill) }
-    }
-
     func installSkills(_ batch: [Skill]) async {
         for skill in batch { await installSkill(skill) }
     }
@@ -688,10 +702,10 @@ final class SkillStore {
 
     func installSkillToAgents(_ skill: Skill, agentIDs: [String]) async {
         do {
-            try SymlinkInstaller.install(
-                content: skill.markdownContent,
-                skillName: skill.name,
-                agentIDs: agentIDs
+            try await lifecycleService.install(
+                skill,
+                agentIDs: agentIDs,
+                appendLog: { _ in }
             )
             await reloadSkills()
         } catch {
@@ -1371,103 +1385,6 @@ final class SkillStore {
         )
     }
 
-    private static func defaultDiscoverInstaller(_ skill: DiscoverSkill, agentIDs: [String], appendLog: @escaping @Sendable (String) -> Void) async throws {
-        for agentID in agentIDs {
-            appendLog("Installing to \(agentID)")
-            try await runCommand(
-                "npx",
-                args: [
-                    "-y",
-                    "skills",
-                    "add",
-                    skill.repoURL.absoluteString,
-                    "--skill",
-                    skill.skillId,
-                    "--yes",
-                    "--global",
-                    "--agent",
-                    agentID
-                ],
-                appendLog: appendLog
-            )
-        }
-    }
-
-    private static func runCommand(_ command: String, args: [String], appendLog: @escaping @Sendable (String) -> Void) async throws {
-        let home = FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL
-        guard let executablePath = ExecutableLocator.resolve(command: command, homePath: home.path) else {
-            throw SkillStoreProcessError.missingExecutable(command)
-        }
-
-        let environment = ExecutableLocator.buildEnvironment(
-            homePath: home.path,
-            resolvedExecutable: executablePath
-        )
-
-        try await runProcess(
-            executablePath,
-            args: args,
-            currentDirectory: home,
-            environment: environment,
-            appendLog: appendLog
-        )
-    }
-
-    private static func runProcess(
-        _ exec: String,
-        args: [String],
-        currentDirectory: URL,
-        environment: [String: String],
-        appendLog: @escaping @Sendable (String) -> Void
-    ) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            let process = Process()
-            let outPipe = Pipe()
-            let errPipe = Pipe()
-            let state = ProcessRunState()
-
-            process.executableURL = URL(fileURLWithPath: exec)
-            process.arguments = args
-            process.currentDirectoryURL = currentDirectory
-            process.environment = environment
-            process.standardOutput = outPipe
-            process.standardError = errPipe
-
-            outPipe.fileHandleForReading.readabilityHandler = { handle in
-                let data = handle.availableData
-                guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else { return }
-                appendLog(text)
-            }
-            errPipe.fileHandleForReading.readabilityHandler = { handle in
-                let data = handle.availableData
-                guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else { return }
-                appendLog(text)
-            }
-            process.terminationHandler = { p in
-                outPipe.fileHandleForReading.readabilityHandler = nil
-                errPipe.fileHandleForReading.readabilityHandler = nil
-                let errData = errPipe.fileHandleForReading.availableData
-                if p.terminationStatus == 0 {
-                    state.resume {
-                        continuation.resume()
-                    }
-                } else {
-                    let msg = String(data: errData, encoding: .utf8) ?? ""
-                    state.resume {
-                        continuation.resume(throwing: NSError(domain: "SkillStore", code: Int(p.terminationStatus), userInfo: [NSLocalizedDescriptionKey: msg]))
-                    }
-                }
-            }
-            do {
-                try process.run()
-            } catch {
-                state.resume {
-                    continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-
     // MARK: - Collection mount status
 
     func mountStatus(collectionID: UUID, agentID: String) -> MountStatus {
@@ -1720,11 +1637,7 @@ actor DescriptionTranslationCache {
         }
 
         private static var resourceBundles: [Bundle] {
-            #if SWIFT_PACKAGE
-            return [Bundle.module, Bundle.main]
-            #else
             return [Bundle.main]
-            #endif
         }
     }
 
@@ -1845,29 +1758,5 @@ actor DescriptionTranslationCache {
 
     static func normalizedLocale(_ locale: String) -> String {
         DescriptionLocale.normalizedIdentifier(locale).lowercased()
-    }
-}
-
-private final class ProcessRunState: @unchecked Sendable {
-    private let lock = NSLock()
-    private var didResume = false
-
-    func resume(action: () -> Void) {
-        lock.lock()
-        defer { lock.unlock() }
-        guard !didResume else { return }
-        didResume = true
-        action()
-    }
-}
-
-private enum SkillStoreProcessError: LocalizedError {
-    case missingExecutable(String)
-
-    var errorDescription: String? {
-        switch self {
-        case .missingExecutable(let command):
-            return "Unable to find `\(command)` for Skill installation. Install Node.js or ensure `\(command)` is available in a standard path such as /opt/homebrew/bin or /usr/local/bin."
-        }
     }
 }

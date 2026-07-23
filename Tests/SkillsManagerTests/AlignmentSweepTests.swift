@@ -4,7 +4,7 @@ import Testing
 @testable import SkillsManager
 
 /// 临时对齐扫描:渲染各关键视图的真实状态到 /tmp 供人工比对草图。
-///   swift test --filter AlignmentSweep
+///   xcodebuild -project SkillsManager.xcodeproj -scheme SkillsManager -destination 'platform=macOS' -only-testing:SkillsManagerTests/AlignmentSweepTests test
 struct AlignmentSweepTests {
     @MainActor
     private func renderPNG<V: View>(_ view: V, size: NSSize, to path: String) throws {

@@ -6,9 +6,13 @@ struct ClaudeCodeAdapter: AgentAdapter {
 
     let agentName = "Claude Code"
     let agentIcon = "terminal"
+    private let home: URL
+
+    init(home: URL = FileManager.default.homeDirectoryForCurrentUser) {
+        self.home = home
+    }
 
     var skillsDirectories: [URL] {
-        let home = FileManager.default.homeDirectoryForCurrentUser
         return [
             home.appendingPathComponent(".claude/skills"),
             home.appendingPathComponent(".claude/plugins/cache"),
@@ -18,7 +22,6 @@ struct ClaudeCodeAdapter: AgentAdapter {
     func scanSkills() async throws -> [Skill] {
         var skills: [Skill] = []
 
-        let home = FileManager.default.homeDirectoryForCurrentUser
         let localSkillsDir = home.appendingPathComponent(".claude/skills")
         let pluginCacheDir = home.appendingPathComponent(".claude/plugins/cache")
 
@@ -31,14 +34,6 @@ struct ClaudeCodeAdapter: AgentAdapter {
         skills.append(contentsOf: pluginSkills)
 
         return skills
-    }
-
-    func installSkill(_ skill: Skill) throws {
-        // Installation not implemented for ClaudeCodeAdapter
-    }
-
-    func uninstallSkill(_ skill: Skill) throws {
-        // Uninstallation not implemented for ClaudeCodeAdapter
     }
 
     // MARK: - Private
@@ -222,9 +217,11 @@ struct ClaudeCodeAdapter: AgentAdapter {
         if let destination = try? fm.destinationOfSymbolicLink(atPath: url.path) {
             // destination may be relative or absolute
             if destination.hasPrefix("/") {
-                return URL(fileURLWithPath: destination)
+                return URL(fileURLWithPath: destination).standardizedFileURL
             } else {
-                return url.deletingLastPathComponent().appendingPathComponent(destination)
+                return url.deletingLastPathComponent()
+                    .appendingPathComponent(destination)
+                    .standardizedFileURL
             }
         }
         return url

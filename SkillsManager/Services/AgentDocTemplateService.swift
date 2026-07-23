@@ -54,11 +54,7 @@ struct AgentDocTemplateService {
     }
 
     private var resourceBundles: [Bundle] {
-        #if SWIFT_PACKAGE
-        [Bundle.module, Bundle.main]
-        #else
         [Bundle.main]
-        #endif
     }
 
     private static let templateSubdirectories: [String?] = [

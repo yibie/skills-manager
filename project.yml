@@ -36,6 +36,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.skillsmanager.SkillsManager
         PRODUCT_NAME: Skills Manager
+        PRODUCT_MODULE_NAME: SkillsManager
         SWIFT_VERSION: "6.0"
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         INFOPLIST_FILE: SkillsManager/Info.plist
@@ -50,11 +51,32 @@ targets:
           SWIFT_OPTIMIZATION_LEVEL: "-O"
           COPY_PHASE_STRIP: YES
 
+  SkillsManagerTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Tests/SkillsManagerTests
+    dependencies:
+      - target: SkillsManager
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.skillsmanager.SkillsManagerTests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Skills Manager.app/Contents/MacOS/Skills Manager"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
 schemes:
   SkillsManager:
     build:
       targets:
         SkillsManager: all
+        SkillsManagerTests: [test]
+    test:
+      config: Debug
+      targets:
+        - SkillsManagerTests
     run:
       config: Debug
     archive:

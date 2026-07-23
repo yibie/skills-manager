@@ -108,7 +108,7 @@ struct ContentView: View {
                         pendingDiscoverTrySkill = store.discoverableSkillDetails[entry.id] ?? entry
                     },
                     onInstall: { entry in pendingDiscoverInstallSkill = entry },
-                    onUninstall: { entry in await store.uninstallDiscoverSkill(entry) },
+                    onUninstall: { entry in await store.removeDiscoverSkillFromLibrary(entry) },
                     onRefresh: { await store.refreshDiscoverableSkillsDirectory() },
                     onTranslateLoaded: { await store.translateDescriptions(using: locale, scope: .loadedDiscoverDetails) }
                 )
@@ -162,7 +162,8 @@ struct ContentView: View {
                         store.refreshMountStatuses(collections: collectionRecords)
                     },
                     onInstall: { skill in await store.installSkill(skill) },
-                    onUninstall: { skill in await store.uninstallSkill(skill) },
+                    onUninstall: { skill in await store.removeSkillFromLibrary(skill) },
+                    onMoveToTrash: { skill in await store.moveSkillToTrash(skill) },
                     onToggleStar: { skill in toggleStar(for: skill) }
                 )
             } else if case .agent(let name) = selectedFilter {
@@ -172,7 +173,8 @@ struct ContentView: View {
                     conflicts: store.conflicts,
                     selectedSkill: $selectedSkill,
                     onInstall: { skill in await store.installSkill(skill) },
-                    onUninstall: { skill in await store.uninstallSkill(skill) },
+                    onUninstall: { skill in await store.removeSkillFromLibrary(skill) },
+                    onMoveToTrash: { skill in await store.moveSkillToTrash(skill) },
                     onToggleStar: { skill in toggleStar(for: skill) },
                     onShowConflicts: { selectedFilter = .conflicts }
                 )
@@ -182,7 +184,8 @@ struct ContentView: View {
                     filter: selectedFilter,
                     selectedSkill: $selectedSkill,
                     onInstall: { skill in await store.installSkill(skill) },
-                    onUninstall: { skill in await store.uninstallSkill(skill) },
+                    onUninstall: { skill in await store.removeSkillFromLibrary(skill) },
+                    onMoveToTrash: { skill in await store.moveSkillToTrash(skill) },
                     onToggleStar: { skill in toggleStar(for: skill) },
                     onAddToCollection: { skill in pendingCollectionSkill = skill }
                 )
@@ -209,7 +212,7 @@ struct ContentView: View {
                         pendingDiscoverTrySkill = store.discoverableSkillDetails[entry.id] ?? entry
                     },
                     onInstall: { entry in pendingDiscoverInstallSkill = entry },
-                    onUninstall: { entry in await store.uninstallDiscoverSkill(entry) },
+                    onUninstall: { entry in await store.removeDiscoverSkillFromLibrary(entry) },
                     onTranslate: { entry in await store.translateDescriptions(using: locale, scope: .discoverSkill(id: entry.id)) }
                 )
             } else if selectedFilter == .agentDocs {
@@ -227,6 +230,9 @@ struct ContentView: View {
                     onPromote: { skill in await store.promoteSkill(skill) },
                     onInstallToAgent: { skill, agentIDs in
                         await store.installSkillToAgents(skill, agentIDs: agentIDs)
+                    },
+                    onUpdate: { skill in
+                        await store.updateSkill(skill)
                     },
                     onTranslate: { skill in
                         let scope: DescriptionTranslationScope
@@ -264,14 +270,6 @@ struct ContentView: View {
                 .help("Open a project folder to scan for local skills")
             }
 
-            ToolbarItem(placement: .automatic) {
-                if let summary = store.lastTranslationSummary {
-                    Text(summary.toolbarText)
-                        .font(.caption)
-                        .foregroundStyle(summary.failed > 0 ? .orange : .secondary)
-                        .help(summary.helpText)
-                }
-            }
         }
         .sheet(item: $pendingDiscoverInstallSkill) { skill in
             DiscoverInstallToAgentView(skill: skill) { agentIDs in

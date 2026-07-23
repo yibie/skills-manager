@@ -2,11 +2,14 @@ import Foundation
 
 enum SymlinkInstallerError: LocalizedError {
     case destinationConflict(URL)
+    case unsafePackageLink(URL)
 
     var errorDescription: String? {
         switch self {
         case .destinationConflict(let url):
             "A file or directory already exists at \(url.path)."
+        case .unsafePackageLink(let url):
+            "The skill package contains a link outside its own directory: \(url.path)."
         }
     }
 }
@@ -15,6 +18,7 @@ enum SymlinkInstallerError: LocalizedError {
 /// and creates symlinks in each target agent's globalSkillsDir.
 enum SymlinkInstaller {
     static let managedMarkerName = ".skills-manager-managed"
+    static let managedManifestName = ".skills-manager.json"
 
     /// Install a skill (represented as SKILL.md content) to one or more agents.
     /// - Parameters:
@@ -84,9 +88,78 @@ enum SymlinkInstaller {
         }
     }
 
-    /// Remove a skill: delete canonical dir (which also breaks all symlinks pointing to it).
-    /// Then remove any dangling symlinks in agent dirs.
-    static func uninstall(
+    /// Installs a complete skill directory so bundled scripts and assets remain available.
+    static func install(
+        sourceDirectory: URL,
+        skillName: String,
+        agentIDs: [String],
+        canonicalSkillsDirectory: URL = AgentRegistry.canonicalGlobalSkillsDir,
+        importedPaths: [String: String] = AgentRegistry.storedImportedAgentFolders()
+    ) throws {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: sourceDirectory.appendingPathComponent("SKILL.md").path) else {
+            throw SkillLifecycleError.skillNotFound(skillName)
+        }
+        try validatePackageLinks(in: sourceDirectory, fm: fm)
+
+        let safe = sanitize(skillName)
+        let canonicalDir = canonicalSkillsDirectory.appendingPathComponent(safe)
+        let linkPaths = agentIDs.compactMap { agentID -> URL? in
+            guard let agent = AgentRegistry.agent(id: agentID) else { return nil }
+            return AgentRegistry.resolvedSkillsDir(for: agent, importedPaths: importedPaths)
+                .appendingPathComponent(safe)
+        }
+        let canonicalExists = (try? fm.attributesOfItem(atPath: canonicalDir.path)) != nil
+        if canonicalExists && !isManagedCanonicalDirectory(canonicalDir, fm: fm) {
+            throw SymlinkInstallerError.destinationConflict(canonicalDir)
+        }
+        for linkPath in linkPaths {
+            try validateLink(from: canonicalDir, to: linkPath, fm: fm)
+        }
+
+        if !sameResolvedPath(sourceDirectory, canonicalDir) {
+            try fm.createDirectory(
+                at: canonicalSkillsDirectory,
+                withIntermediateDirectories: true
+            )
+            let staging = canonicalSkillsDirectory
+                .appendingPathComponent(".\(safe)-install-\(UUID().uuidString)")
+            let backup = canonicalSkillsDirectory
+                .appendingPathComponent(".\(safe)-backup-\(UUID().uuidString)")
+            defer {
+                try? fm.removeItem(at: staging)
+                try? fm.removeItem(at: backup)
+            }
+
+            try fm.copyItem(at: sourceDirectory, to: staging)
+            try? fm.removeItem(at: staging.appendingPathComponent(managedManifestName))
+            try "1\n".write(
+                to: staging.appendingPathComponent(managedMarkerName),
+                atomically: true,
+                encoding: .utf8
+            )
+            if canonicalExists {
+                try fm.moveItem(at: canonicalDir, to: backup)
+            }
+            do {
+                try fm.moveItem(at: staging, to: canonicalDir)
+                try? fm.removeItem(at: backup)
+            } catch {
+                if canonicalExists {
+                    try? fm.moveItem(at: backup, to: canonicalDir)
+                }
+                throw error
+            }
+        }
+
+        for linkPath in linkPaths {
+            try createSymlink(from: canonicalDir, to: linkPath, fm: fm)
+        }
+    }
+
+    /// Delete a skill from the Library and remove only links managed by this app.
+    /// Collection unmounting is a separate, non-destructive operation.
+    static func removeFromLibrary(
         skillName: String,
         canonicalSkillsDirectory: URL = AgentRegistry.canonicalGlobalSkillsDir,
         importedPaths: [String: String] = AgentRegistry.storedImportedAgentFolders()
@@ -141,6 +214,29 @@ enum SymlinkInstaller {
         guard (try? fm.attributesOfItem(atPath: linkPath.path)) != nil else { return }
         guard isLink(linkPath, pointingTo: target, fm: fm) else {
             throw SymlinkInstallerError.destinationConflict(linkPath)
+        }
+    }
+
+    private static func validatePackageLinks(in root: URL, fm: FileManager) throws {
+        let rootPath = root.resolvingSymlinksInPath().standardizedFileURL.path
+        guard let enumerator = fm.enumerator(
+            at: root,
+            includingPropertiesForKeys: [.isSymbolicLinkKey],
+            options: []
+        ) else { return }
+
+        for case let item as URL in enumerator {
+            let values = try item.resourceValues(forKeys: [.isSymbolicLinkKey])
+            guard values.isSymbolicLink == true,
+                  let destination = try? fm.destinationOfSymbolicLink(atPath: item.path)
+            else { continue }
+            let target = destination.hasPrefix("/")
+                ? URL(fileURLWithPath: destination)
+                : item.deletingLastPathComponent().appendingPathComponent(destination)
+            let targetPath = target.resolvingSymlinksInPath().standardizedFileURL.path
+            guard targetPath == rootPath || targetPath.hasPrefix(rootPath + "/") else {
+                throw SymlinkInstallerError.unsafePackageLink(item)
+            }
         }
     }
 

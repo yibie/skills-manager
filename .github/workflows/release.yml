@@ -60,6 +60,16 @@ jobs:
             -project SkillsManager.xcodeproj \
             -scheme SkillsManager
 
+      - name: Test App
+        run: |
+          xcodebuild \
+            -project SkillsManager.xcodeproj \
+            -scheme SkillsManager \
+            -configuration Debug \
+            -destination "platform=macOS" \
+            CODE_SIGNING_ALLOWED=NO \
+            test
+
       - name: Build Release App
         env:
           DERIVED_DATA: ${{ runner.temp }}/DerivedData

@@ -787,6 +787,278 @@ struct EnvironmentAndNetworkingTests {
         #expect(summary == DescriptionTranslationSummary(translated: 1, skipped: 0, failed: 0))
         #expect(store.discoverableSkillDetails[homeSkill.id]?.localizedDescription == "首页翻译")
     }
+
+    @Test
+    func lifecycleDetectsSkillsCLIProvenanceFromItsLockfile() throws {
+        let home = FileManager.default.temporaryDirectory
+            .appendingPathComponent("skills-cli-provenance-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: home) }
+        let lockFile = home.appendingPathComponent(".agents/.skill-lock.json")
+        try FileManager.default.createDirectory(
+            at: lockFile.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try """
+        {
+          "version": 3,
+          "skills": {
+            "external-skill": {
+              "source": "example/repo",
+              "sourceType": "github",
+              "sourceUrl": "https://github.com/example/repo",
+              "ref": "release/1",
+              "skillPath": "skills/external-skill",
+              "skillFolderHash": "abc123",
+              "installedAt": "2026-01-01T00:00:00Z",
+              "updatedAt": "2026-01-02T00:00:00Z"
+            }
+          }
+        }
+        """.write(to: lockFile, atomically: true, encoding: .utf8)
+
+        var skill = makeLocalSkill(id: "universal:external-skill", baseDescription: "")
+        skill.name = "external-skill"
+        skill.directoryPath = home.appendingPathComponent(".agents/skills/external-skill")
+        skill.filePath = skill.directoryPath.appendingPathComponent("SKILL.md")
+
+        let annotated = SkillLifecycleService(home: home, environment: [:]).annotate([skill])
+        let provenance = try #require(annotated.first?.provenance)
+
+        #expect(provenance.provider == .skillsCLI)
+        #expect(provenance.sourceURL == URL(string: "https://github.com/example/repo"))
+        #expect(provenance.skillID == "external-skill")
+        #expect(provenance.sourceRef == "release/1")
+        #expect(annotated.first?.canUpdate == true)
+    }
+
+    @Test
+    func skillsCLILockDoesNotClaimSameNamedManualSkill() throws {
+        let home = FileManager.default.temporaryDirectory
+            .appendingPathComponent("skills-cli-manual-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: home) }
+        let lockFile = home.appendingPathComponent(".agents/.skill-lock.json")
+        try FileManager.default.createDirectory(
+            at: lockFile.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try """
+        {
+          "version": 3,
+          "skills": {
+            "external-skill": {
+              "sourceUrl": "https://github.com/example/repo"
+            }
+          }
+        }
+        """.write(to: lockFile, atomically: true, encoding: .utf8)
+
+        var skill = makeLocalSkill(id: "local:external-skill", baseDescription: "")
+        skill.name = "external-skill"
+        skill.directoryPath = home.appendingPathComponent(".claude/skills/external-skill")
+        skill.filePath = skill.directoryPath.appendingPathComponent("SKILL.md")
+
+        let annotated = SkillLifecycleService(home: home, environment: [:]).annotate([skill])
+
+        #expect(annotated.first?.provenance.provider == .manual)
+        #expect(annotated.first?.canUpdate == false)
+    }
+
+    @Test
+    func discoverInstallUsesNativeLifecycleInsteadOfSkillsCLI() async throws {
+        let nativeInstalls = Locked<[String]>([])
+        let providerCommands = Locked<[[String]]>([])
+        let service = SkillLifecycleService(
+            installNative: { skill, agentIDs, _ in
+                nativeInstalls.withLock { $0.append("\(skill.skillId):\(agentIDs.joined(separator: ","))") }
+            },
+            runProviderCommand: { args, _ in
+                providerCommands.withLock { $0.append(args) }
+            },
+            isSkillsCLIAvailable: { true }
+        )
+
+        try await service.installDiscover(
+            makeDiscoverSkill(id: "repo:native", baseDescription: nil),
+            agentIDs: ["codex", "claude-code"],
+            appendLog: { _ in }
+        )
+
+        #expect(nativeInstalls.withLock { $0 } == ["repo:native:codex,claude-code"])
+        #expect(providerCommands.withLock { $0 }.isEmpty)
+    }
+
+    @Test
+    func nativeInstallerAcceptsSkillsCLIGitSuffixedRepositoryURL() throws {
+        let archive = try NativeSkillPackageInstaller.archiveURL(
+            for: URL(string: "https://github.com/example/repo.git")!,
+            ref: "release/1"
+        )
+
+        #expect(
+            archive.absoluteString
+                == "https://api.github.com/repos/example/repo/zipball/release%2F1"
+        )
+    }
+
+    @Test
+    func skillsCLIManagedSkillUsesProviderForUpdateAndRemoval() async throws {
+        let providerCommands = Locked<[[String]]>([])
+        let nativeInstalls = Locked<[String]>([])
+        let nativeUninstalls = Locked<[String]>([])
+        let service = SkillLifecycleService(
+            installNative: { skill, _, _ in
+                nativeInstalls.withLock { $0.append(skill.skillId) }
+            },
+            removeNative: { skill in
+                nativeUninstalls.withLock { $0.append(skill.name) }
+            },
+            runProviderCommand: { args, _ in
+                providerCommands.withLock { $0.append(args) }
+            },
+            isSkillsCLIAvailable: { true }
+        )
+        var skill = makeLifecycleSkill()
+        skill.provenance = SkillProvenance(
+            provider: .skillsCLI,
+            sourceURL: URL(string: "https://github.com/example/repo"),
+            skillID: "managed-skill"
+        )
+
+        try await service.install(skill, agentIDs: ["codex", "claude-code"], appendLog: { _ in })
+        try await service.update(skill, agentIDs: ["codex"], appendLog: { _ in })
+        try await service.removeFromLibrary(skill, appendLog: { _ in })
+
+        #expect(providerCommands.withLock { $0 } == [
+            [
+                "-y", "skills", "add", "https://github.com/example/repo",
+                "--skill", "managed-skill", "--agent", "codex", "claude-code",
+                "--global", "--yes",
+            ],
+            ["-y", "skills", "update", "managed-skill", "--global", "--yes"],
+            ["-y", "skills", "remove", "managed-skill", "--global", "--yes"],
+        ])
+        #expect(nativeInstalls.withLock { $0 }.isEmpty)
+        #expect(nativeUninstalls.withLock { $0 }.isEmpty)
+    }
+
+    @Test
+    func unavailableSkillsCLIFallsBackToNativeLifecycle() async throws {
+        let nativeInstalls = Locked<[String]>([])
+        let nativeUninstalls = Locked<[String]>([])
+        let service = SkillLifecycleService(
+            installNative: { skill, agentIDs, _ in
+                nativeInstalls.withLock {
+                    $0.append("\(skill.skillId)@\(skill.repositoryRef ?? "default"):\(agentIDs.joined(separator: ","))")
+                }
+            },
+            removeNative: { skill in
+                nativeUninstalls.withLock { $0.append(skill.name) }
+            },
+            runProviderCommand: { _, _ in
+                Issue.record("Provider command should not run when the CLI is unavailable")
+            },
+            isSkillsCLIAvailable: { false }
+        )
+        var skill = makeLifecycleSkill()
+        skill.provenance = SkillProvenance(
+            provider: .skillsCLI,
+            sourceURL: URL(string: "https://github.com/example/repo"),
+            skillID: "managed-skill",
+            sourceRef: "release/1"
+        )
+
+        try await service.update(skill, agentIDs: ["codex"], appendLog: { _ in })
+        try await service.removeFromLibrary(skill, appendLog: { _ in })
+
+        #expect(nativeInstalls.withLock { $0 } == ["managed-skill@release/1:codex"])
+        #expect(nativeUninstalls.withLock { $0 } == ["managed-skill"])
+    }
+
+    @Test
+    func unavailableSkillsCLITakeoverReplacesProviderCopyAndClearsLock() async throws {
+        let fm = FileManager.default
+        let home = fm.temporaryDirectory
+            .appendingPathComponent("skills-cli-takeover-\(UUID().uuidString)")
+        defer { try? fm.removeItem(at: home) }
+        let providerSkill = home.appendingPathComponent(".agents/skills/managed-skill")
+        let canonicalRoot = home.appendingPathComponent(".config/agents/skills")
+        let canonicalSkill = canonicalRoot.appendingPathComponent("managed-skill")
+        let lockFile = home.appendingPathComponent(".agents/.skill-lock.json")
+        try createLifecycleSkill(at: providerSkill)
+        try """
+        {
+          "version": 3,
+          "skills": {
+            "managed-skill": {
+              "sourceUrl": "https://github.com/example/repo",
+              "skillPath": "skills/managed-skill"
+            }
+          }
+        }
+        """.write(to: lockFile, atomically: true, encoding: .utf8)
+
+        let service = SkillLifecycleService(
+            home: home,
+            canonicalSkillsDirectory: canonicalRoot,
+            environment: [:],
+            installNative: { _, _, _ in
+                try createLifecycleSkill(at: canonicalSkill)
+                try "1\n".write(
+                    to: canonicalSkill.appendingPathComponent(SymlinkInstaller.managedMarkerName),
+                    atomically: true,
+                    encoding: .utf8
+                )
+            },
+            trashItem: { try FileManager.default.removeItem(at: $0) },
+            isSkillsCLIAvailable: { false }
+        )
+        var skill = makeLifecycleSkill()
+        skill.directoryPath = providerSkill
+        skill.filePath = providerSkill.appendingPathComponent("SKILL.md")
+        skill.provenance = SkillProvenance(
+            provider: .skillsCLI,
+            sourceURL: URL(string: "https://github.com/example/repo"),
+            skillID: "managed-skill"
+        )
+
+        try await service.update(skill, agentIDs: ["codex"], appendLog: { _ in })
+
+        #expect(
+            providerSkill.resolvingSymlinksInPath().standardizedFileURL
+                == canonicalSkill.standardizedFileURL
+        )
+        let lock = try String(contentsOf: lockFile, encoding: .utf8)
+        #expect(lock.contains("managed-skill") == false)
+    }
+
+    @Test
+    func openClawRemovalUsesTrashInsteadOfPermanentDelete() async throws {
+        let home = FileManager.default.temporaryDirectory
+            .appendingPathComponent("openclaw-trash-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: home) }
+        let directory = home.appendingPathComponent(".openclaw/workspace-main/skills/example")
+        try createLifecycleSkill(at: directory)
+        let trashed = Locked<[URL]>([])
+        let service = SkillLifecycleService(
+            home: home,
+            trashItem: { url in
+                trashed.withLock { $0.append(url) }
+            }
+        )
+        var skill = makeLifecycleSkill()
+        skill.directoryPath = directory
+        skill.filePath = directory.appendingPathComponent("SKILL.md")
+        skill.source = .openClaw(root: "workspace-main")
+        skill.provenance = SkillProvenance(provider: .openClaw, sourceURL: nil, skillID: "example")
+
+        try await service.removeFromLibrary(skill, appendLog: { _ in })
+
+        #expect(
+            trashed.withLock { $0.first?.standardizedFileURL.path }
+                == directory.standardizedFileURL.path
+        )
+        #expect(FileManager.default.fileExists(atPath: directory.path))
+    }
 }
 
 private func makeIsolatedDiscoverCache() -> DiscoverDirectoryCache {
@@ -900,5 +1172,33 @@ private func makeDiscoverSkill(id: String, baseDescription: String?) -> Discover
         baseDescriptionLocale: "en",
         localizedDescription: nil,
         readmeExcerpt: nil
+    )
+}
+
+private func makeLifecycleSkill() -> Skill {
+    Skill(
+        id: "universal:managed-skill",
+        name: "managed-skill",
+        displayName: "Managed Skill",
+        baseDescription: "",
+        baseDescriptionLocale: "en",
+        localizedDescription: nil,
+        source: .local,
+        version: nil,
+        filePath: URL(fileURLWithPath: "/tmp/managed-skill/SKILL.md"),
+        directoryPath: URL(fileURLWithPath: "/tmp/managed-skill"),
+        compatibleAgents: ["Codex"],
+        tags: [],
+        markdownContent: "",
+        frontmatter: [:]
+    )
+}
+
+private func createLifecycleSkill(at directory: URL) throws {
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    try "---\nname: managed-skill\n---\n".write(
+        to: directory.appendingPathComponent("SKILL.md"),
+        atomically: true,
+        encoding: .utf8
     )
 }

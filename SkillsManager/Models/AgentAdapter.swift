@@ -6,6 +6,4 @@ protocol AgentAdapter: Sendable {
     var skillsDirectories: [URL] { get }
 
     func scanSkills() async throws -> [Skill]
-    func installSkill(_ skill: Skill) throws
-    func uninstallSkill(_ skill: Skill) throws
 }

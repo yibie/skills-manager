@@ -16,6 +16,7 @@ struct CollectionDetailView: View {
     let onRemoveMember: (Skill) -> Void
     let onInstall: (Skill) async -> Void
     let onUninstall: (Skill) async -> Void
+    var onMoveToTrash: (Skill) async -> Void = { _ in }
     let onToggleStar: (Skill) -> Void
 
     @State private var isPickerPresented = false
@@ -84,6 +85,7 @@ struct CollectionDetailView: View {
                 selectedSkill: $selectedSkill,
                 onInstall: onInstall,
                 onUninstall: onUninstall,
+                onMoveToTrash: onMoveToTrash,
                 onToggleStar: onToggleStar,
                 onRemoveFromCollection: onRemoveMember
             )

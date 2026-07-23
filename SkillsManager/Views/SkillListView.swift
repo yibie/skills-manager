@@ -2,54 +2,26 @@ import SwiftUI
 import AppKit
 
 struct SkillListView: View {
-    private enum AllSkillsTab: String, CaseIterable, Identifiable {
-        case local
-        case plugin
-
-        var id: String { rawValue }
-
-        var title: String {
-            switch self {
-            case .local: "From Local"
-            case .plugin: "From Plugin"
-            }
-        }
-    }
-
     let skills: [Skill]
     let filter: SidebarFilter
     var memberIDs: Set<String>? = nil  // filter == .collection 时的成员白名单;nil 视为空
     @Binding var selectedSkill: Skill?
     let onInstall: (Skill) async -> Void
     let onUninstall: (Skill) async -> Void
+    var onMoveToTrash: (Skill) async -> Void = { _ in }
     let onToggleStar: (Skill) -> Void
     var onAddToCollection: ((Skill) -> Void)? = nil
     var onRemoveFromCollection: ((Skill) -> Void)? = nil
 
     @State private var listSelection: Set<Skill> = []
-    @State private var selectedAllSkillsTab: AllSkillsTab = .local
-    @State private var searchText = ""
+    @State private var searchQuery = SkillSearchQuery()
 
-    private var pluginSkills: [Skill] {
-        skills.filter {
-            if case .plugin = $0.source { return true }
-            return false
-        }
-    }
-
-    private var standaloneSkills: [Skill] {
-        skills.filter {
-            if case .plugin = $0.source { return false }
-            return true
-        }
-    }
-
-    private var filteredSkills: [Skill] {
+    private var scopedSkills: [Skill] {
         switch filter {
         case .controlCenter, .discover, .project, .agentDocs, .conflicts:
             return []
         case .all:
-            return selectedAllSkillsTab == .plugin ? pluginSkills : standaloneSkills
+            return skills
         case .installed:
             return skills.filter { $0.installState == .installed }
         case .starred:
@@ -73,86 +45,84 @@ struct SkillListView: View {
         }
     }
 
-    private var searchedSkills: [Skill] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return filteredSkills }
-        return filteredSkills.filter { skill in
-            skill.name.localizedCaseInsensitiveContains(query)
-                || skill.displayName.localizedCaseInsensitiveContains(query)
-                || skill.description.localizedCaseInsensitiveContains(query)
-                || skill.compatibleAgents.contains { $0.localizedCaseInsensitiveContains(query) }
-                || skill.tags.contains { $0.localizedCaseInsensitiveContains(query) }
+    private var visibleSkills: [Skill] {
+        SkillSearch.results(in: scopedSkills, query: searchQuery)
+    }
+
+    private var sourceOptions: [String] {
+        Set(scopedSkills.map(SkillSearch.sourceName(for:))).sorted()
+    }
+
+    private var agentOptions: [String] {
+        Set(scopedSkills.flatMap(\.compatibleAgents)).sorted()
+    }
+
+    private var batchRemovableSkills: [Skill] {
+        listSelection.filter { skill in
+            skill.installState == InstallState.installed && !skill.canMoveToTrash
         }
     }
 
     var body: some View {
-        Group {
-            if searchedSkills.isEmpty {
-                if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !filteredSkills.isEmpty {
+        VStack(spacing: 0) {
+            SkillFilterBar(
+                query: $searchQuery,
+                resultCount: visibleSkills.count,
+                totalCount: scopedSkills.count,
+                sources: sourceOptions,
+                agents: agentOptions
+            )
+
+            Divider()
+
+            if visibleSkills.isEmpty {
+                if scopedSkills.isEmpty {
                     ContentUnavailableView(
-                        "No Results",
-                        systemImage: "magnifyingglass",
-                        description: Text("No skills match \"\(searchText)\".")
+                        "No Skills",
+                        systemImage: "tray",
+                        description: Text("There are no skills in this view yet.")
                     )
                 } else {
-                    ContentUnavailableView(
-                        filter == .all && selectedAllSkillsTab == .plugin ? "No Plugin Skills" : "No Skills",
-                        systemImage: "tray",
-                        description: Text(filter == .all && selectedAllSkillsTab == .plugin ? "No plugin-provided skills are available." : "No skills match the current filter.")
-                    )
+                    ContentUnavailableView {
+                        Label("No Results", systemImage: "magnifyingglass")
+                    } description: {
+                        Text("No skills match the current search and filters.")
+                    } actions: {
+                        Button("Clear Search and Filters") {
+                            searchQuery = SkillSearchQuery()
+                        }
+                    }
                 }
             } else {
-                VStack(spacing: 0) {
-                    if filter == .all {
-                        Picker("Skill Source", selection: $selectedAllSkillsTab) {
-                            Text("From Local").tag(AllSkillsTab.local)
-                            Text("From Plugin").tag(AllSkillsTab.plugin)
-                        }
-                        .pickerStyle(.segmented)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 10)
-                        .padding(.bottom, 8)
+                List(selection: $listSelection) {
+                    ForEach(visibleSkills) { skill in
+                        row(for: skill)
                     }
-
-                    List(selection: $listSelection) {
-                        ForEach(searchedSkills) { skill in
-                            SkillRow(
-                                skill: skill,
-                                onInstall: { Task { await onInstall(skill) } },
-                                onUninstall: { Task { await onUninstall(skill) } },
-                                onToggleStar: { onToggleStar(skill) },
-                                onAddToCollection: onAddToCollection.map { cb in { cb(skill) } },
-                                onRemoveFromCollection: onRemoveFromCollection.map { cb in { cb(skill) } }
-                            )
-                            .listRowSeparator(.hidden)
-                            .tag(skill)
-                        }
-                    }
-                    .listStyle(.plain)
-                    .safeAreaInset(edge: .bottom, spacing: 0) {
-                        if listSelection.count > 1 {
-                            BatchActionBar(
-                                selection: listSelection,
-                                onInstall: {
-                                    let batch = Array(listSelection)
-                                    listSelection = []
-                                    Task { await installBatch(batch) }
-                                },
-                                onUninstall: {
-                                    let batch = Array(listSelection)
-                                    listSelection = []
-                                    Task { await uninstallBatch(batch) }
-                                },
-                                onDeselect: { listSelection = [] }
-                            )
-                        }
+                }
+                .listStyle(.plain)
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if listSelection.count > 1 {
+                        BatchActionBar(
+                            selection: listSelection,
+                            onInstall: {
+                                let batch = Array(listSelection)
+                                listSelection = []
+                                Task { await installBatch(batch) }
+                            },
+                            onUninstall: {
+                                let batch = batchRemovableSkills
+                                listSelection = []
+                                Task { await uninstallBatch(batch) }
+                            },
+                            onDeselect: { listSelection = [] }
+                        )
                     }
                 }
             }
         }
         .navigationTitle(filter.title)
         .frame(minWidth: 260)
-        .searchable(text: $searchText, prompt: "Search skills")
+        .searchable(text: $searchQuery.text, prompt: "Search names, descriptions, tags, agents")
         // Sync single-selection → detail panel
         .onChange(of: listSelection) {
             selectedSkill = listSelection.count == 1 ? listSelection.first : nil
@@ -160,16 +130,32 @@ struct SkillListView: View {
         // Clear selection when filter changes
         .onChange(of: filter) {
             listSelection = []
-            if filter != .all {
-                selectedAllSkillsTab = .local
-            }
+            searchQuery.clearFilters()
         }
-        .onChange(of: selectedAllSkillsTab) {
-            listSelection = []
+        .onChange(of: visibleSkills.map(\.id)) {
+            let visibleIDs = Set(visibleSkills.map(\.id))
+            listSelection = listSelection.filter { visibleIDs.contains($0.id) }
         }
     }
 
     // MARK: - Batch helpers
+
+    private func row(for skill: Skill) -> some View {
+        SkillRow(
+            skill: skill,
+            onInstall: { Task { await onInstall(skill) } },
+            onUninstall: { Task { await onUninstall(skill) } },
+            onMoveToTrash: { Task { await onMoveToTrash(skill) } },
+            onToggleStar: { onToggleStar(skill) },
+            onAddToCollection: onAddToCollection.map { callback in
+                { callback(skill) }
+            },
+            onRemoveFromCollection: onRemoveFromCollection.map { callback in
+                { callback(skill) }
+            }
+        )
+        .tag(skill)
+    }
 
     private func installBatch(_ batch: [Skill]) async {
         for skill in batch { await onInstall(skill) }
@@ -180,6 +166,86 @@ struct SkillListView: View {
     }
 }
 
+// MARK: - Search and filters
+
+private struct SkillFilterBar: View {
+    @Binding var query: SkillSearchQuery
+    let resultCount: Int
+    let totalCount: Int
+    let sources: [String]
+    let agents: [String]
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Menu {
+                Picker("Status", selection: $query.installState) {
+                    Text("Any Status").tag(nil as InstallState?)
+                    ForEach(InstallState.allCases, id: \.rawValue) { state in
+                        Text(state.filterTitle).tag(state as InstallState?)
+                    }
+                }
+
+                Picker("Source", selection: $query.source) {
+                    Text("Any Source").tag(nil as String?)
+                    ForEach(sources, id: \.self) { source in
+                        Text(source).tag(source as String?)
+                    }
+                }
+
+                Picker("Agent", selection: $query.agent) {
+                    Text("Any Agent").tag(nil as String?)
+                    ForEach(agents, id: \.self) { agent in
+                        Text(agent).tag(agent as String?)
+                    }
+                }
+
+                Divider()
+                Toggle("Starred Only", isOn: $query.starredOnly)
+
+                if query.activeFilterCount > 0 {
+                    Divider()
+                    Button("Clear Filters") { query.clearFilters() }
+                }
+            } label: {
+                Label(
+                    query.activeFilterCount == 0 ? "Filter" : "Filters (\(query.activeFilterCount))",
+                    systemImage: "line.3.horizontal.decrease.circle"
+                )
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .help("Filter by status, source, agent, or starred state")
+
+            Text(resultCount == totalCount ? "\(totalCount) skills" : "\(resultCount) of \(totalCount)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+
+            Spacer(minLength: 8)
+
+            if query.activeFilterCount > 0 {
+                Button("Clear") { query.clearFilters() }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .controlSize(.small)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+}
+
+private extension InstallState {
+    var filterTitle: String {
+        switch self {
+        case .installed: "Installed"
+        case .trial: "Trial"
+        case .notInstalled: "Not Installed"
+        }
+    }
+}
+
 // MARK: - Batch action bar
 
 private struct BatchActionBar: View {
@@ -187,9 +253,12 @@ private struct BatchActionBar: View {
     let onInstall: () -> Void
     let onUninstall: () -> Void
     let onDeselect: () -> Void
+    @State private var isConfirmingRemoval = false
 
     private var hasInstallable: Bool { selection.contains { $0.installState != .installed } }
-    private var hasUninstallable: Bool { selection.contains { $0.installState == .installed } }
+    private var removableCount: Int {
+        selection.count { $0.installState == .installed && !$0.canMoveToTrash }
+    }
 
     var body: some View {
         HStack(spacing: 10) {
@@ -204,8 +273,8 @@ private struct BatchActionBar: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
             }
-            if hasUninstallable {
-                Button("Uninstall") { onUninstall() }
+            if removableCount > 0 {
+                Button("Delete \(removableCount)…") { isConfirmingRemoval = true }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .tint(.red)
@@ -219,6 +288,12 @@ private struct BatchActionBar: View {
         .padding(.vertical, 8)
         .background(.bar)
         .overlay(alignment: .top) { Divider() }
+        .alert("Delete \(removableCount) Skills from Library?", isPresented: $isConfirmingRemoval) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive, action: onUninstall)
+        } message: {
+            Text("Each skill will be deleted through its detected lifecycle provider. External files that require separate Trash confirmation are excluded.")
+        }
     }
 }
 
@@ -228,144 +303,160 @@ private struct SkillRow: View {
     let skill: Skill
     let onInstall: () -> Void
     let onUninstall: () -> Void
+    let onMoveToTrash: () -> Void
     let onToggleStar: () -> Void
     var onAddToCollection: (() -> Void)? = nil
     var onRemoveFromCollection: (() -> Void)? = nil
+    @State private var isConfirmingTrash = false
+    @State private var isConfirmingRemoval = false
 
     var body: some View {
-        SkillCard(
-            title: skill.displayName,
-            description: skill.description
-        ) {
-            if skill.isDescriptionTranslated {
-                SkillMetaBadge(text: "Translated", tint: .blue)
+        HStack(alignment: .top, spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 5) {
+                    Text(skill.displayName)
+                        .font(.body.weight(.medium))
+                        .lineLimit(1)
+
+                    if skill.isDescriptionTranslated {
+                        Image(systemName: "globe")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .help("Translated description")
+                    }
+                }
+
+                if !skill.description.isEmpty {
+                    Text(skill.description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                HStack(spacing: 5) {
+                    Text(SkillSearch.sourceName(for: skill))
+                    Text("·")
+                    Label(skill.installState.filterTitle, systemImage: installStateIcon)
+                }
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
             }
-            sourceTypeBadge
-            sourceDetailBadge
-            installStateBadge
-        } actions: {
-            SkillActionButtons(
-                skill: skill,
-                onInstall: onInstall,
-                onUninstall: onUninstall,
-                onToggleStar: onToggleStar
-            )
-        }
-        .contextMenu {
-            Button(skill.isStarred ? "Unstar" : "Star") { onToggleStar() }
-            if let onAddToCollection {
-                Button("Add to Collection…", action: onAddToCollection)
-            }
-            if let onRemoveFromCollection {
-                Button("Remove from Collection", role: .destructive, action: onRemoveFromCollection)
-            }
-            Divider()
-            switch skill.installState {
-            case .notInstalled:
-                Button("Install") { onInstall() }
-            case .installed:
-                Button("Uninstall", role: .destructive) { onUninstall() }
-            case .trial:
-                Button("Keep") { onInstall() }
-                Button("Discard", role: .destructive) { onUninstall() }
-            }
-            Divider()
-            Button("Copy ID") { copyToPasteboard(skill.id) }
-            Button("Show in Finder") { showSkillInFinder(skill) }
-            Button("Copy Path") { copyToPasteboard(skill.directoryPath.path()) }
-        }
-    }
 
-    private var sourceTypeBadge: some View {
-        let label: String
-        let tint: Color
-        switch skill.source {
-        case .local:
-            label = "Local"
-            tint = .secondary
-        case .openClaw:
-            label = "OpenClaw"
-            tint = .blue
-        case .symlinked:
-            label = "Symlinked"
-            tint = .secondary
-        case .plugin:
-            label = "Plugin"
-            tint = .purple
-        case .projectLocal:
-            label = "Project"
-            tint = .secondary
-        }
-        return SkillMetaBadge(text: label, tint: tint)
-    }
+            Spacer(minLength: 6)
 
-    @ViewBuilder
-    private var sourceDetailBadge: some View {
-        switch skill.source {
-        case .plugin(let pluginSource, let pluginName):
-            SkillMetaBadge(text: pluginSource)
-            SkillMetaBadge(text: pluginName)
-        default:
-            EmptyView()
-        }
-    }
-
-    @ViewBuilder
-    private var installStateBadge: some View {
-        switch skill.installState {
-        case .installed:
-            EmptyView()
-        case .trial:
-            SkillMetaBadge(text: "Trial", tint: .orange)
-        case .notInstalled:
-            SkillMetaBadge(text: "Not Installed")
-        }
-    }
-}
-
-// MARK: - Action buttons
-
-private struct SkillActionButtons: View {
-    let skill: Skill
-    let onInstall: () -> Void
-    let onUninstall: () -> Void
-    let onToggleStar: () -> Void
-
-    var body: some View {
-        HStack(spacing: 6) {
             Button(action: onToggleStar) {
                 Image(systemName: skill.isStarred ? "star.fill" : "star")
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+            .buttonStyle(.plain)
             .foregroundStyle(skill.isStarred ? .yellow : .secondary)
+            .accessibilityLabel(skill.isStarred ? "Unstar \(skill.displayName)" : "Star \(skill.displayName)")
             .help(skill.isStarred ? "Unstar" : "Star")
 
-            switch skill.installState {
-            case .notInstalled:
-                TextActionButton(label: "Install", action: onInstall)
-            case .installed:
-                TextActionButton(label: "Uninstall", role: .destructive, action: onUninstall)
-            case .trial:
-                TextActionButton(label: "Keep", action: onInstall)
-                TextActionButton(label: "Discard", role: .destructive, action: onUninstall)
-            }
-
             Menu {
-                Button("Copy ID") { copyToPasteboard(skill.id) }
-                Button("Show in Finder") { showSkillInFinder(skill) }
-                Divider()
-                Button("Copy Path") { copyToPasteboard(skill.directoryPath.path()) }
+                actionMenuItems
             } label: {
-                Text("More")
-                    .font(.caption)
+                Image(systemName: "ellipsis")
+                    .frame(width: 18, height: 18)
             }
             .menuStyle(.borderlessButton)
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .help("More")
+            .fixedSize()
+            .accessibilityLabel("More actions for \(skill.displayName)")
+            .help("More actions")
         }
-        .padding(.top, 2)
+        .padding(.vertical, 5)
+        .contentShape(.rect)
+        .contextMenu {
+            actionMenuItems
+        }
+        .alert("Move “\(skill.displayName)” to Trash?", isPresented: $isConfirmingTrash) {
+            Button("Cancel", role: .cancel) {}
+            Button("Move to Trash", role: .destructive, action: onMoveToTrash)
+        } message: {
+            Text("This moves \(skill.trashTargetURL.path) to Trash. Links to this skill from other agents may stop working.")
+        }
+        .alert(removalConfirmationTitle, isPresented: $isConfirmingRemoval) {
+            Button("Cancel", role: .cancel) {}
+            Button(removalTitle, role: .destructive, action: onUninstall)
+        } message: {
+            Text(removalConfirmationMessage)
+        }
+    }
+
+    @ViewBuilder
+    private var actionMenuItems: some View {
+        Button(skill.isStarred ? "Unstar" : "Star") { onToggleStar() }
+        if let onAddToCollection {
+            Button("Add to Collection…", action: onAddToCollection)
+        }
+        if let onRemoveFromCollection {
+            Button("Remove from Collection", role: .destructive, action: onRemoveFromCollection)
+        }
+        Divider()
+        switch skill.installState {
+        case .notInstalled:
+            Button("Install") { onInstall() }
+        case .installed:
+            removalAction
+        case .trial:
+            Button("Keep") { onInstall() }
+            removalAction
+        }
+        Divider()
+        Button("Copy ID") { copyToPasteboard(skill.id) }
+        Button("Show in Finder") { showSkillInFinder(skill) }
+        Button("Copy Path") { copyToPasteboard(skill.directoryPath.standardizedFileURL.path) }
+    }
+
+    @ViewBuilder
+    private var removalAction: some View {
+        if skill.canMoveToTrash {
+            Button("Move to Trash…", role: .destructive) {
+                isConfirmingTrash = true
+            }
+        } else {
+            Button("\(removalTitle)…", role: .destructive) {
+                isConfirmingRemoval = true
+            }
+        }
+    }
+
+    private var removalTitle: String {
+        if skill.installState == .trial { return "Discard" }
+        return switch skill.provenance.provider {
+        case .skillsCLI: "Remove via Skills CLI"
+        case .skillsManager: "Delete from Library"
+        case .manual: "Uninstall"
+        case .plugin: "Move Plugin Cache to Trash"
+        case .openClaw: "Move OpenClaw Skill to Trash"
+        }
+    }
+
+    private var removalConfirmationTitle: String {
+        "\(removalTitle) “\(skill.displayName)”?"
+    }
+
+    private var removalConfirmationMessage: String {
+        switch skill.provenance.provider {
+        case .skillsCLI:
+            "Skills Manager will ask Skills CLI to remove this skill, then rescan every agent location."
+        case .skillsManager:
+            "This permanently deletes the canonical Library copy and removes its managed links from agents. Collection unmounting does not delete the Library copy."
+        case .manual:
+            "This removes the current installation."
+        case .plugin:
+            "This moves the cached plugin skill to Trash. Reinstalling or refreshing the plugin may restore it."
+        case .openClaw:
+            "This moves the OpenClaw skill from its current location to Trash."
+        }
+    }
+
+    private var installStateIcon: String {
+        switch skill.installState {
+        case .installed: "checkmark.circle"
+        case .trial: "clock"
+        case .notInstalled: "circle.dashed"
+        }
     }
 }
 
@@ -375,22 +466,7 @@ private func copyToPasteboard(_ text: String) {
 }
 
 private func showSkillInFinder(_ skill: Skill) {
-    NSWorkspace.shared.activateFileViewerSelecting([skill.directoryPath])
-}
-
-private struct TextActionButton: View {
-    let label: String
-    var role: ButtonRole? = nil
-    let action: () -> Void
-
-    var body: some View {
-        Button(role: role, action: action) {
-            Text(label)
-                .font(.caption)
-        }
-        .buttonStyle(.bordered)
-        .controlSize(.small)
-    }
+    NSWorkspace.shared.activateFileViewerSelecting([skill.directoryPath.standardizedFileURL])
 }
 
 #if DEBUG
@@ -402,6 +478,7 @@ private struct TextActionButton: View {
         selectedSkill: $selected,
         onInstall: { _ in },
         onUninstall: { _ in },
+        onMoveToTrash: { _ in },
         onToggleStar: { _ in }
     )
     .frame(width: 300, height: 500)

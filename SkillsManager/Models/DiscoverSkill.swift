@@ -8,6 +8,7 @@ struct DiscoverSkill: Identifiable, Sendable {
     var name: String
     var installs: Int
     var repoURL: URL
+    var repositoryRef: String? = nil
     var installCommand: String
     var baseDescription: String?
     var baseDescriptionLocale: String = "en"

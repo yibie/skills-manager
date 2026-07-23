@@ -43,6 +43,35 @@ struct AgentDetectionTests {
     }
 
     @Test
+    func claudeRelativeSymlinkProducesAStandardizedSkillPath() async throws {
+        let home = FileManager.default.temporaryDirectory
+            .appendingPathComponent("claude-relative-symlink-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: home) }
+
+        let canonical = home.appendingPathComponent(".agents/skills/research")
+        let link = home.appendingPathComponent(".claude/skills/research")
+        try createSkill(at: canonical)
+        try FileManager.default.createDirectory(
+            at: link.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createSymbolicLink(
+            atPath: link.path,
+            withDestinationPath: "../../.agents/skills/research"
+        )
+
+        let skill = try #require(try await ClaudeCodeAdapter(home: home).scanSkills().first)
+
+        #expect(!skill.directoryPath.pathComponents.contains(".."))
+        #expect(skill.directoryPath.standardizedFileURL.path == canonical.standardizedFileURL.path)
+        #expect(!skill.filePath.pathComponents.contains(".."))
+        #expect(
+            skill.filePath.standardizedFileURL.path
+                == canonical.appendingPathComponent("SKILL.md").standardizedFileURL.path
+        )
+    }
+
+    @Test
     func sameIDAtDifferentPathsDoesNotMerge() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("agent-id-collision-\(UUID().uuidString)")
@@ -189,11 +218,82 @@ struct AgentDetectionTests {
         let store = SkillStore()
         store.skills = [skill]
 
-        await store.uninstallSkill(skill)
+        await store.removeSkillFromLibrary(skill)
 
         #expect(FileManager.default.fileExists(atPath: root.appendingPathComponent("SKILL.md").path))
         #expect(store.skills.contains(where: { $0.id == skill.id }))
         #expect(store.errorMessage != nil)
+    }
+
+    @MainActor
+    @Test
+    func externalSkillCanBeMovedToTrash() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("external-trash-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        try createSkill(at: root)
+
+        let skill = scannedSkill(id: "external", source: .local, directory: root, agents: ["OpenCode"])
+        let store = SkillStore()
+        store.skills = [skill]
+        var trashedURL: URL?
+
+        await store.moveSkillToTrash(skill) { url in
+            trashedURL = url
+            try FileManager.default.removeItem(at: url)
+        }
+
+        #expect(trashedURL?.standardizedFileURL.path == root.standardizedFileURL.path)
+        #expect(!FileManager.default.fileExists(atPath: root.path))
+        #expect(!store.skills.contains(where: { $0.id == skill.id }))
+        #expect(store.errorMessage == nil)
+    }
+
+    @Test
+    func projectAndSymlinkedSkillsUseRecoverableTrashRemoval() {
+        let project = scannedSkill(
+            id: "project",
+            source: .projectLocal(projectURL: URL(fileURLWithPath: "/tmp/project")),
+            directory: URL(fileURLWithPath: "/tmp/project/.agents/skills/example"),
+            agents: []
+        )
+        let symlinked = scannedSkill(
+            id: "symlinked",
+            source: .symlinked,
+            directory: URL(fileURLWithPath: "/tmp/shared/example"),
+            agents: []
+        )
+
+        #expect(project.canMoveToTrash)
+        #expect(symlinked.canMoveToTrash)
+    }
+
+    @MainActor
+    @Test
+    func movingLooseSkillToTrashKeepsItsSharedDirectory() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("loose-skill-trash-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let skillFile = root.appendingPathComponent("example.md")
+        let siblingFile = root.appendingPathComponent("keep.md")
+        try "---\nname: example\n---\n".write(to: skillFile, atomically: true, encoding: .utf8)
+        try "keep".write(to: siblingFile, atomically: true, encoding: .utf8)
+
+        var skill = scannedSkill(id: "external", source: .local, directory: root, agents: ["Claude Code"])
+        skill.filePath = skillFile
+        let store = SkillStore()
+        store.skills = [skill]
+        var trashedURL: URL?
+
+        await store.moveSkillToTrash(skill) { url in
+            trashedURL = url
+            try FileManager.default.removeItem(at: url)
+        }
+
+        #expect(trashedURL?.standardizedFileURL.path == skillFile.standardizedFileURL.path)
+        #expect(FileManager.default.fileExists(atPath: root.path))
+        #expect(FileManager.default.fileExists(atPath: siblingFile.path))
     }
 
     @Test

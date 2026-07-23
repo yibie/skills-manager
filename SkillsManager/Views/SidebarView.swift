@@ -9,35 +9,17 @@ struct SidebarView: View {
     var conflictCount: Int = 0
     var currentProjectURL: URL? = nil
 
+    @State private var isAgentsExpanded = false
+
     // Precomputed counts to avoid inline filtering in the view body
     private var allCount: Int { skills.count }
-    private var installedCount: Int { skills.filter { $0.installState == .installed }.count }
     private var starredCount: Int { skills.filter { $0.isStarred }.count }
-    private var trialCount: Int { skills.filter { $0.installState == .trial }.count }
 
     /// Union of: agents detected from registry + agents appearing in skill metadata.
     private var agentNames: [String] {
         let fromSkills = Set(skills.flatMap { $0.compatibleAgents })
         let fromRegistry = Set(AgentRegistry.installedAgents().map { $0.displayName })
         return fromSkills.union(fromRegistry).sorted()
-    }
-
-    private var pluginSources: [String] {
-        var sources = Set<String>()
-        for skill in skills {
-            switch skill.source {
-            case .plugin(let pluginSource, _): sources.insert(pluginSource)
-            default: break
-            }
-        }
-        return sources.sorted()
-    }
-
-    private func pluginCount(for pluginSource: String) -> Int {
-        skills.filter {
-            if case .plugin(let source, _) = $0.source { return source == pluginSource }
-            return false
-        }.count
     }
 
     private func agentCount(for agent: String) -> Int {
@@ -53,47 +35,27 @@ struct SidebarView: View {
             Section("Library") {
                 SidebarRow(filter: .discover, count: discoverableCount, selectedFilter: selectedFilter)
                 SidebarRow(filter: .all, count: allCount, selectedFilter: selectedFilter)
-                SidebarRow(filter: .installed, count: installedCount, selectedFilter: selectedFilter)
                 SidebarRow(filter: .starred, count: starredCount, selectedFilter: selectedFilter)
-                SidebarRow(filter: .trial, count: trialCount, selectedFilter: selectedFilter)
                 if conflictCount > 0 {
                     SidebarRow(filter: .conflicts, count: conflictCount, selectedFilter: selectedFilter)
                 }
             }
 
-            Section("Agents") {
-                ForEach(agentNames, id: \.self) { agent in
-                    SidebarRow(
-                        filter: .agent(agent),
-                        count: agentCount(for: agent),
-                        selectedFilter: selectedFilter,
-                        showsIcon: false
-                    )
-                }
-                if agentNames.isEmpty {
-                    SidebarRow(filter: .agent("Claude Code"), count: 0, selectedFilter: selectedFilter, showsIcon: false)
-                }
-            }
-
-            Section("Sources") {
-                SidebarRow(filter: .source("Local"), count: skills.filter { $0.source == .local }.count, selectedFilter: selectedFilter, showsIcon: false)
-                SidebarRow(
-                    filter: .source("OpenClaw"),
-                    count: skills.filter {
-                        if case .openClaw = $0.source { return true }
-                        return false
-                    }.count,
-                    selectedFilter: selectedFilter,
-                    showsIcon: false
-                )
-                ForEach(pluginSources, id: \.self) { pluginSource in
-                    SidebarRow(
-                        filter: .source(pluginSource),
-                        count: pluginCount(for: pluginSource),
-                        selectedFilter: selectedFilter,
-                        titleOverride: pluginSource,
-                        showsIcon: false
-                    )
+            if !agentNames.isEmpty {
+                Section {
+                    DisclosureGroup(isExpanded: $isAgentsExpanded) {
+                        ForEach(agentNames, id: \.self) { agent in
+                            SidebarRow(
+                                filter: .agent(agent),
+                                count: agentCount(for: agent),
+                                selectedFilter: selectedFilter,
+                                showsIcon: false
+                            )
+                        }
+                    } label: {
+                        Label("Agents", systemImage: "cpu")
+                            .badge(agentNames.count)
+                    }
                 }
             }
 

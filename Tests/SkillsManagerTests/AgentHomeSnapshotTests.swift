@@ -6,7 +6,7 @@ import Testing
 /// Offscreen visual-acceptance harness for the agent home page: renders
 /// AgentHomeView (header card + optional conflict card + skill list) to /tmp
 /// for eyeballing:
-///   swift test --filter AgentHomeSnapshot
+///   xcodebuild -project SkillsManager.xcodeproj -scheme SkillsManager -destination 'platform=macOS' -only-testing:SkillsManagerTests/AgentHomeSnapshotTests test
 /// The hosting view is placed in a real (parked offscreen) NSWindow and the run
 /// loop is pumped before caching — AgentHomeView embeds a full SkillListView
 /// and its buttons/card borders otherwise render incompletely.

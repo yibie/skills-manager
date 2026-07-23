@@ -20,11 +20,7 @@ The app:
 open SkillsManager.xcodeproj   # then ⌘R
 ```
 
-Or via SwiftPM:
-
-```bash
-swift build
-```
+Run `xcodegen generate` after changing `project.yml`.
 
 The TUI:
 
@@ -39,7 +35,11 @@ npm exec skills-manager
 Run the full test suite before opening a PR:
 
 ```bash
-swift test
+xcodebuild \
+  -project SkillsManager.xcodeproj \
+  -scheme SkillsManager \
+  -destination 'platform=macOS' \
+  test
 ```
 
 If you change install/uninstall, scanning, or settings behavior, add or update a test in `Tests/SkillsManagerTests`.

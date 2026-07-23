@@ -23,7 +23,7 @@ Coding agent skills are scattered everywhere. Each agent has its own format, ins
 - **Discover** skills from [skills.sh](https://skills.sh/) and community repositories, including full-site search beyond the initially loaded list
 - **Install** to one or multiple agents at once
 - **Try** skills with your own LLM (Claude, OpenAI, OpenRouter, Ollama, or LM Studio) before installing
-- **Manage** installed skills — remove, star favorites (stars are shared with the terminal UI), and spot diverged same-name copies across agents (Conflicts)
+- **Manage** installed skills regardless of where they came from — update or remove through the detected provider, star favorites (stars are shared with the terminal UI), and spot diverged same-name copies across agents (Conflicts)
 - **Group skills into collections** and mount a collection into an agent only when needed — symlinks in, links out, the library stays put (sidebar → 控制台)
 - **Monitor** agent skill directories and refresh automatically when they change on disk
 - **Agent home pages** — clicking an agent in the sidebar opens its home: detection status and skills directory (Show in Finder / Copy Path), conflicts involving that agent, and its full skill list
@@ -110,6 +110,13 @@ The app bundles a generated description translation catalog covering 8 languages
 ## Architecture
 
 Pure local architecture — no backend, works offline except for network-backed features like Discover refresh/search, detail loading, translation fallback, and LLM Try calls. Reads and writes agent config files directly. The terminal UI additionally keeps a local Git history of skill installs for version management (diff and rollback).
+
+The macOS app owns the lifecycle:
+
+- `skills.sh` supplies discovery data only. Installing from Discover downloads the GitHub skill package directly, preserves its scripts/assets, writes it to the managed Library, and creates agent links without requiring Node or `npx`.
+- Skills installed by the Vercel Skills CLI are recognized from its global v3 lock file and managed through that provider when `npx` is available.
+- If that provider is unavailable, an update can move the existing provider copy to Trash and adopt the refreshed package into the managed Library; native removal also clears stale provider metadata.
+- Unmount removes agent links but keeps the Library copy. Delete from Library is a separate confirmed operation. External OpenClaw/plugin content is moved to macOS Trash rather than permanently deleted.
 
 Built with SwiftUI + Swift 6, SwiftData, macOS 14+.
 

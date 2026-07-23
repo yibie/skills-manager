@@ -131,12 +131,9 @@ enum ActivationService {
         // 只有专属技能目录(SKILL.md 的直接父目录 == directoryPath)才允许迁移;
         // 散文件(如 ~/.claude/skills/commit.md,directoryPath 是共享根)只能拷贝,
         // 否则会把用户整个共享 skills 目录搬走。
-        let isDedicatedDirectory = skill.filePath.lastPathComponent == "SKILL.md"
-            && skill.filePath.deletingLastPathComponent().standardizedFileURL.path
-                == skill.directoryPath.standardizedFileURL.path
         var shouldMigrate = false
         if case .local = skill.source {
-            shouldMigrate = isDedicatedDirectory
+            shouldMigrate = skill.isDedicatedDirectory
                 && (try? fm.attributesOfItem(atPath: skill.directoryPath.path)) != nil
         }
         if shouldMigrate {

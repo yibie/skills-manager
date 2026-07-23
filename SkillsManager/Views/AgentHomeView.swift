@@ -23,6 +23,7 @@ struct AgentHomeView: View {
     @Binding var selectedSkill: Skill?
     let onInstall: (Skill) async -> Void
     let onUninstall: (Skill) async -> Void
+    var onMoveToTrash: (Skill) async -> Void = { _ in }
     let onToggleStar: (Skill) -> Void
     let onShowConflicts: () -> Void
 
@@ -56,6 +57,7 @@ struct AgentHomeView: View {
                 selectedSkill: $selectedSkill,
                 onInstall: onInstall,
                 onUninstall: onUninstall,
+                onMoveToTrash: onMoveToTrash,
                 onToggleStar: onToggleStar
             )
         }

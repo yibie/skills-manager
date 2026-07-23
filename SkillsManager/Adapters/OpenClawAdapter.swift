@@ -37,14 +37,6 @@ struct OpenClawAdapter: AgentAdapter {
         }.value
     }
 
-    func installSkill(_ skill: Skill) throws {
-        // Read-only for now. OpenClaw skills can live in multiple roots and may be managed externally.
-    }
-
-    func uninstallSkill(_ skill: Skill) throws {
-        // Read-only for now.
-    }
-
     private func scanSkills(in root: Root) -> [Skill] {
         let fm = FileManager.default
         guard fm.fileExists(atPath: root.url.path) else { return [] }

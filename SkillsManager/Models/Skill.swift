@@ -32,6 +32,7 @@ struct Skill: Identifiable, Hashable, Sendable {
     /// Path to the canonical .agents/skills/<name>/ directory, if known.
     /// Nil for skills that were not installed via the universal symlink mechanism.
     var canonicalPath: URL? = nil
+    var provenance: SkillProvenance = .manual
     var compatibleAgents: [String]
     var tags: [String]
     var markdownContent: String // raw SKILL.md content
@@ -49,6 +50,51 @@ struct Skill: Identifiable, Hashable, Sendable {
         guard let localizedDescription else { return false }
         return localizedDescription != baseDescription
     }
+
+    var canMoveToTrash: Bool {
+        provenance.provider == .manual && canonicalPath == nil
+    }
+
+    var canUpdate: Bool {
+        provenance.sourceURL != nil
+    }
+
+    var isDedicatedDirectory: Bool {
+        filePath.lastPathComponent == "SKILL.md"
+            && filePath.deletingLastPathComponent().standardizedFileURL
+                == directoryPath.standardizedFileURL
+    }
+
+    var trashTargetURL: URL {
+        isDedicatedDirectory ? directoryPath.standardizedFileURL : filePath.standardizedFileURL
+    }
+}
+
+enum SkillManagementProvider: String, Codable, Hashable, Sendable {
+    case skillsManager
+    case skillsCLI
+    case manual
+    case plugin
+    case openClaw
+
+    var displayName: String {
+        switch self {
+        case .skillsManager: "Skills Manager"
+        case .skillsCLI: "Skills CLI"
+        case .manual: "External"
+        case .plugin: "Plugin"
+        case .openClaw: "OpenClaw"
+        }
+    }
+}
+
+struct SkillProvenance: Codable, Hashable, Sendable {
+    var provider: SkillManagementProvider
+    var sourceURL: URL?
+    var skillID: String?
+    var sourceRef: String? = nil
+
+    static let manual = SkillProvenance(provider: .manual, sourceURL: nil, skillID: nil)
 }
 
 enum SkillSource: Hashable, Codable, Sendable {

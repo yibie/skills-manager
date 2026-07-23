@@ -34,14 +34,6 @@ struct UniversalAdapter: AgentAdapter {
         }.value
     }
 
-    func installSkill(_ skill: Skill) throws {
-        // Installation is handled by SymlinkInstaller
-    }
-
-    func uninstallSkill(_ skill: Skill) throws {
-        // Handled by SkillStore.uninstallSkill
-    }
-
     // MARK: - Private
 
     private func scanAllAgentSkills() -> [Skill] {

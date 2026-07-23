@@ -188,7 +188,7 @@ struct SymlinkInstallerTests {
                 .contains("description: updated")
         )
 
-        try SymlinkInstaller.uninstall(
+        try SymlinkInstaller.removeFromLibrary(
             skillName: "example",
             canonicalSkillsDirectory: canonical,
             importedPaths: importedPaths
@@ -217,6 +217,89 @@ struct SymlinkInstallerTests {
         let attributes = try FileManager.default.attributesOfItem(atPath: skill.path)
         #expect(attributes[.type] as? FileAttributeType == .typeDirectory)
         #expect(FileManager.default.fileExists(atPath: skill.appendingPathComponent("SKILL.md").path))
+    }
+
+    @Test
+    func installsAndUpdatesTheCompleteSkillPackage() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("install-package-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let source = root.appendingPathComponent("source")
+        let canonical = root.appendingPathComponent("canonical")
+        let imported = root.appendingPathComponent("opencode")
+        try createInstallerSkill(at: source)
+        try FileManager.default.createDirectory(
+            at: source.appendingPathComponent("scripts"),
+            withIntermediateDirectories: true
+        )
+        try "first".write(
+            to: source.appendingPathComponent("scripts/run.sh"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        try SymlinkInstaller.install(
+            sourceDirectory: source,
+            skillName: "example",
+            agentIDs: ["opencode"],
+            canonicalSkillsDirectory: canonical,
+            importedPaths: ["opencode": imported.path]
+        )
+
+        let installed = canonical.appendingPathComponent("example")
+        #expect(try String(contentsOf: installed.appendingPathComponent("scripts/run.sh"), encoding: .utf8) == "first")
+        #expect(SymlinkInstaller.isManagedCanonicalDirectory(installed))
+        #expect(
+            imported.appendingPathComponent("example").resolvingSymlinksInPath().standardizedFileURL.path
+                == installed.standardizedFileURL.path
+        )
+
+        try FileManager.default.removeItem(at: source.appendingPathComponent("scripts/run.sh"))
+        try "second".write(
+            to: source.appendingPathComponent("replacement.txt"),
+            atomically: true,
+            encoding: .utf8
+        )
+        try SymlinkInstaller.install(
+            sourceDirectory: source,
+            skillName: "example",
+            agentIDs: ["opencode"],
+            canonicalSkillsDirectory: canonical,
+            importedPaths: ["opencode": imported.path]
+        )
+
+        #expect(!FileManager.default.fileExists(atPath: installed.appendingPathComponent("scripts/run.sh").path))
+        #expect(try String(contentsOf: installed.appendingPathComponent("replacement.txt"), encoding: .utf8) == "second")
+    }
+
+    @Test
+    func rejectsPackageLinksThatEscapeTheSkillDirectory() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("install-package-link-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let source = root.appendingPathComponent("source")
+        let canonical = root.appendingPathComponent("canonical")
+        let outside = root.appendingPathComponent("outside.txt")
+        try createInstallerSkill(at: source)
+        try "secret".write(to: outside, atomically: true, encoding: .utf8)
+        try FileManager.default.createSymbolicLink(
+            at: source.appendingPathComponent("outside.txt"),
+            withDestinationURL: outside
+        )
+
+        #expect(throws: SymlinkInstallerError.self) {
+            try SymlinkInstaller.install(
+                sourceDirectory: source,
+                skillName: "example",
+                agentIDs: [],
+                canonicalSkillsDirectory: canonical,
+                importedPaths: [:]
+            )
+        }
+        #expect(!FileManager.default.fileExists(
+            atPath: canonical.appendingPathComponent("example").path
+        ))
     }
 }
 

@@ -5,7 +5,7 @@ import Testing
 
 /// Offscreen visual-acceptance for the control center and collection detail
 /// (same parked-NSWindow harness as AgentHomeSnapshotTests). PNGs land in /tmp:
-///   swift test --filter ConsoleSnapshot
+///   xcodebuild -project SkillsManager.xcodeproj -scheme SkillsManager -destination 'platform=macOS' -only-testing:SkillsManagerTests/ConsoleSnapshotTests test
 struct ConsoleSnapshotTests {
     @MainActor
     private func renderPNG<V: View>(_ view: V, size: NSSize) throws -> Data {
