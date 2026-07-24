@@ -62,7 +62,7 @@ struct AlignmentSweepTests {
             detectedAgents: sampleAgents(),
             statusFor: { _, agentID in statuses[agentID] ?? .unmounted },
             onOpen: { _ in }, onCreate: { _ in }, onToggleAgent: { _, _, _ in },
-            onReapply: { _, _ in }, onRename: { _, _ in }, onDelete: { _ in }
+            onReapply: { _, _ in }, onRename: { _, _ in }, onDelete: { _, _ in }
         ), size: NSSize(width: 980, height: 700), to: "/tmp/sweep-console.png")
     }
 

@@ -1,6 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://skills-manager.dev/schemas/effective-agent.json",
+  "$comment": "CANCELLED (2026-07-21):检视器方向已废止,本 schema 仅作历史存档;生产者 skm inspect / SkillsKernel.EffectiveAgentInspector 已移除。见 effective-agent-inspector.md。",
+  "deprecated": true,
   "title": "Effective-Agent Report",
   "description": "skm inspect 的输出契约:某平台 × 某项目下实际生效的 Agent Resource 集合及其来源/遮蔽关系。消费者:Swift 检视器 UI、TUI、任何下游工具。",
   "type": "object",

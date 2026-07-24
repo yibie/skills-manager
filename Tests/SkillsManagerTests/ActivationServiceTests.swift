@@ -41,7 +41,7 @@ struct ActivationServiceTests {
         #expect(ActivationService.status(intentMounted: false, linkedCount: 0, memberCount: 3) == .unmounted)
         #expect(ActivationService.status(intentMounted: true, linkedCount: 1, memberCount: 3) == .diverged)
         #expect(ActivationService.status(intentMounted: false, linkedCount: 2, memberCount: 3) == .diverged)
-        #expect(ActivationService.status(intentMounted: true, linkedCount: 0, memberCount: 0) == .diverged)
+        #expect(ActivationService.status(intentMounted: true, linkedCount: 0, memberCount: 0) == .unmounted)
         #expect(ActivationService.status(intentMounted: false, linkedCount: 0, memberCount: 0) == .unmounted)
     }
 

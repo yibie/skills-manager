@@ -144,7 +144,7 @@ struct DiscoverView: View {
                     ForEach(filtered) { entry in
                         DiscoverSkillRow(
                             entry: entry,
-                            isInstalled: installedSkills.contains(where: { $0.name == entry.skillId || $0.name == entry.name }),
+                            match: DiscoverLibraryMatcher.match(entry: entry, in: installedSkills),
                             isInstalling: installingSkillIDs.contains(entry.id),
                             onLoadDetail: { Task { await onLoadDetail(entry) } },
                             onTry: { Task { await onTry(entry) } },
@@ -223,7 +223,7 @@ struct DiscoverView: View {
 
 private struct DiscoverSkillRow: View {
     let entry: DiscoverSkill
-    let isInstalled: Bool
+    let match: DiscoverLibraryMatch
     let isInstalling: Bool
     let onLoadDetail: () -> Void
     let onTry: () -> Void
@@ -241,6 +241,8 @@ private struct DiscoverSkillRow: View {
             }
             if isInstalled {
                 SkillMetaBadge(text: "Installed", tint: .green)
+            } else if match == .sameNameOnly {
+                SkillMetaBadge(text: "Same name in library", maxWidth: 150)
             }
             SkillMetaBadge(text: sourceLabel, maxWidth: 96)
             SkillMetaBadge(text: compactInstalls, maxWidth: 84)
@@ -285,6 +287,11 @@ private struct DiscoverSkillRow: View {
         } message: {
             Text("The detected lifecycle provider will remove this skill and its managed agent links.")
         }
+    }
+
+    private var isInstalled: Bool {
+        if case .installed = match { return true }
+        return false
     }
 
     private var sourceLabel: String {

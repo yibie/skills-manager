@@ -53,7 +53,7 @@ struct ConsoleSnapshotTests {
             onToggleAgent: { _, _, _ in },
             onReapply: { _, _ in },
             onRename: { _, _ in },
-            onDelete: { _ in }
+            onDelete: { _, _ in }
         ), size: NSSize(width: 720, height: 640))
         try png.write(to: URL(fileURLWithPath: "/tmp/console.png"))
     }

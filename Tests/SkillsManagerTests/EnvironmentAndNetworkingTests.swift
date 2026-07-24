@@ -928,14 +928,15 @@ struct EnvironmentAndNetworkingTests {
         try await service.update(skill, agentIDs: ["codex"], appendLog: { _ in })
         try await service.removeFromLibrary(skill, appendLog: { _ in })
 
+        let pinned = "skills@\(SkillLifecycleService.skillsCLIVersion)"
         #expect(providerCommands.withLock { $0 } == [
             [
-                "-y", "skills", "add", "https://github.com/example/repo",
+                "-y", pinned, "add", "https://github.com/example/repo",
                 "--skill", "managed-skill", "--agent", "codex", "claude-code",
                 "--global", "--yes",
             ],
-            ["-y", "skills", "update", "managed-skill", "--global", "--yes"],
-            ["-y", "skills", "remove", "managed-skill", "--global", "--yes"],
+            ["-y", pinned, "update", "managed-skill", "--global", "--yes"],
+            ["-y", pinned, "remove", "managed-skill", "--global", "--yes"],
         ])
         #expect(nativeInstalls.withLock { $0 }.isEmpty)
         #expect(nativeUninstalls.withLock { $0 }.isEmpty)

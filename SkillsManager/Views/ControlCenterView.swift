@@ -10,12 +10,13 @@ struct ControlCenterView: View {
     let skills: [Skill]
     let detectedAgents: [AgentDefinition]
     let statusFor: (CollectionRecord, String) -> MountStatus
+    var mountReportFor: (CollectionRecord, String) -> MountReport? = { _, _ in nil }
     let onOpen: (CollectionRecord) -> Void
     let onCreate: (String) -> Void
     let onToggleAgent: (CollectionRecord, String, Bool) -> Void
     let onReapply: (CollectionRecord, String) -> Void
     let onRename: (CollectionRecord, String) -> Void
-    let onDelete: (CollectionRecord) -> Void
+    let onDelete: (CollectionRecord, _ unmountFirst: Bool) -> Void
 
     @State private var isNamingPresented = false
     @State private var newName = ""
@@ -52,11 +53,12 @@ struct ControlCenterView: View {
                             collection: collection,
                             detectedAgents: detectedAgents,
                             statusFor: { statusFor(collection, $0) },
+                            reportFor: { mountReportFor(collection, $0) },
                             onOpen: { onOpen(collection) },
                             onToggleAgent: { onToggleAgent(collection, $0, $1) },
                             onReapply: { onReapply(collection, $0) },
                             onRename: { onRename(collection, $0) },
-                            onDelete: { onDelete(collection) }
+                            onDelete: { onDelete(collection, $0) }
                         )
                     }
                     // 虚线「新建分组」卡收尾(草图 §5.2)
@@ -98,17 +100,32 @@ private struct CollectionCard: View {
     let collection: CollectionRecord
     let detectedAgents: [AgentDefinition]
     let statusFor: (String) -> MountStatus
+    var reportFor: (String) -> MountReport? = { _ in nil }
     let onOpen: () -> Void
     let onToggleAgent: (String, Bool) -> Void
     let onReapply: (String) -> Void
     let onRename: (String) -> Void
-    let onDelete: () -> Void
+    let onDelete: (_ unmountFirst: Bool) -> Void
 
     @State private var isRenamePresented = false
     @State private var renameText = ""
+    @State private var isDeleteConfirmPresented = false
 
     private var unmountedAgents: [AgentDefinition] {
         detectedAgents.filter { !collection.mountedAgentIDs.contains($0.id) }
+    }
+
+    private var mountedAgentNames: [String] {
+        collection.mountedAgentIDs.map { id in
+            detectedAgents.first { $0.id == id }?.displayName ?? id
+        }
+    }
+
+    private var deleteDialogMessage: String {
+        if collection.mountedAgentIDs.isEmpty {
+            return "技能本体保留在 Library,仅删除这个分组。"
+        }
+        return "该分组已挂载到:\(mountedAgentNames.joined(separator: "、"))。“卸载链接并删除”会先移除这些 agent 目录中的 symlink;“仅删除”会把链接留在磁盘上且不再受本应用管理。技能本体始终保留在 Library。"
     }
 
     private var statusText: (text: String, isWarning: Bool) {
@@ -140,7 +157,7 @@ private struct CollectionCard: View {
                         isRenamePresented = true
                     }
                     Divider()
-                    Button("删除分组", role: .destructive, action: onDelete)
+                    Button("删除分组…", role: .destructive) { isDeleteConfirmPresented = true }
                 } label: {
                     Image(systemName: "ellipsis")
                         .frame(width: 24, height: 24)
@@ -160,6 +177,12 @@ private struct CollectionCard: View {
                     statusDot(statusFor(agentID))
                     Text(detectedAgents.first { $0.id == agentID }?.displayName ?? agentID)
                         .font(.callout)
+                    if let report = reportFor(agentID), !report.skipped.isEmpty {
+                        Text("成功 \(report.changed.count) · 跳过 \(report.skipped.count)")
+                            .font(.caption2)
+                            .foregroundStyle(ConsoleTheme.statusWarn)
+                            .help(report.skipped.map { "\($0.skillID):\($0.reason)" }.joined(separator: "\n"))
+                    }
                     Spacer()
                     if statusFor(agentID) == .diverged {
                         Button("重新应用") { onReapply(agentID) }
@@ -179,15 +202,22 @@ private struct CollectionCard: View {
             }
 
             if !unmountedAgents.isEmpty {
-                Menu {
-                    ForEach(unmountedAgents, id: \.id) { agent in
-                        Button(agent.displayName) { onToggleAgent(agent.id, true) }
-                    }
-                } label: {
-                    Label("挂载到…", systemImage: "plus")
+                if collection.memberSkillIDs.isEmpty {
+                    Label("先添加技能再挂载", systemImage: "plus")
                         .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .help("空分组没有可挂载内容")
+                } else {
+                    Menu {
+                        ForEach(unmountedAgents, id: \.id) { agent in
+                            Button(agent.displayName) { onToggleAgent(agent.id, true) }
+                        }
+                    } label: {
+                        Label("挂载到…", systemImage: "plus")
+                            .font(.caption)
+                    }
+                    .menuStyle(.borderlessButton)
                 }
-                .menuStyle(.borderlessButton)
             }
 
             Spacer(minLength: 0)
@@ -203,6 +233,21 @@ private struct CollectionCard: View {
         .frame(minHeight: 170)
         .contentShape(Rectangle())
         .onTapGesture(perform: onOpen)
+        .confirmationDialog(
+            "删除分组“\(collection.name)”?",
+            isPresented: $isDeleteConfirmPresented,
+            titleVisibility: .visible
+        ) {
+            if collection.mountedAgentIDs.isEmpty {
+                Button("删除分组", role: .destructive) { onDelete(false) }
+            } else {
+                Button("卸载链接并删除分组", role: .destructive) { onDelete(true) }
+                Button("仅删除分组(保留磁盘链接)", role: .destructive) { onDelete(false) }
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text(deleteDialogMessage)
+        }
         .alert("重命名分组", isPresented: $isRenamePresented) {
             TextField("组名", text: $renameText)
             Button("确定") { onRename(renameText) }

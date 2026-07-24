@@ -301,6 +301,40 @@ struct SymlinkInstallerTests {
             atPath: canonical.appendingPathComponent("example").path
         ))
     }
+
+    @Test
+    func allowsRelativeLinksThatStayInsideThePackage() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("internal-link-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let source = root.appendingPathComponent("source")
+        let canonical = root.appendingPathComponent("canonical")
+        try createInstallerSkill(at: source)
+        try FileManager.default.createSymbolicLink(
+            atPath: source.appendingPathComponent("alias.md").path,
+            withDestinationPath: "SKILL.md"
+        )
+
+        try SymlinkInstaller.install(
+            sourceDirectory: source,
+            skillName: "example",
+            agentIDs: [],
+            canonicalSkillsDirectory: canonical,
+            importedPaths: [:]
+        )
+
+        #expect(FileManager.default.fileExists(
+            atPath: canonical.appendingPathComponent("example/SKILL.md").path
+        ))
+    }
+
+    @Test
+    func sanitizeNeutralizesPathSyntaxAndBoundsLength() {
+        #expect(SymlinkInstaller.sanitize("../evil") == "evil")
+        #expect(SymlinkInstaller.sanitize("a/b") == "a-b")
+        #expect(SymlinkInstaller.sanitize("") == "unnamed-skill")
+        #expect(SymlinkInstaller.sanitize(String(repeating: "x", count: 300)).count == 255)
+    }
 }
 
 private func createInstallerSkill(at directory: URL) throws {

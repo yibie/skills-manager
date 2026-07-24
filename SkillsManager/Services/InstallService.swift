@@ -1,6 +1,23 @@
+import CryptoKit
 import Foundation
 
+enum SkillContentHasher {
+    static func hash(_ content: String) -> String {
+        SHA256.hash(data: Data(content.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+}
+
+/// 安装完成后 canonical SKILL.md 的内容指纹,写入 manifest 供更新前漂移检测。
+private func canonicalContentHash(_ canonical: URL) -> String? {
+    (try? String(contentsOf: canonical.appendingPathComponent("SKILL.md"), encoding: .utf8))
+        .map(SkillContentHasher.hash)
+}
+
 struct SkillLifecycleService: Sendable {
+    /// 供应链 pin:与 TUI 侧 DiscoverInstallService 保持一致,
+    /// 未固定版本的 npx 在包被接管时等于本机任意代码执行。
+    static let skillsCLIVersion = "1.5.20"
+
     typealias NativeInstaller = @Sendable (
         DiscoverSkill,
         [String],
@@ -63,7 +80,7 @@ struct SkillLifecycleService: Sendable {
         return skills.map { skill in
             var annotated = skill
             if let canonicalPath = skill.canonicalPath {
-                annotated.provenance = ManagedSkillManifest.load(from: canonicalPath)?.provenance
+                annotated.provenance = Self.trustedProvenance(ManagedSkillManifest.load(from: canonicalPath))
                     ?? SkillProvenance(provider: .skillsManager, sourceURL: nil, skillID: skill.name)
             } else if isSkillsCLIInstallation(skill),
                       let entry = lock?.entry(for: skill.name) {
@@ -94,7 +111,7 @@ struct SkillLifecycleService: Sendable {
            let sourceURL = skill.provenance.sourceURL,
            let skillID = skill.provenance.skillID {
             try await runProviderCommand(
-                ["-y", "skills", "add", sourceURL.absoluteString, "--skill", skillID, "--agent"]
+                ["-y", "skills@\(Self.skillsCLIVersion)", "add", sourceURL.absoluteString, "--skill", skillID, "--agent"]
                     + agentIDs
                     + ["--global", "--yes"],
                 appendLog
@@ -133,7 +150,8 @@ struct SkillLifecycleService: Sendable {
                 sourceURL: sourceURL,
                 skillID: skillID,
                 sourceRef: skill.provenance.sourceRef,
-                installedAt: Date()
+                installedAt: Date(),
+                contentHash: canonicalContentHash(canonical)
             ).write(to: canonical)
         }
 
@@ -158,7 +176,7 @@ struct SkillLifecycleService: Sendable {
     ) async throws {
         if skill.provenance.provider == .skillsCLI, isSkillsCLIAvailable() {
             try await runProviderCommand(
-                ["-y", "skills", "update", skill.name, "--global", "--yes"],
+                ["-y", "skills@\(Self.skillsCLIVersion)", "update", skill.name, "--global", "--yes"],
                 appendLog
             )
             return
@@ -213,13 +231,33 @@ struct SkillLifecycleService: Sendable {
         }
     }
 
+    /// manifest 位于技能目录内、可被第三方内容自带,只信任 github.com 来源的 sourceURL;
+    /// 其余降级 .manual(无更新通道),阻断伪造 manifest 把 Update 变成任意仓库覆盖。
+    private static func trustedProvenance(_ manifest: ManagedSkillManifest?) -> SkillProvenance? {
+        guard let manifest else { return nil }
+        guard manifest.sourceURL.host?.lowercased() == "github.com" else { return .manual }
+        return manifest.provenance
+    }
+
+    /// 更新会用远端内容覆盖 canonical 副本;若本地内容与安装时的记录不一致,调用方须先取得用户确认。
+    /// manifest 缺 hash(旧安装)或内容读不到时视为无漂移——没有证据不阻断。
+    func hasLocalDrift(_ skill: Skill) -> Bool {
+        let canonical = skill.canonicalPath
+            ?? canonicalSkillsDirectory.appendingPathComponent(SymlinkInstaller.sanitize(skill.name))
+        guard let manifest = ManagedSkillManifest.load(from: canonical),
+              let recorded = manifest.contentHash,
+              let current = try? String(contentsOf: canonical.appendingPathComponent("SKILL.md"), encoding: .utf8)
+        else { return false }
+        return SkillContentHasher.hash(current) != recorded
+    }
+
     func removeFromLibrary(
         _ skill: Skill,
         appendLog: @escaping @Sendable (String) -> Void
     ) async throws {
         if skill.provenance.provider == .skillsCLI, isSkillsCLIAvailable() {
             try await runProviderCommand(
-                ["-y", "skills", "remove", skill.name, "--global", "--yes"],
+                ["-y", "skills@\(Self.skillsCLIVersion)", "remove", skill.name, "--global", "--yes"],
                 appendLog
             )
         } else {
@@ -467,6 +505,7 @@ private struct ManagedSkillManifest: Codable {
     var skillID: String
     var sourceRef: String?
     var installedAt: Date
+    var contentHash: String? = nil
 
     var provenance: SkillProvenance {
         SkillProvenance(
@@ -536,7 +575,8 @@ enum NativeSkillPackageInstaller {
             sourceURL: skill.repoURL,
             skillID: skill.skillId,
             sourceRef: skill.repositoryRef,
-            installedAt: Date()
+            installedAt: Date(),
+            contentHash: canonicalContentHash(canonical)
         ).write(to: canonical)
     }
 

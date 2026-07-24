@@ -9,6 +9,7 @@ struct CollectionDetailView: View {
     let skills: [Skill]
     let detectedAgents: [AgentDefinition]
     let statusFor: (String) -> MountStatus
+    var reportFor: (String) -> MountReport? = { _ in nil }
     @Binding var selectedSkill: Skill?
     let onToggleAgent: (String, Bool) -> Void
     let onReapply: (String) -> Void
@@ -59,15 +60,22 @@ struct CollectionDetailView: View {
                         agentCapsule(agent)
                     }
                     if !unmountedAgents.isEmpty {
-                        Menu {
-                            ForEach(unmountedAgents, id: \.id) { agent in
-                                Button(agent.displayName) { onToggleAgent(agent.id, true) }
-                            }
-                        } label: {
-                            Label("挂载到…", systemImage: "plus")
+                        if memberIDs.isEmpty {
+                            Label("先添加技能再挂载", systemImage: "plus")
                                 .font(.callout)
+                                .foregroundStyle(.tertiary)
+                                .help("空分组没有可挂载内容")
+                        } else {
+                            Menu {
+                                ForEach(unmountedAgents, id: \.id) { agent in
+                                    Button(agent.displayName) { onToggleAgent(agent.id, true) }
+                                }
+                            } label: {
+                                Label("挂载到…", systemImage: "plus")
+                                    .font(.callout)
+                            }
+                            .menuStyle(.borderlessButton)
                         }
-                        .menuStyle(.borderlessButton)
                     }
                 }
                 Text("打开开关 = 组内技能 symlink 进该 agent;关闭 = 仅移除链接,技能保留在库中")
@@ -126,6 +134,12 @@ struct CollectionDetailView: View {
                 .fill(status == .mounted ? ConsoleTheme.statusOk : status == .diverged ? ConsoleTheme.statusWarn : ConsoleTheme.statusOff)
                 .frame(width: 8, height: 8)
             Text(agent.displayName).font(.callout)
+            if let report = reportFor(agent.id), !report.skipped.isEmpty {
+                Text("成功 \(report.changed.count) · 跳过 \(report.skipped.count)")
+                    .font(.caption2)
+                    .foregroundStyle(ConsoleTheme.statusWarn)
+                    .help(report.skipped.map { "\($0.skillID):\($0.reason)" }.joined(separator: "\n"))
+            }
             if status == .diverged {
                 Button("重新应用") { onReapply(agent.id) }
                     .buttonStyle(.bordered)

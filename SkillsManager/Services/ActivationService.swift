@@ -32,7 +32,8 @@ enum ActivationService {
 
     /// 状态灯纯函数:意图 + 磁盘事实 → 卡片/开关状态。
     static func status(intentMounted: Bool, linkedCount: Int, memberCount: Int) -> MountStatus {
-        guard memberCount > 0 else { return intentMounted ? .diverged : .unmounted }
+        // 空组没有可装载内容,也没有可偏差的状态,不允许落入永远无法变绿的 diverged
+        guard memberCount > 0 else { return .unmounted }
         if intentMounted && linkedCount == memberCount { return .mounted }
         if !intentMounted && linkedCount == 0 { return .unmounted }
         return .diverged
@@ -140,6 +141,8 @@ enum ActivationService {
             // 迁移实体:原位置变 link,原 agent 无感知;中途失败尽力回滚
             do {
                 try fm.moveItem(at: skill.directoryPath, to: dest)
+                // manifest 是 provenance 信任锚,迁移进库的外部目录不得自带
+                try? fm.removeItem(at: dest.appendingPathComponent(SymlinkInstaller.managedManifestName))
                 try "1\n".write(
                     to: dest.appendingPathComponent(SymlinkInstaller.managedMarkerName),
                     atomically: true,

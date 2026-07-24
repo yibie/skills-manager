@@ -8,6 +8,16 @@ import type { Skill } from '../types.js'
 const exec = promisify(execFile)
 const INSTALL_DIR = path.join(os.homedir(), '.claude', 'skills')
 
+// mac 端 Skills Manager App 的 canonical 库;指向这里的 symlink 是受管挂载,
+// TUI 不得替换或删除,否则会把受管挂载静默变成失管副本(App 冲突页要检测的分歧)。
+const MANAGED_CANONICAL_ROOTS = [
+  path.join(os.homedir(), '.config', 'agents', 'skills'),
+  path.join(os.homedir(), '.agents', 'skills'),
+]
+
+const FALLBACK_TRASH_DIR = path.join(os.homedir(), '.skills-manager', 'trash')
+const MAX_COPY_DEPTH = 32
+
 function ensureInstallDir(): void {
   if (!fs.existsSync(INSTALL_DIR)) {
     fs.mkdirSync(INSTALL_DIR, { recursive: true })
@@ -24,13 +34,88 @@ function destinationPath(skill: Skill): string {
   return path.join(INSTALL_DIR, `${skill.name}${ext}`)
 }
 
-function copyRecursive(src: string, dest: string): void {
-  const stat = fs.statSync(src)
+function lstatIfExists(target: string): fs.Stats | null {
+  try {
+    return fs.lstatSync(target)
+  } catch {
+    return null
+  }
+}
+
+function linkDestination(target: string): string | null {
+  try {
+    const raw = fs.readlinkSync(target)
+    const abs = path.isAbsolute(raw) ? raw : path.resolve(path.dirname(target), raw)
+    try {
+      return fs.realpathSync(abs)
+    } catch {
+      return path.normalize(abs)
+    }
+  } catch {
+    return null
+  }
+}
+
+function isManagedMountLink(target: string): boolean {
+  const dest = linkDestination(target)
+  if (!dest) return false
+  return MANAGED_CANONICAL_ROOTS.some(root => dest === root || dest.startsWith(root + path.sep))
+}
+
+// 真实文件/目录一律进废纸篓,永不 rm;跨卷 rename 失败时退回备用废纸篓目录。
+function moveToTrash(target: string): string {
+  const roots = process.platform === 'darwin'
+    ? [path.join(os.homedir(), '.Trash'), FALLBACK_TRASH_DIR]
+    : [FALLBACK_TRASH_DIR]
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+  let lastError: unknown
+  for (const root of roots) {
+    try {
+      fs.mkdirSync(root, { recursive: true })
+      const dest = path.join(root, `${stamp}-${path.basename(target)}`)
+      fs.renameSync(target, dest)
+      return dest
+    } catch (error) {
+      lastError = error
+    }
+  }
+  throw new Error(`Could not move ${target} to trash: ${String(lastError)}`)
+}
+
+// 清空安装目标:受管挂载拒绝;普通 symlink 只删链接本身;实体进废纸篓。
+function clearInstallTarget(target: string): void {
+  const stat = lstatIfExists(target)
+  if (!stat) return
+  if (stat.isSymbolicLink()) {
+    if (isManagedMountLink(target)) {
+      throw new Error(
+        `${path.basename(target)} is a mount managed by the Skills Manager app. Unmount it in the app instead.`,
+      )
+    }
+    fs.unlinkSync(target)
+    return
+  }
+  moveToTrash(target)
+}
+
+function copyRecursive(src: string, dest: string, depth = 0): void {
+  if (depth > MAX_COPY_DEPTH) {
+    throw new Error(`Skill package is nested too deeply (possible symlink cycle): ${src}`)
+  }
+  const stat = fs.lstatSync(src)
+
+  if (stat.isSymbolicLink()) {
+    // 复制链接本身而不跟随:循环链接不会无限递归,外部内容也不被实体化
+    const raw = fs.readlinkSync(src)
+    fs.mkdirSync(path.dirname(dest), { recursive: true })
+    fs.symlinkSync(raw, dest)
+    return
+  }
 
   if (stat.isDirectory()) {
     fs.mkdirSync(dest, { recursive: true })
     for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-      copyRecursive(path.join(src, entry.name), path.join(dest, entry.name))
+      copyRecursive(path.join(src, entry.name), path.join(dest, entry.name), depth + 1)
     }
     return
   }
@@ -62,10 +147,7 @@ export async function install(skill: Skill): Promise<void> {
     throw new Error(`Skill source not found: ${src}`)
   }
 
-  if (fs.existsSync(dest)) {
-    fs.rmSync(dest, { recursive: true, force: true })
-  }
-
+  clearInstallTarget(dest)
   copyRecursive(src, dest)
 
   try {
@@ -79,9 +161,19 @@ export async function uninstall(skill: Skill): Promise<void> {
   ensureInstallDir()
 
   const target = destinationPath(skill)
-  if (!fs.existsSync(target)) return
+  const stat = lstatIfExists(target)
+  if (!stat) return
 
-  fs.rmSync(target, { recursive: true, force: true })
+  if (stat.isSymbolicLink()) {
+    if (isManagedMountLink(target)) {
+      throw new Error(
+        `${skill.name} is a mount managed by the Skills Manager app. Unmount it in the app instead.`,
+      )
+    }
+    fs.unlinkSync(target)
+  } else {
+    moveToTrash(target)
+  }
 
   const gitDir = path.join(INSTALL_DIR, '.git')
   if (!fs.existsSync(gitDir)) return

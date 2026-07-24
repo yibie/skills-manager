@@ -128,7 +128,6 @@ enum SymlinkInstaller {
                 .appendingPathComponent(".\(safe)-backup-\(UUID().uuidString)")
             defer {
                 try? fm.removeItem(at: staging)
-                try? fm.removeItem(at: backup)
             }
 
             try fm.copyItem(at: sourceDirectory, to: staging)
@@ -143,7 +142,14 @@ enum SymlinkInstaller {
             }
             do {
                 try fm.moveItem(at: staging, to: canonicalDir)
-                try? fm.removeItem(at: backup)
+                if canonicalExists {
+                    preserveReplacedCopy(
+                        backup,
+                        skillName: safe,
+                        canonicalSkillsDirectory: canonicalSkillsDirectory,
+                        fm: fm
+                    )
+                }
             } catch {
                 if canonicalExists {
                     try? fm.moveItem(at: backup, to: canonicalDir)
@@ -154,6 +160,31 @@ enum SymlinkInstaller {
 
         for linkPath in linkPaths {
             try createSymlink(from: canonicalDir, to: linkPath, fm: fm)
+        }
+    }
+
+    /// 被替换的 canonical 副本保留在这里(canonical 目录的隐藏兄弟目录),
+    /// 更新/重装永远不静默销毁旧内容。
+    static func historyDirectory(canonicalSkillsDirectory: URL) -> URL {
+        canonicalSkillsDirectory.deletingLastPathComponent()
+            .appendingPathComponent(".skills-manager-history")
+    }
+
+    private static func preserveReplacedCopy(
+        _ backup: URL,
+        skillName: String,
+        canonicalSkillsDirectory: URL,
+        fm: FileManager
+    ) {
+        let historyDir = historyDirectory(canonicalSkillsDirectory: canonicalSkillsDirectory)
+        let stamp = ISO8601DateFormatter().string(from: Date())
+            .replacingOccurrences(of: ":", with: "-")
+        let dest = historyDir.appendingPathComponent("\(skillName)-\(stamp)-\(UUID().uuidString.prefix(8))")
+        do {
+            try fm.createDirectory(at: historyDir, withIntermediateDirectories: true)
+            try fm.moveItem(at: backup, to: dest)
+        } catch {
+            // 移动失败时备份仍以隐藏名留在 canonical 目录,内容不丢失
         }
     }
 

@@ -204,8 +204,12 @@ final class SkillStore {
     var isTranslatingDescriptions = false
     var lastTranslationSummary: DescriptionTranslationSummary?
     var errorMessage: String?
+    /// 更新前发现本地副本被修改过、等待用户确认覆盖的技能。
+    var pendingUpdateOverwrite: Skill?
     /// 挂载状态缓存:key 为内联的 "<collectionUUID>:<agentID>" 格式;由 refreshMountStatuses 重建。
     var mountStatuses: [String: MountStatus] = [:]
+    /// 最近一次挂载/卸载的逐技能结果,key 同 mountStatuses;在相关对象附近呈现,不进全局 Error。
+    var mountReports: [String: MountReport] = [:]
 
     // MARK: - Services
 
@@ -600,7 +604,8 @@ final class SkillStore {
     }
 
     func removeDiscoverSkillFromLibrary(_ skill: DiscoverSkill) async {
-        guard let installed = skills.first(where: { $0.name == skill.skillId || $0.name == skill.name }) else { return }
+        // 同名不是充分证据:只删 provenance 与该条目精确对应的技能,防止误删用户的同名技能
+        guard case let .installed(installed) = DiscoverLibraryMatcher.match(entry: skill, in: skills) else { return }
         await removeSkillFromLibrary(installed)
     }
 
@@ -643,7 +648,11 @@ final class SkillStore {
         }
     }
 
-    func updateSkill(_ skill: Skill) async {
+    func updateSkill(_ skill: Skill, confirmedOverwrite: Bool = false) async {
+        if !confirmedOverwrite && lifecycleService.hasLocalDrift(skill) {
+            pendingUpdateOverwrite = skill
+            return
+        }
         let agentIDs = skill.compatibleAgents.compactMap { displayName in
             AgentRegistry.all.first { $0.displayName == displayName }?.id
         }
@@ -813,9 +822,8 @@ final class SkillStore {
     /// Copies a project-local skill to ~/.claude/skills/.
     /// Converts .mdc → SKILL.md format if needed.
     func promoteSkill(_ skill: Skill) async {
-        // Use displayName (from frontmatter name: field) for a more meaningful directory name.
-        // Falls back to skill.name if displayName equals the raw directory name.
-        let destDirName = skill.displayName.isEmpty ? skill.name : skill.displayName
+        let destDirName = Self.promotedDirectoryName(
+            displayName: skill.displayName, directoryName: skill.name)
         let skillsDir = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude/skills/\(destDirName)")
         let fm = FileManager.default
@@ -838,6 +846,14 @@ final class SkillStore {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Directory name used under ~/.claude/skills/ when promoting a skill.
+    /// Prefers displayName (frontmatter name: field) over the raw directory name.
+    /// Frontmatter is third-party content that becomes a path component, so it
+    /// goes through the same sanitizer as every other install path.
+    nonisolated static func promotedDirectoryName(displayName: String, directoryName: String) -> String {
+        SymlinkInstaller.sanitize(displayName.isEmpty ? directoryName : displayName)
     }
 
     private func upsertDiscoverInstallActivity(_ activity: DiscoverInstallActivity) {
@@ -1389,6 +1405,14 @@ final class SkillStore {
 
     func mountStatus(collectionID: UUID, agentID: String) -> MountStatus {
         mountStatuses["\(collectionID.uuidString):\(agentID)"] ?? .unmounted
+    }
+
+    func mountReport(collectionID: UUID, agentID: String) -> MountReport? {
+        mountReports["\(collectionID.uuidString):\(agentID)"]
+    }
+
+    func recordMountReport(_ report: MountReport, collectionID: UUID, agentID: String) {
+        mountReports["\(collectionID.uuidString):\(agentID)"] = report
     }
 
     /// 以磁盘为准重建所有「组 × agent」的状态灯数据。skills 刷新或分组变更后调用。

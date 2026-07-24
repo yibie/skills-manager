@@ -30,6 +30,7 @@ let selectedIndex = 0;
 let activePanel = 'list';
 let discoverSourceFilter = 'all';
 let statusMessage = '';
+let statusIsError = false;
 const actionBarHeight = 3;
 // Create layout boxes
 const sidebar = blessed.box({
@@ -64,10 +65,7 @@ const list = blessed.list({
 // Listen to list selection changes
 list.on('select', () => {
     if (activePanel === 'list') {
-        const rawSelected = list.selected;
-        selectedIndex = sidebarSelection === 'library:discover'
-            ? Math.max(0, rawSelected - 1)
-            : rawSelected;
+        selectedIndex = list.selected;
         updateDetail();
         updateStatusBar();
     }
@@ -236,13 +234,16 @@ function openTarget(target, callback) {
 }
 function showErrorStatus(error, timeout = 3000) {
     statusMessage = String(error);
+    statusIsError = true;
     render();
-    setTimeout(() => { statusMessage = ''; render(); }, timeout);
+    // 定时清除只动状态栏:全量 render 会在 overlay 打开期间抢焦点造成软死锁
+    setTimeout(() => { statusMessage = ''; updateStatusBar(); }, timeout);
 }
 function showSuccessStatus(message, timeout = 2000) {
     statusMessage = message;
+    statusIsError = false;
     render();
-    setTimeout(() => { statusMessage = ''; render(); }, timeout);
+    setTimeout(() => { statusMessage = ''; updateStatusBar(); }, timeout);
 }
 function makeDivider(width, color = 'gray') {
     return `{${color}-fg}${'─'.repeat(Math.max(8, width))}{/${color}-fg}`;
@@ -332,13 +333,15 @@ function uninstallSelectedItem() {
             showSuccessStatus(`Not installed: ${entry.skillId}`);
             return;
         }
-        uninstallDiscoverSkill(entry, installedSkill)
-            .then(() => {
-            refreshLocalSkills();
-            showSuccessStatus(`Uninstalled skill: ${entry.skillId}`);
-        })
-            .catch(error => {
-            showErrorStatus(error);
+        confirmDestructive(`Uninstall {bold}${escapeTags(entry.skillId)}{/bold}? Real copies go to Trash.`, () => {
+            uninstallDiscoverSkill(entry, installedSkill)
+                .then(() => {
+                refreshLocalSkills();
+                showSuccessStatus(`Removed Claude Code copy: ${entry.skillId}`);
+            })
+                .catch(error => {
+                showErrorStatus(error);
+            });
         });
         return;
     }
@@ -357,13 +360,15 @@ function uninstallSelectedItem() {
         showSuccessStatus(`Not installed: ${skill.name}`);
         return;
     }
-    uninstall(skill)
-        .then(() => {
-        refreshLocalSkills();
-        showSuccessStatus(`Uninstalled: ${skill.name}`);
-    })
-        .catch(error => {
-        showErrorStatus(error);
+    confirmDestructive(`Uninstall {bold}${escapeTags(skill.name)}{/bold}? Real copies go to Trash.`, () => {
+        uninstall(skill)
+            .then(() => {
+            refreshLocalSkills();
+            showSuccessStatus(`Uninstalled: ${skill.name}`);
+        })
+            .catch(error => {
+            showErrorStatus(error);
+        });
     });
 }
 function updateSidebar() {
@@ -452,26 +457,15 @@ function updateList(resetSelection = false) {
         ? discoverState.entries.filter(e => discoverSourceFilter === 'all' || e.source === discoverSourceFilter)
         : [];
     let items = [];
+    // 列表内不放表头行(Discover 标题/分隔线由面板 label 承载):
+    // 行下标必须与条目下标一致,否则高亮与 i/x/o/d 的操作对象整体错位一行
     if (sidebarSelection === 'library:discover') {
-        const sourceLabel = discoverSourceFilter === 'all' ? 'All sources' : discoverSourceFilter;
-        items = [
-            `{bold}Discover{/bold} {gray-fg}· src: ${escapeTags(sourceLabel)}{/gray-fg}`,
-            `{gray-fg}${'─'.repeat(Math.max(12, getListInnerWidth()))}{/gray-fg}`,
-            ...filteredDiscoverEntries.map(formatDiscoverListItem),
-        ];
+        items = filteredDiscoverEntries.map(formatDiscoverListItem);
     }
     else {
         items = filteredSkills.map(formatSkillListItem);
     }
     list.setItems(items);
-    if (sidebarSelection === 'library:discover') {
-        const maxIndex = Math.max(0, filteredDiscoverEntries.length - 1);
-        selectedIndex = Math.min(Math.max(selectedIndex, 0), maxIndex);
-        list.select(filteredDiscoverEntries.length > 0 ? selectedIndex + 1 : 0);
-        updatePanelChrome();
-        screen.render();
-        return;
-    }
     const maxIndex = Math.max(0, items.length - 1);
     selectedIndex = Math.min(Math.max(selectedIndex, 0), maxIndex);
     list.select(selectedIndex);
@@ -557,7 +551,9 @@ function updateStatusBar() {
         ? '{bold}i{/bold} install  {bold}x{/bold} uninstall  {bold}d{/bold} details  {bold}o{/bold} open local  {bold}O{/bold} source page  {bold}f/F{/bold} source  {bold}0{/bold} reset  {bold}r{/bold} sync  {bold}R{/bold} full refresh'
         : '{bold}i{/bold} install  {bold}x{/bold} uninstall  {bold}s{/bold} star  {bold}o{/bold} open file  {bold}H{/bold} history  {bold}R{/bold} full refresh';
     const lines = [
-        statusMessage ? `{red-fg}${escapeTags(statusMessage)}{/red-fg}` : `{white-fg}${escapeTags(context)}{/white-fg}`,
+        statusMessage
+            ? `{${statusIsError ? 'red' : 'green'}-fg}${escapeTags(statusMessage)}{/${statusIsError ? 'red' : 'green'}-fg}`
+            : `{white-fg}${escapeTags(context)}{/white-fg}`,
         navigationLine,
         actionLine,
     ];
@@ -566,6 +562,11 @@ function updateStatusBar() {
     screen.render();
 }
 function render() {
+    if (screen.grabKeys) {
+        // overlay 持有键盘:全量重渲染会把焦点抢回三栏,除 Ctrl+C 外全键盘失灵
+        updateStatusBar();
+        return;
+    }
     updateSidebar();
     updateList(true); // Reset selection when rendering full view
     updateDetail();
@@ -592,6 +593,52 @@ function onGlobalKey(keys, handler) {
     normalizedKeys.forEach(key => {
         screen.on(`key ${key}`, handler);
     });
+}
+// 破坏性操作确认 overlay:默认落在 Cancel,y 确认,n/Esc 取消。
+// grabKeys 期间全局快捷键自动失效,焦点键都进 choices。
+function confirmDestructive(message, onConfirm) {
+    const overlay = blessed.box({
+        parent: screen,
+        top: 'center',
+        left: 'center',
+        width: Math.min(Math.max(44, message.length + 6), 76),
+        height: 7,
+        border: { type: 'line' },
+        style: { border: { fg: 'red' }, bg: 'black' },
+        tags: true,
+    });
+    blessed.text({ parent: overlay, top: 0, left: 1, width: '100%-4', content: message, tags: true });
+    const choices = blessed.list({
+        parent: overlay,
+        top: 2,
+        left: 1,
+        width: '100%-4',
+        height: 2,
+        keys: true,
+        vi: true,
+        style: { selected: { bg: 'red', fg: 'white' } },
+        items: ['Uninstall', 'Cancel'],
+    });
+    choices.select(1);
+    const close = () => {
+        screen.grabKeys = false;
+        overlay.destroy();
+        render();
+    };
+    screen.grabKeys = true;
+    choices.focus();
+    choices.on('select', (_item, index) => {
+        const confirmed = index === 0;
+        close();
+        if (confirmed)
+            onConfirm();
+    });
+    choices.key(['y'], () => {
+        close();
+        onConfirm();
+    });
+    choices.key(['n', 'escape', 'q'], () => close());
+    render();
 }
 function showAgentSelectionDialog(entry) {
     // Create overlay
@@ -636,8 +683,8 @@ function showAgentSelectionDialog(entry) {
         tags: true,
     });
     const selectedAgents = new Set(['claude-code']); // Default to claude-code
-    const agentItems = agents.map(a => `[✓] ${a.label}`);
-    agentItems.unshift('[✓] All');
+    const agentItems = agents.map(a => selectedAgents.has(a.id) ? `[✓] ${a.label}` : `[ ] ${a.label}`);
+    agentItems.unshift(selectedAgents.size === agents.length ? '[✓] All' : '[ ] All');
     agentList.setItems(agentItems);
     agentList.select(0);
     const closeDialog = () => {
@@ -1180,7 +1227,7 @@ onGlobalKey(['j', 'down'], () => {
             : getFilteredSkills().length - 1;
         if (selectedIndex < maxIndex) {
             selectedIndex++;
-            list.select(sidebarSelection === 'library:discover' ? selectedIndex + 1 : selectedIndex);
+            list.select(selectedIndex);
             updateDetail();
             updateStatusBar();
         }
@@ -1199,7 +1246,7 @@ onGlobalKey(['k', 'up'], () => {
     if (activePanel === 'list') {
         if (selectedIndex > 0) {
             selectedIndex--;
-            list.select(sidebarSelection === 'library:discover' ? selectedIndex + 1 : selectedIndex);
+            list.select(selectedIndex);
             updateDetail();
             updateStatusBar();
         }
@@ -1216,7 +1263,7 @@ onGlobalKey(['k', 'up'], () => {
 });
 onGlobalKey(['g'], () => {
     if (activePanel === 'list') {
-        list.select(sidebarSelection === 'library:discover' ? 1 : 0);
+        list.select(0);
         selectedIndex = 0;
         updateDetail();
         updateStatusBar();
@@ -1227,7 +1274,7 @@ onGlobalKey(['G'], () => {
         const maxIndex = sidebarSelection === 'library:discover'
             ? getFilteredDiscoverEntries().length - 1
             : getFilteredSkills().length - 1;
-        list.select(sidebarSelection === 'library:discover' ? Math.max(1, maxIndex + 1) : Math.max(0, maxIndex));
+        list.select(Math.max(0, maxIndex));
         selectedIndex = Math.max(0, maxIndex);
         updateDetail();
         updateStatusBar();

@@ -171,6 +171,20 @@ struct ContentView: View {
         } message: {
             Text(store.errorMessage ?? "")
         }
+        .alert("本地副本已被修改", isPresented: Binding(
+            get: { store.pendingUpdateOverwrite != nil },
+            set: { if !$0 { store.pendingUpdateOverwrite = nil } }
+        )) {
+            Button("仍要更新", role: .destructive) {
+                if let skill = store.pendingUpdateOverwrite {
+                    store.pendingUpdateOverwrite = nil
+                    Task { await store.updateSkill(skill, confirmedOverwrite: true) }
+                }
+            }
+            Button("取消", role: .cancel) { store.pendingUpdateOverwrite = nil }
+        } message: {
+            Text("“\(store.pendingUpdateOverwrite?.displayName ?? "")”的内容与安装时的记录不一致。更新会用远端版本覆盖本地修改;被替换的副本会保留在库目录旁的 .skills-manager-history 中。")
+        }
         .focusedSceneValue(\.skillCommandActions, SkillCommandActions(
             refresh: { Task { await store.reloadSkills() } },
             toggleStar: currentSelectedSkill.map { skill in { toggleStar(for: skill) } },
@@ -239,6 +253,7 @@ struct ContentView: View {
                 skills: store.skills,
                 detectedAgents: AgentRegistry.installedAgents(),
                 statusFor: { store.mountStatus(collectionID: $0.id, agentID: $1) },
+                mountReportFor: { store.mountReport(collectionID: $0.id, agentID: $1) },
                 onOpen: { selectedFilter = .collection($0.id, name: $0.name) },
                 onCreate: { name in createCollection(name: name) },
                 onToggleAgent: { collection, agentID, mount in
@@ -251,7 +266,12 @@ struct ContentView: View {
                     let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !trimmed.isEmpty { collection.name = trimmed }
                 },
-                onDelete: { collection in
+                onDelete: { collection, unmountFirst in
+                    if unmountFirst {
+                        for agentID in Array(collection.mountedAgentIDs) {
+                            setMounted(collection: collection, agentID: agentID, mount: false)
+                        }
+                    }
                     modelContext.delete(collection)
                     store.refreshMountStatuses(collections: collectionRecords)
                 }
@@ -312,6 +332,7 @@ struct ContentView: View {
                 skills: store.skills,
                 detectedAgents: AgentRegistry.installedAgents(),
                 statusFor: { store.mountStatus(collectionID: id, agentID: $0) },
+                reportFor: { store.mountReport(collectionID: id, agentID: $0) },
                 selectedSkill: $selectedSkill,
                 onToggleAgent: { agentID, mount in
                     setMounted(collection: collection, agentID: agentID, mount: mount)
@@ -364,7 +385,7 @@ struct ContentView: View {
             DiscoverDetailView(
                 entry: selectedDiscoverSkill,
                 isInstalled: selectedDiscoverSkill.map { entry in
-                    store.skills.contains { $0.name == entry.skillId || $0.name == entry.name }
+                    DiscoverLibraryMatcher.isInstalled(entry: entry, in: store.skills)
                 } ?? false,
                 isInstalling: selectedDiscoverSkill.map { store.isInstallingDiscoverSkill($0) } ?? false,
                 installActivities: store.orderedDiscoverInstallActivities(prioritizing: selectedDiscoverSkillID),
@@ -431,15 +452,19 @@ struct ContentView: View {
                 if !collection.mountedAgentIDs.contains(agentID) {
                     collection.mountedAgentIDs.append(agentID)
                 }
-                if !report.skipped.isEmpty { store.errorMessage = report.summaryText }
+                store.recordMountReport(report, collectionID: collection.id, agentID: agentID)
             } catch {
                 // 仅 agent skills 目录创建失败会抛出;逐技能错误已计入 report.skipped
                 store.errorMessage = error.localizedDescription
             }
         } else {
             let report = ActivationService.unmount(skills: members, agentSkillsDir: dir)
-            collection.mountedAgentIDs.removeAll { $0 == agentID }
-            if !report.skipped.isEmpty { store.errorMessage = report.summaryText }
+            // 有残留(如实体目录不删除)时保留挂载意图:状态灯持续黄灯并可"重新应用",
+            // 冲突不能伪装成卸载成功
+            if report.skipped.isEmpty {
+                collection.mountedAgentIDs.removeAll { $0 == agentID }
+            }
+            store.recordMountReport(report, collectionID: collection.id, agentID: agentID)
         }
         store.refreshMountStatuses(collections: collectionRecords)
         Task {

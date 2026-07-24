@@ -1,3 +1,5 @@
+> **STATUS: CANCELLED (2026-07-21)** — 检视器方向已废止(见 effective-agent-inspector.md 头部),本契约仅作历史存档。下述生产者 `skm inspect` / `SkillsKernel.EffectiveAgentInspector` 均已随实现移除,现仓库中不存在。
+
 # Effective-Agent JSON:数据契约说明
 
 > Schema:`docs/goals/effective-agent-schema.json`。生产者:`skm inspect` /
