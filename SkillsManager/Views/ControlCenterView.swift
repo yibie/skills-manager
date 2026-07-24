@@ -130,7 +130,9 @@ private struct CollectionCard: View {
                 Image(systemName: "folder.fill")
                     .font(.title3)
                     .foregroundStyle(.secondary)
-                Text(collection.name).font(.headline)
+                Button(collection.name, action: onOpen)
+                    .buttonStyle(.plain)
+                    .font(.headline)
                 Spacer()
                 Menu {
                     Button("重命名…") {

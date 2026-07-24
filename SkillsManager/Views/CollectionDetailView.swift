@@ -78,19 +78,35 @@ struct CollectionDetailView: View {
 
             Divider()
 
-            SkillListView(
-                skills: skills,
-                filter: .collection(collection.id, name: collection.name),
-                memberIDs: memberIDs,
-                selectedSkill: $selectedSkill,
-                onInstall: onInstall,
-                onUninstall: onUninstall,
-                onMoveToTrash: onMoveToTrash,
-                onToggleStar: onToggleStar,
-                onRemoveFromCollection: onRemoveMember
-            )
+            if memberIDs.isEmpty {
+                ContentUnavailableView {
+                    Label("分组中还没有技能", systemImage: "tray")
+                } description: {
+                    Text("添加技能后，可将整个分组挂载到 Agent。")
+                } actions: {
+                    Button("添加技能") { isPickerPresented = true }
+                }
+            } else {
+                SkillListView(
+                    skills: skills,
+                    filter: .collection(collection.id, name: collection.name),
+                    memberIDs: memberIDs,
+                    selectedSkill: $selectedSkill,
+                    onInstall: onInstall,
+                    onUninstall: onUninstall,
+                    onMoveToTrash: onMoveToTrash,
+                    onToggleStar: onToggleStar,
+                    onRemoveFromCollection: onRemoveMember
+                )
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .navigationTitle(collection.name)
+        .onChange(of: memberIDs) {
+            if let selectedSkill, !memberIDs.contains(selectedSkill.id) {
+                self.selectedSkill = nil
+            }
+        }
         .sheet(isPresented: $isPickerPresented) {
             MemberPicker(
                 candidates: skills.filter { !memberIDs.contains($0.id) },

@@ -55,197 +55,7 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView(
-                selectedFilter: $selectedFilter,
-                skills: store.skills,
-                discoverableCount: store.discoverableSkillTotal,
-                projectSkillCount: store.projectSkills.count,
-                agentDocCount: store.agentDocs.count,
-                conflictCount: store.conflicts.count,
-                currentProjectURL: store.currentProjectURL
-            )
-                .navigationSplitViewColumnWidth(min: 200, ideal: 220)
-        } content: {
-            if selectedFilter == .controlCenter {
-                ControlCenterView(
-                    collections: collectionRecords,
-                    skills: store.skills,
-                    detectedAgents: AgentRegistry.installedAgents(),
-                    statusFor: { store.mountStatus(collectionID: $0.id, agentID: $1) },
-                    onOpen: { selectedFilter = .collection($0.id, name: $0.name) },
-                    onCreate: { name in createCollection(name: name) },
-                    onToggleAgent: { collection, agentID, mount in
-                        setMounted(collection: collection, agentID: agentID, mount: mount)
-                    },
-                    onReapply: { collection, agentID in
-                        setMounted(collection: collection, agentID: agentID, mount: true)
-                    },
-                    onRename: { collection, name in
-                        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if !trimmed.isEmpty { collection.name = trimmed }
-                    },
-                    onDelete: { collection in
-                        modelContext.delete(collection)
-                        store.refreshMountStatuses(collections: collectionRecords)
-                    }
-                )
-            } else if selectedFilter == .discover {
-                DiscoverView(
-                    category: store.discoverCategory,
-                    skills: resolvedDiscoverSkills,
-                    totalCount: store.discoverableSkillTotal,
-                    installedSkills: store.skills,
-                    isLoading: store.isLoadingDiscover,
-                    isSyncing: store.isSyncing,
-                    installingSkillIDs: Set(store.discoverInstallActivities.compactMap { $0.status == .running ? $0.skillID : nil }),
-                    selectedSkillID: $selectedDiscoverSkillID,
-                    onSelectCategory: { category in await store.setDiscoverCategory(category) },
-                    onSearch: { query in try await store.searchDiscoverableSkillsDirectory(query: query) },
-                    onLoadDetail: { entry in await store.loadDiscoverSkillDetail(entry) },
-                    onTry: { entry in
-                        await store.loadDiscoverSkillDetail(entry)
-                        pendingDiscoverTrySkill = store.discoverableSkillDetails[entry.id] ?? entry
-                    },
-                    onInstall: { entry in pendingDiscoverInstallSkill = entry },
-                    onUninstall: { entry in await store.removeDiscoverSkillFromLibrary(entry) },
-                    onRefresh: { await store.refreshDiscoverableSkillsDirectory() },
-                    onTranslateLoaded: { await store.translateDescriptions(using: locale, scope: .loadedDiscoverDetails) }
-                )
-            } else if selectedFilter == .project {
-                ProjectSkillsView(
-                    projectURL: store.currentProjectURL,
-                    skills: store.projectSkills,
-                    isLoading: store.isLoadingProject,
-                    selectedSkill: $selectedSkill,
-                    onPromote: { skill in await store.promoteSkill(skill) }
-                )
-            } else if selectedFilter == .agentDocs {
-                AgentDocsView(
-                    projectURL: store.currentProjectURL,
-                    docs: store.agentDocs,
-                    statuses: store.agentDocsStatus,
-                    isLoading: store.isLoadingAgentDocs,
-                    isSyncing: store.isSyncingAgentDocs,
-                    selectedDoc: $selectedAgentDoc,
-                    onRefresh: { await store.loadAgentDocs() },
-                    onSync: { await store.syncAgentDocs() },
-                    onNew: { isNewAgentDocPresented = true },
-                    onTargets: { isAgentDocTargetsPresented = true },
-                    onOpen: { doc in store.openDocInEditor(doc) }
-                )
-            } else if selectedFilter == .conflicts {
-                ConflictsView(
-                    conflicts: store.conflicts,
-                    selectedConflict: $selectedConflict
-                )
-            } else if case .collection(let id, _) = selectedFilter,
-                      let collection = collectionRecords.first(where: { $0.id == id }) {
-                CollectionDetailView(
-                    collection: collection,
-                    skills: store.skills,
-                    detectedAgents: AgentRegistry.installedAgents(),
-                    statusFor: { store.mountStatus(collectionID: id, agentID: $0) },
-                    selectedSkill: $selectedSkill,
-                    onToggleAgent: { agentID, mount in
-                        setMounted(collection: collection, agentID: agentID, mount: mount)
-                    },
-                    onReapply: { agentID in
-                        setMounted(collection: collection, agentID: agentID, mount: true)
-                    },
-                    onAddMembers: { ids in
-                        collection.memberSkillIDs.append(contentsOf: ids.filter { !collection.memberSkillIDs.contains($0) })
-                        store.refreshMountStatuses(collections: collectionRecords)
-                    },
-                    onRemoveMember: { skill in
-                        collection.memberSkillIDs.removeAll { $0 == skill.id }
-                        store.refreshMountStatuses(collections: collectionRecords)
-                    },
-                    onInstall: { skill in await store.installSkill(skill) },
-                    onUninstall: { skill in await store.removeSkillFromLibrary(skill) },
-                    onMoveToTrash: { skill in await store.moveSkillToTrash(skill) },
-                    onToggleStar: { skill in toggleStar(for: skill) }
-                )
-            } else if case .agent(let name) = selectedFilter {
-                AgentHomeView(
-                    agentName: name,
-                    skills: store.skills,
-                    conflicts: store.conflicts,
-                    selectedSkill: $selectedSkill,
-                    onInstall: { skill in await store.installSkill(skill) },
-                    onUninstall: { skill in await store.removeSkillFromLibrary(skill) },
-                    onMoveToTrash: { skill in await store.moveSkillToTrash(skill) },
-                    onToggleStar: { skill in toggleStar(for: skill) },
-                    onShowConflicts: { selectedFilter = .conflicts }
-                )
-            } else {
-                SkillListView(
-                    skills: store.skills,
-                    filter: selectedFilter,
-                    selectedSkill: $selectedSkill,
-                    onInstall: { skill in await store.installSkill(skill) },
-                    onUninstall: { skill in await store.removeSkillFromLibrary(skill) },
-                    onMoveToTrash: { skill in await store.moveSkillToTrash(skill) },
-                    onToggleStar: { skill in toggleStar(for: skill) },
-                    onAddToCollection: { skill in pendingCollectionSkill = skill }
-                )
-            }
-        } detail: {
-            if selectedFilter == .controlCenter {
-                ContentUnavailableView(
-                    "选择分组",
-                    systemImage: "rectangle.on.rectangle",
-                    description: Text("在控制台打开分组查看成员,或从 Library 选择技能。")
-                )
-            } else if selectedFilter == .discover {
-                DiscoverDetailView(
-                    entry: selectedDiscoverSkill,
-                    isInstalled: selectedDiscoverSkill.map { entry in
-                        store.skills.contains { $0.name == entry.skillId || $0.name == entry.name }
-                    } ?? false,
-                    isInstalling: selectedDiscoverSkill.map { store.isInstallingDiscoverSkill($0) } ?? false,
-                    installActivities: store.orderedDiscoverInstallActivities(prioritizing: selectedDiscoverSkillID),
-                    isTranslatingDescriptions: store.isTranslatingDescriptions,
-                    onLoadDetail: { entry in await store.loadDiscoverSkillDetail(entry) },
-                    onTry: { entry in
-                        await store.loadDiscoverSkillDetail(entry)
-                        pendingDiscoverTrySkill = store.discoverableSkillDetails[entry.id] ?? entry
-                    },
-                    onInstall: { entry in pendingDiscoverInstallSkill = entry },
-                    onUninstall: { entry in await store.removeDiscoverSkillFromLibrary(entry) },
-                    onTranslate: { entry in await store.translateDescriptions(using: locale, scope: .discoverSkill(id: entry.id)) }
-                )
-            } else if selectedFilter == .agentDocs {
-                AgentDocDetailView(doc: selectedAgentDoc)
-            } else if selectedFilter == .conflicts {
-                ConflictsDetailView(conflict: selectedConflict)
-            } else {
-                SkillDetailView(
-                    skill: currentSelectedSkill,
-                    isTranslatingDescription: store.isTranslatingDescriptions,
-                    onToggleStar: {
-                        guard let skill = currentSelectedSkill else { return }
-                        toggleStar(for: skill)
-                    },
-                    onPromote: { skill in await store.promoteSkill(skill) },
-                    onInstallToAgent: { skill, agentIDs in
-                        await store.installSkillToAgents(skill, agentIDs: agentIDs)
-                    },
-                    onUpdate: { skill in
-                        await store.updateSkill(skill)
-                    },
-                    onTranslate: { skill in
-                        let scope: DescriptionTranslationScope
-                        if case .projectLocal = skill.source {
-                            scope = .projectSkill(id: skill.id)
-                        } else {
-                            scope = .skill(id: skill.id)
-                        }
-                        await store.translateDescriptions(using: locale, scope: scope)
-                    }
-                )
-            }
-        }
+        splitView
         .onChange(of: selectedFilter) {
             selectedSkill = nil
             selectedAgentDoc = nil
@@ -366,6 +176,238 @@ struct ContentView: View {
             toggleStar: currentSelectedSkill.map { skill in { toggleStar(for: skill) } },
             isStarred: currentSelectedSkill?.isStarred ?? false
         ))
+    }
+
+    private var usesWorkspaceSplit: Bool {
+        if selectedFilter == .controlCenter { return true }
+        if case .collection = selectedFilter { return true }
+        return false
+    }
+
+    private var inspectorPresented: Binding<Bool> {
+        Binding(
+            get: { currentSelectedSkill != nil },
+            set: { if !$0 { selectedSkill = nil } }
+        )
+    }
+
+    @ViewBuilder
+    private var splitView: some View {
+        if usesWorkspaceSplit {
+            NavigationSplitView(columnVisibility: $columnVisibility) {
+                sidebarColumn
+            } detail: {
+                if case .collection = selectedFilter {
+                    primaryColumn
+                        .inspector(isPresented: inspectorPresented) {
+                            detailContent
+                                .inspectorColumnWidth(min: 320, ideal: 380, max: 520)
+                        }
+                } else {
+                    primaryColumn
+                }
+            }
+        } else {
+            NavigationSplitView(columnVisibility: $columnVisibility) {
+                sidebarColumn
+            } content: {
+                primaryColumn
+            } detail: {
+                detailContent
+            }
+        }
+    }
+
+    private var sidebarColumn: some View {
+        SidebarView(
+            selectedFilter: $selectedFilter,
+            skills: store.skills,
+            discoverableCount: store.discoverableSkillTotal,
+            projectSkillCount: store.projectSkills.count,
+            agentDocCount: store.agentDocs.count,
+            conflictCount: store.conflicts.count,
+            currentProjectURL: store.currentProjectURL
+        )
+        .navigationSplitViewColumnWidth(min: 200, ideal: 220)
+    }
+
+    @ViewBuilder
+    private var primaryColumn: some View {
+        if selectedFilter == .controlCenter {
+            ControlCenterView(
+                collections: collectionRecords,
+                skills: store.skills,
+                detectedAgents: AgentRegistry.installedAgents(),
+                statusFor: { store.mountStatus(collectionID: $0.id, agentID: $1) },
+                onOpen: { selectedFilter = .collection($0.id, name: $0.name) },
+                onCreate: { name in createCollection(name: name) },
+                onToggleAgent: { collection, agentID, mount in
+                    setMounted(collection: collection, agentID: agentID, mount: mount)
+                },
+                onReapply: { collection, agentID in
+                    setMounted(collection: collection, agentID: agentID, mount: true)
+                },
+                onRename: { collection, name in
+                    let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmed.isEmpty { collection.name = trimmed }
+                },
+                onDelete: { collection in
+                    modelContext.delete(collection)
+                    store.refreshMountStatuses(collections: collectionRecords)
+                }
+            )
+        } else if selectedFilter == .discover {
+            DiscoverView(
+                category: store.discoverCategory,
+                skills: resolvedDiscoverSkills,
+                totalCount: store.discoverableSkillTotal,
+                installedSkills: store.skills,
+                isLoading: store.isLoadingDiscover,
+                isSyncing: store.isSyncing,
+                installingSkillIDs: Set(store.discoverInstallActivities.compactMap { $0.status == .running ? $0.skillID : nil }),
+                selectedSkillID: $selectedDiscoverSkillID,
+                onSelectCategory: { category in await store.setDiscoverCategory(category) },
+                onSearch: { query in try await store.searchDiscoverableSkillsDirectory(query: query) },
+                onLoadDetail: { entry in await store.loadDiscoverSkillDetail(entry) },
+                onTry: { entry in
+                    await store.loadDiscoverSkillDetail(entry)
+                    pendingDiscoverTrySkill = store.discoverableSkillDetails[entry.id] ?? entry
+                },
+                onInstall: { entry in pendingDiscoverInstallSkill = entry },
+                onUninstall: { entry in await store.removeDiscoverSkillFromLibrary(entry) },
+                onRefresh: { await store.refreshDiscoverableSkillsDirectory() },
+                onTranslateLoaded: { await store.translateDescriptions(using: locale, scope: .loadedDiscoverDetails) }
+            )
+        } else if selectedFilter == .project {
+            ProjectSkillsView(
+                projectURL: store.currentProjectURL,
+                skills: store.projectSkills,
+                isLoading: store.isLoadingProject,
+                selectedSkill: $selectedSkill,
+                onPromote: { skill in await store.promoteSkill(skill) }
+            )
+        } else if selectedFilter == .agentDocs {
+            AgentDocsView(
+                projectURL: store.currentProjectURL,
+                docs: store.agentDocs,
+                statuses: store.agentDocsStatus,
+                isLoading: store.isLoadingAgentDocs,
+                isSyncing: store.isSyncingAgentDocs,
+                selectedDoc: $selectedAgentDoc,
+                onRefresh: { await store.loadAgentDocs() },
+                onSync: { await store.syncAgentDocs() },
+                onNew: { isNewAgentDocPresented = true },
+                onTargets: { isAgentDocTargetsPresented = true },
+                onOpen: { doc in store.openDocInEditor(doc) }
+            )
+        } else if selectedFilter == .conflicts {
+            ConflictsView(
+                conflicts: store.conflicts,
+                selectedConflict: $selectedConflict
+            )
+        } else if case .collection(let id, _) = selectedFilter,
+                  let collection = collectionRecords.first(where: { $0.id == id }) {
+            CollectionDetailView(
+                collection: collection,
+                skills: store.skills,
+                detectedAgents: AgentRegistry.installedAgents(),
+                statusFor: { store.mountStatus(collectionID: id, agentID: $0) },
+                selectedSkill: $selectedSkill,
+                onToggleAgent: { agentID, mount in
+                    setMounted(collection: collection, agentID: agentID, mount: mount)
+                },
+                onReapply: { agentID in
+                    setMounted(collection: collection, agentID: agentID, mount: true)
+                },
+                onAddMembers: { ids in
+                    collection.memberSkillIDs.append(contentsOf: ids.filter { !collection.memberSkillIDs.contains($0) })
+                    store.refreshMountStatuses(collections: collectionRecords)
+                },
+                onRemoveMember: { skill in
+                    collection.memberSkillIDs.removeAll { $0 == skill.id }
+                    store.refreshMountStatuses(collections: collectionRecords)
+                },
+                onInstall: { skill in await store.installSkill(skill) },
+                onUninstall: { skill in await store.removeSkillFromLibrary(skill) },
+                onMoveToTrash: { skill in await store.moveSkillToTrash(skill) },
+                onToggleStar: { skill in toggleStar(for: skill) }
+            )
+        } else if case .agent(let name) = selectedFilter {
+            AgentHomeView(
+                agentName: name,
+                skills: store.skills,
+                conflicts: store.conflicts,
+                selectedSkill: $selectedSkill,
+                onInstall: { skill in await store.installSkill(skill) },
+                onUninstall: { skill in await store.removeSkillFromLibrary(skill) },
+                onMoveToTrash: { skill in await store.moveSkillToTrash(skill) },
+                onToggleStar: { skill in toggleStar(for: skill) },
+                onShowConflicts: { selectedFilter = .conflicts }
+            )
+        } else {
+            SkillListView(
+                skills: store.skills,
+                filter: selectedFilter,
+                selectedSkill: $selectedSkill,
+                onInstall: { skill in await store.installSkill(skill) },
+                onUninstall: { skill in await store.removeSkillFromLibrary(skill) },
+                onMoveToTrash: { skill in await store.moveSkillToTrash(skill) },
+                onToggleStar: { skill in toggleStar(for: skill) },
+                onAddToCollection: { skill in pendingCollectionSkill = skill }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var detailContent: some View {
+        if selectedFilter == .discover {
+            DiscoverDetailView(
+                entry: selectedDiscoverSkill,
+                isInstalled: selectedDiscoverSkill.map { entry in
+                    store.skills.contains { $0.name == entry.skillId || $0.name == entry.name }
+                } ?? false,
+                isInstalling: selectedDiscoverSkill.map { store.isInstallingDiscoverSkill($0) } ?? false,
+                installActivities: store.orderedDiscoverInstallActivities(prioritizing: selectedDiscoverSkillID),
+                isTranslatingDescriptions: store.isTranslatingDescriptions,
+                onLoadDetail: { entry in await store.loadDiscoverSkillDetail(entry) },
+                onTry: { entry in
+                    await store.loadDiscoverSkillDetail(entry)
+                    pendingDiscoverTrySkill = store.discoverableSkillDetails[entry.id] ?? entry
+                },
+                onInstall: { entry in pendingDiscoverInstallSkill = entry },
+                onUninstall: { entry in await store.removeDiscoverSkillFromLibrary(entry) },
+                onTranslate: { entry in await store.translateDescriptions(using: locale, scope: .discoverSkill(id: entry.id)) }
+            )
+        } else if selectedFilter == .agentDocs {
+            AgentDocDetailView(doc: selectedAgentDoc)
+        } else if selectedFilter == .conflicts {
+            ConflictsDetailView(conflict: selectedConflict)
+        } else {
+            SkillDetailView(
+                skill: currentSelectedSkill,
+                isTranslatingDescription: store.isTranslatingDescriptions,
+                onToggleStar: {
+                    guard let skill = currentSelectedSkill else { return }
+                    toggleStar(for: skill)
+                },
+                onPromote: { skill in await store.promoteSkill(skill) },
+                onInstallToAgent: { skill, agentIDs in
+                    await store.installSkillToAgents(skill, agentIDs: agentIDs)
+                },
+                onUpdate: { skill in
+                    await store.updateSkill(skill)
+                },
+                onTranslate: { skill in
+                    let scope: DescriptionTranslationScope
+                    if case .projectLocal = skill.source {
+                        scope = .projectSkill(id: skill.id)
+                    } else {
+                        scope = .skill(id: skill.id)
+                    }
+                    await store.translateDescriptions(using: locale, scope: scope)
+                }
+            )
+        }
     }
 
     // MARK: - Collections
