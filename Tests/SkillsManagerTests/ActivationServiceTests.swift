@@ -41,8 +41,81 @@ struct ActivationServiceTests {
         #expect(ActivationService.status(intentMounted: false, linkedCount: 0, memberCount: 3) == .unmounted)
         #expect(ActivationService.status(intentMounted: true, linkedCount: 1, memberCount: 3) == .diverged)
         #expect(ActivationService.status(intentMounted: false, linkedCount: 2, memberCount: 3) == .diverged)
+        #expect(ActivationService.status(intentMounted: true, linkedCount: 0, memberCount: 1) == .diverged)
         #expect(ActivationService.status(intentMounted: true, linkedCount: 0, memberCount: 0) == .unmounted)
         #expect(ActivationService.status(intentMounted: false, linkedCount: 0, memberCount: 0) == .unmounted)
+    }
+
+    @Test
+    func readOnlyProbeReportsMissingOnlyAndPartialStatusInputs() throws {
+        let root = try makeSandbox()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let probe = ActivationService.probeMount(
+            memberSkills: [],
+            missingMemberIDs: ["path:/missing"],
+            agentSkillsDir: root.appendingPathComponent("agent"),
+            canonicalDir: root.appendingPathComponent("canonical")
+        )
+
+        #expect(probe.linkedCount == 0)
+        #expect(probe.report.skipped == [
+            .init(skillID: "path:/missing", reason: ActivationService.missingLibraryMemberReason),
+        ])
+        #expect(ActivationService.status(intentMounted: true, linkedCount: probe.linkedCount, memberCount: 1) == .diverged)
+    }
+
+    @Test
+    func readOnlyProbeReportsSpecificDiskDiagnosticsWithoutEditingDisk() throws {
+        let root = try makeSandbox()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let origin = root.appendingPathComponent("origin")
+        let agentDir = root.appendingPathComponent("agent")
+        let canonical = root.appendingPathComponent("canonical")
+        let linked = try makeLocalSkill(name: "linked", originDir: origin)
+        let missingLink = try makeLocalSkill(name: "missing-link", originDir: origin)
+        let wrongLink = try makeLocalSkill(name: "wrong-link", originDir: origin)
+        let conflict = try makeLocalSkill(name: "conflict", originDir: origin)
+        let missingCanonical = try makeLocalSkill(name: "missing-canonical", originDir: origin)
+        let fm = FileManager.default
+
+        for name in ["linked", "missing-link", "wrong-link", "conflict"] {
+            let dir = canonical.appendingPathComponent(name)
+            try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+            try "# \(name)".write(to: dir.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+        }
+        try fm.createDirectory(at: canonical.appendingPathComponent("missing-canonical"), withIntermediateDirectories: true)
+        try fm.createDirectory(at: agentDir, withIntermediateDirectories: true)
+        try fm.createSymbolicLink(
+            atPath: agentDir.appendingPathComponent("linked").path,
+            withDestinationPath: canonical.appendingPathComponent("linked").path
+        )
+        try fm.createSymbolicLink(
+            atPath: agentDir.appendingPathComponent("wrong-link").path,
+            withDestinationPath: canonical.appendingPathComponent("linked").path
+        )
+        try fm.createDirectory(at: agentDir.appendingPathComponent("conflict"), withIntermediateDirectories: true)
+
+        let before = try fm.contentsOfDirectory(atPath: agentDir.path).sorted()
+        let probe = ActivationService.probeMount(
+            memberSkills: [linked, missingLink, wrongLink, conflict, missingCanonical],
+            missingMemberIDs: [],
+            agentSkillsDir: agentDir,
+            canonicalDir: canonical
+        )
+        let after = try fm.contentsOfDirectory(atPath: agentDir.path).sorted()
+        let reasons = Set(probe.report.skipped.map(\.reason))
+
+        #expect(probe.linkedCount == 1)
+        #expect(probe.report.changed == [linked.persistenceID])
+        #expect(before == after)
+        #expect(reasons.contains(ActivationService.missingAgentLinkReason))
+        #expect(reasons.contains(ActivationService.wrongSymlinkDestinationReason))
+        #expect(reasons.contains(ActivationService.conflictingRealFileReason))
+        #expect(reasons.contains(ActivationService.missingCanonicalContentReason))
+        #expect(probe.report.skipped.contains {
+            $0.skillID == missingCanonical.persistenceID
+                && $0.reason == ActivationService.missingCanonicalContentReason
+        })
     }
 
     // MARK: 挂载:实体技能迁移 canonical + 原处留 link + 目标 agent 挂 link
@@ -69,7 +142,6 @@ struct ActivationServiceTests {
         // 目标 agent 挂上 link
         let agentDest = try fm.destinationOfSymbolicLink(atPath: agentDir.appendingPathComponent("commit").path)
         #expect(agentDest == canonical.appendingPathComponent("commit").path)
-        #expect(ActivationService.probeLinkedCount(memberSkills: [skill], agentSkillsDir: agentDir, canonicalDir: canonical) == 1)
     }
 
     // MARK: 散文件技能:绝不迁移共享根,只拷贝内容

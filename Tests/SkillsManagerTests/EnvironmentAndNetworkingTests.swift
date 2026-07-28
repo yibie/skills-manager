@@ -976,60 +976,234 @@ struct EnvironmentAndNetworkingTests {
     }
 
     @Test
-    func unavailableSkillsCLITakeoverReplacesProviderCopyAndClearsLock() async throws {
-        let fm = FileManager.default
-        let home = fm.temporaryDirectory
-            .appendingPathComponent("skills-cli-takeover-\(UUID().uuidString)")
-        defer { try? fm.removeItem(at: home) }
-        let providerSkill = home.appendingPathComponent(".agents/skills/managed-skill")
-        let canonicalRoot = home.appendingPathComponent(".config/agents/skills")
-        let canonicalSkill = canonicalRoot.appendingPathComponent("managed-skill")
-        let lockFile = home.appendingPathComponent(".agents/.skill-lock.json")
-        try createLifecycleSkill(at: providerSkill)
-        try """
-        {
-          "version": 3,
-          "skills": {
-            "managed-skill": {
-              "sourceUrl": "https://github.com/example/repo",
-              "skillPath": "skills/managed-skill"
-            }
-          }
-        }
-        """.write(to: lockFile, atomically: true, encoding: .utf8)
+    func skillsCLITakeoverRepairsProviderDirectoryWithTrustedCanonical() async throws {
+        let fixture = try makeSkillsCLITakeoverFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.home) }
+        try createLifecycleSkill(at: fixture.providerSkill)
+        try createManagedLifecycleSkill(at: fixture.canonicalSkill)
+        try writeSkillsCLILock(at: fixture.lockFile)
 
+        try await runSkillsCLITakeoverUpdate(fixture)
+        try await runSkillsCLITakeoverUpdate(fixture)
+
+        try expectProviderLink(fixture.providerSkill, pointsTo: fixture.canonicalSkill)
+        #expect(FileManager.default.fileExists(atPath: fixture.backup.path) == false)
+        try expectSkillsCLILockCleared(fixture.lockFile)
+    }
+
+    @Test
+    func skillsCLITakeoverRecoversFromDeterministicBackupWithTrustedCanonical() async throws {
+        let fixture = try makeSkillsCLITakeoverFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.home) }
+        try createLifecycleSkill(at: fixture.backup)
+        try createManagedLifecycleSkill(at: fixture.canonicalSkill)
+        try writeSkillsCLILock(at: fixture.lockFile)
+
+        try await runSkillsCLITakeoverUpdate(fixture)
+        try await runSkillsCLITakeoverUpdate(fixture)
+
+        try expectProviderLink(fixture.providerSkill, pointsTo: fixture.canonicalSkill)
+        #expect(FileManager.default.fileExists(atPath: fixture.backup.path) == false)
+        try expectSkillsCLILockCleared(fixture.lockFile)
+    }
+
+    @Test
+    func skillsCLITakeoverWithCorrectProviderLinkOnlyClearsLock() async throws {
+        let fixture = try makeSkillsCLITakeoverFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.home) }
+        try createManagedLifecycleSkill(at: fixture.canonicalSkill)
+        try FileManager.default.createDirectory(
+            at: fixture.providerSkill.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createSymbolicLink(
+            atPath: fixture.providerSkill.path,
+            withDestinationPath: fixture.canonicalSkill.path
+        )
+        try writeSkillsCLILock(at: fixture.lockFile)
+
+        try await runSkillsCLITakeoverUpdate(fixture)
+        try await runSkillsCLITakeoverUpdate(fixture)
+
+        try expectProviderLink(fixture.providerSkill, pointsTo: fixture.canonicalSkill)
+        try expectSkillsCLILockCleared(fixture.lockFile)
+    }
+
+    @Test
+    func skillsCLITakeoverRecreatesMissingProviderLinkForTrustedCanonical() async throws {
+        let fixture = try makeSkillsCLITakeoverFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.home) }
+        try createManagedLifecycleSkill(at: fixture.canonicalSkill)
+        try writeSkillsCLILock(at: fixture.lockFile)
+
+        try await runSkillsCLITakeoverUpdate(fixture)
+        try await runSkillsCLITakeoverUpdate(fixture)
+
+        try expectProviderLink(fixture.providerSkill, pointsTo: fixture.canonicalSkill)
+        #expect(FileManager.default.fileExists(atPath: fixture.backup.path) == false)
+        try expectSkillsCLILockCleared(fixture.lockFile)
+    }
+
+    @Test
+    func skillsCLITakeoverInstallsCanonicalWhenNoRecoveryStateExists() async throws {
+        let fixture = try makeSkillsCLITakeoverFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.home) }
+        try createLifecycleSkill(at: fixture.providerSkill)
+        try writeSkillsCLILock(at: fixture.lockFile)
+        let installCount = Locked(0)
         let service = SkillLifecycleService(
-            home: home,
-            canonicalSkillsDirectory: canonicalRoot,
+            home: fixture.home,
+            canonicalSkillsDirectory: fixture.canonicalRoot,
             environment: [:],
             installNative: { _, _, _ in
-                try createLifecycleSkill(at: canonicalSkill)
-                try "1\n".write(
-                    to: canonicalSkill.appendingPathComponent(SymlinkInstaller.managedMarkerName),
-                    atomically: true,
-                    encoding: .utf8
-                )
+                installCount.withLock { $0 += 1 }
+                try createManagedLifecycleSkill(at: fixture.canonicalSkill)
             },
             trashItem: { try FileManager.default.removeItem(at: $0) },
             isSkillsCLIAvailable: { false }
         )
-        var skill = makeLifecycleSkill()
-        skill.directoryPath = providerSkill
-        skill.filePath = providerSkill.appendingPathComponent("SKILL.md")
-        skill.provenance = SkillProvenance(
-            provider: .skillsCLI,
-            sourceURL: URL(string: "https://github.com/example/repo"),
-            skillID: "managed-skill"
+
+        try await service.update(makeSkillsCLITakeoverSkill(fixture), agentIDs: ["codex"], appendLog: { _ in })
+
+        #expect(installCount.withLock { $0 } == 1)
+        try expectProviderLink(fixture.providerSkill, pointsTo: fixture.canonicalSkill)
+        #expect(FileManager.default.fileExists(atPath: fixture.backup.path) == false)
+        try expectSkillsCLILockCleared(fixture.lockFile)
+    }
+
+    @Test
+    func skillsCLITakeoverInstallRepairsProviderDirectoryWithTrustedCanonical() async throws {
+        let fixture = try makeSkillsCLITakeoverFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.home) }
+        try createLifecycleSkill(at: fixture.providerSkill)
+        try createManagedLifecycleSkill(at: fixture.canonicalSkill)
+        try writeSkillsCLILock(at: fixture.lockFile)
+        let service = SkillLifecycleService(
+            home: fixture.home,
+            canonicalSkillsDirectory: fixture.canonicalRoot,
+            environment: [:],
+            installNative: { _, _, _ in
+                Issue.record("Trusted takeover recovery should not reinstall the canonical skill")
+            },
+            trashItem: { try FileManager.default.removeItem(at: $0) },
+            isSkillsCLIAvailable: { false }
         )
 
-        try await service.update(skill, agentIDs: ["codex"], appendLog: { _ in })
+        try await service.install(makeSkillsCLITakeoverSkill(fixture), agentIDs: ["codex"], appendLog: { _ in })
 
-        #expect(
-            providerSkill.resolvingSymlinksInPath().standardizedFileURL
-                == canonicalSkill.standardizedFileURL
+        try expectProviderLink(fixture.providerSkill, pointsTo: fixture.canonicalSkill)
+        #expect(FileManager.default.fileExists(atPath: fixture.backup.path) == false)
+        try expectSkillsCLILockCleared(fixture.lockFile)
+    }
+
+    @Test
+    func skillsCLITakeoverDiagnosesCanonicalConflictAndPreservesCopies() async throws {
+        let fixture = try makeSkillsCLITakeoverFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.home) }
+        try createLifecycleSkill(at: fixture.providerSkill)
+        try createLifecycleSkill(at: fixture.canonicalSkill)
+        try writeSkillsCLILock(at: fixture.lockFile)
+
+        await #expect(throws: SymlinkInstallerError.self) {
+            try await runSkillsCLITakeoverUpdate(fixture)
+        }
+
+        #expect(FileManager.default.fileExists(atPath: fixture.providerSkill.appendingPathComponent("SKILL.md").path))
+        #expect(FileManager.default.fileExists(atPath: fixture.canonicalSkill.appendingPathComponent("SKILL.md").path))
+        #expect(FileManager.default.fileExists(atPath: fixture.backup.path) == false)
+        let lock = try String(contentsOf: fixture.lockFile, encoding: .utf8)
+        #expect(lock.contains("managed-skill"))
+    }
+
+    @Test
+    func skillsCLITakeoverDiagnosesForgedNonGitHubCanonicalAndPreservesState() async throws {
+        let fixture = try makeSkillsCLITakeoverFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.home) }
+        let forgedSource = URL(string: "https://example.com/example/repo")!
+        try createLifecycleSkill(at: fixture.providerSkill)
+        try createManagedLifecycleSkill(at: fixture.canonicalSkill, sourceURL: forgedSource.absoluteString)
+        try writeSkillsCLILock(at: fixture.lockFile, sourceURL: forgedSource.absoluteString)
+
+        await #expect(throws: SymlinkInstallerError.self) {
+            try await runSkillsCLITakeoverUpdate(fixture, sourceURL: forgedSource)
+        }
+
+        #expect(FileManager.default.fileExists(atPath: fixture.providerSkill.appendingPathComponent("SKILL.md").path))
+        #expect(FileManager.default.fileExists(atPath: fixture.canonicalSkill.appendingPathComponent("SKILL.md").path))
+        let lock = try String(contentsOf: fixture.lockFile, encoding: .utf8)
+        #expect(lock.contains("managed-skill"))
+    }
+
+    @Test
+    func skillsCLITakeoverDiagnosesDanglingCanonicalSymlinkAndPreservesState() async throws {
+        let fixture = try makeSkillsCLITakeoverFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.home) }
+        let missingTarget = fixture.home.appendingPathComponent("missing-canonical-target")
+        try createLifecycleSkill(at: fixture.providerSkill)
+        try FileManager.default.createDirectory(
+            at: fixture.canonicalSkill.deletingLastPathComponent(),
+            withIntermediateDirectories: true
         )
-        let lock = try String(contentsOf: lockFile, encoding: .utf8)
-        #expect(lock.contains("managed-skill") == false)
+        try FileManager.default.createSymbolicLink(
+            atPath: fixture.canonicalSkill.path,
+            withDestinationPath: missingTarget.path
+        )
+        try writeSkillsCLILock(at: fixture.lockFile)
+
+        await #expect(throws: SymlinkInstallerError.self) {
+            try await runSkillsCLITakeoverUpdate(fixture)
+        }
+
+        #expect(FileManager.default.fileExists(atPath: fixture.providerSkill.appendingPathComponent("SKILL.md").path))
+        let destination = try FileManager.default.destinationOfSymbolicLink(atPath: fixture.canonicalSkill.path)
+        #expect(URL(fileURLWithPath: destination).standardizedFileURL == missingTarget.standardizedFileURL)
+        let lock = try String(contentsOf: fixture.lockFile, encoding: .utf8)
+        #expect(lock.contains("managed-skill"))
+    }
+
+    @Test
+    func skillsCLITakeoverDiagnosesBackupOnlyAndPreservesBackup() async throws {
+        let fixture = try makeSkillsCLITakeoverFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.home) }
+        try createLifecycleSkill(at: fixture.backup)
+        try writeSkillsCLILock(at: fixture.lockFile)
+
+        await #expect(throws: SymlinkInstallerError.self) {
+            try await runSkillsCLITakeoverUpdate(fixture)
+        }
+
+        #expect(FileManager.default.fileExists(atPath: fixture.providerSkill.path) == false)
+        #expect(FileManager.default.fileExists(atPath: fixture.canonicalSkill.path) == false)
+        #expect(FileManager.default.fileExists(atPath: fixture.backup.appendingPathComponent("SKILL.md").path))
+        let lock = try String(contentsOf: fixture.lockFile, encoding: .utf8)
+        #expect(lock.contains("managed-skill"))
+    }
+
+    @Test
+    func skillsCLITakeoverDiagnosesWrongProviderSymlinkAndPreservesState() async throws {
+        let fixture = try makeSkillsCLITakeoverFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.home) }
+        let wrongTarget = fixture.home.appendingPathComponent("wrong-target")
+        try createLifecycleSkill(at: wrongTarget)
+        try createManagedLifecycleSkill(at: fixture.canonicalSkill)
+        try FileManager.default.createDirectory(
+            at: fixture.providerSkill.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createSymbolicLink(
+            atPath: fixture.providerSkill.path,
+            withDestinationPath: wrongTarget.path
+        )
+        try writeSkillsCLILock(at: fixture.lockFile)
+
+        await #expect(throws: SymlinkInstallerError.self) {
+            try await runSkillsCLITakeoverUpdate(fixture)
+        }
+
+        try expectProviderLink(fixture.providerSkill, pointsTo: wrongTarget)
+        #expect(FileManager.default.fileExists(atPath: fixture.canonicalSkill.appendingPathComponent("SKILL.md").path))
+        let lock = try String(contentsOf: fixture.lockFile, encoding: .utf8)
+        #expect(lock.contains("managed-skill"))
     }
 
     @Test
@@ -1202,4 +1376,120 @@ private func createLifecycleSkill(at directory: URL) throws {
         atomically: true,
         encoding: .utf8
     )
+}
+
+private struct SkillsCLITakeoverFixture {
+    var home: URL
+    var providerSkill: URL
+    var canonicalRoot: URL
+    var canonicalSkill: URL
+    var backup: URL
+    var lockFile: URL
+}
+
+private func makeSkillsCLITakeoverFixture() throws -> SkillsCLITakeoverFixture {
+    let home = FileManager.default.temporaryDirectory
+        .appendingPathComponent("skills-cli-takeover-\(UUID().uuidString)")
+    let providerSkill = home.appendingPathComponent(".agents/skills/managed-skill")
+    let canonicalRoot = home.appendingPathComponent(".config/agents/skills")
+    return SkillsCLITakeoverFixture(
+        home: home,
+        providerSkill: providerSkill,
+        canonicalRoot: canonicalRoot,
+        canonicalSkill: canonicalRoot.appendingPathComponent("managed-skill"),
+        backup: providerSkill.deletingLastPathComponent()
+            .appendingPathComponent(".managed-skill-skills-cli-backup"),
+        lockFile: home.appendingPathComponent(".agents/.skill-lock.json")
+    )
+}
+
+private func createManagedLifecycleSkill(
+    at directory: URL,
+    sourceURL: String = "https://github.com/example/repo"
+) throws {
+    try createLifecycleSkill(at: directory)
+    try "1\n".write(
+        to: directory.appendingPathComponent(SymlinkInstaller.managedMarkerName),
+        atomically: true,
+        encoding: .utf8
+    )
+    try """
+    {
+      "sourceURL": "\(sourceURL)",
+      "skillID": "managed-skill",
+      "installedAt": 0
+    }
+    """.write(
+        to: directory.appendingPathComponent(SymlinkInstaller.managedManifestName),
+        atomically: true,
+        encoding: .utf8
+    )
+}
+
+private func writeSkillsCLILock(
+    at lockFile: URL,
+    sourceURL: String = "https://github.com/example/repo"
+) throws {
+    try FileManager.default.createDirectory(
+        at: lockFile.deletingLastPathComponent(),
+        withIntermediateDirectories: true
+    )
+    try """
+    {
+      "version": 3,
+      "skills": {
+        "managed-skill": {
+          "sourceUrl": "\(sourceURL)",
+          "skillPath": "skills/managed-skill"
+        }
+      }
+    }
+    """.write(to: lockFile, atomically: true, encoding: .utf8)
+}
+
+private func runSkillsCLITakeoverUpdate(
+    _ fixture: SkillsCLITakeoverFixture,
+    sourceURL: URL = URL(string: "https://github.com/example/repo")!
+) async throws {
+    let service = SkillLifecycleService(
+        home: fixture.home,
+        canonicalSkillsDirectory: fixture.canonicalRoot,
+        environment: [:],
+        installNative: { _, _, _ in
+            Issue.record("Trusted takeover recovery should not reinstall the canonical skill")
+        },
+        trashItem: { try FileManager.default.removeItem(at: $0) },
+        isSkillsCLIAvailable: { false }
+    )
+    try await service.update(
+        makeSkillsCLITakeoverSkill(fixture, sourceURL: sourceURL),
+        agentIDs: ["codex"],
+        appendLog: { _ in }
+    )
+}
+
+private func makeSkillsCLITakeoverSkill(
+    _ fixture: SkillsCLITakeoverFixture,
+    sourceURL: URL = URL(string: "https://github.com/example/repo")!
+) -> Skill {
+    var skill = makeLifecycleSkill()
+    skill.directoryPath = fixture.providerSkill
+    skill.filePath = fixture.providerSkill.appendingPathComponent("SKILL.md")
+    skill.provenance = SkillProvenance(
+        provider: .skillsCLI,
+        sourceURL: sourceURL,
+        skillID: "managed-skill"
+    )
+    return skill
+}
+
+private func expectProviderLink(_ link: URL, pointsTo target: URL) throws {
+    let destination = try FileManager.default.destinationOfSymbolicLink(atPath: link.path)
+    #expect(URL(fileURLWithPath: destination).standardizedFileURL == target.standardizedFileURL)
+    #expect(link.resolvingSymlinksInPath().standardizedFileURL == target.standardizedFileURL)
+}
+
+private func expectSkillsCLILockCleared(_ lockFile: URL) throws {
+    let lock = try String(contentsOf: lockFile, encoding: .utf8)
+    #expect(lock.contains("managed-skill") == false)
 }

@@ -22,7 +22,13 @@ struct CollectionDetailView: View {
 
     @State private var isPickerPresented = false
 
-    private var memberIDs: Set<String> { Set(collection.memberSkillIDs) }
+    private var resolution: CollectionSupport.Resolution {
+        CollectionSupport.resolveMemberIDs(collection.memberSkillIDs, skills: skills)
+    }
+
+    private var memberIDs: Set<String> { Set(resolution.members.map(\.id)) }
+
+    private var hasResolvedMembers: Bool { !resolution.members.isEmpty }
 
     /// 只显示已挂载的胶囊;其余 30+ 个 agent 收进「挂载到…」菜单,避免开关墙。
     private var mountedAgents: [AgentDefinition] {
@@ -34,8 +40,7 @@ struct CollectionDetailView: View {
     }
 
     private var missingCount: Int {
-        let known = Set(skills.map(\.id))
-        return collection.memberSkillIDs.filter { !known.contains($0) }.count
+        resolution.missingIDs.count
     }
 
     var body: some View {
@@ -60,11 +65,11 @@ struct CollectionDetailView: View {
                         agentCapsule(agent)
                     }
                     if !unmountedAgents.isEmpty {
-                        if memberIDs.isEmpty {
+                        if !hasResolvedMembers {
                             Label("先添加技能再挂载", systemImage: "plus")
                                 .font(.callout)
                                 .foregroundStyle(.tertiary)
-                                .help("空分组没有可挂载内容")
+                                .help(missingCount > 0 ? "分组成员缺失，无法挂载" : "空分组没有可挂载内容")
                         } else {
                             Menu {
                                 ForEach(unmountedAgents, id: \.id) { agent in
@@ -86,11 +91,11 @@ struct CollectionDetailView: View {
 
             Divider()
 
-            if memberIDs.isEmpty {
+            if !hasResolvedMembers {
                 ContentUnavailableView {
-                    Label("分组中还没有技能", systemImage: "tray")
+                    Label(missingCount > 0 ? "分组成员缺失" : "分组中还没有技能", systemImage: "tray")
                 } description: {
-                    Text("添加技能后，可将整个分组挂载到 Agent。")
+                    Text(missingCount > 0 ? "添加或恢复技能后，可将整个分组挂载到 Agent。" : "添加技能后，可将整个分组挂载到 Agent。")
                 } actions: {
                     Button("添加技能") { isPickerPresented = true }
                 }
@@ -117,7 +122,11 @@ struct CollectionDetailView: View {
         }
         .sheet(isPresented: $isPickerPresented) {
             MemberPicker(
-                candidates: skills.filter { !memberIDs.contains($0.id) },
+                candidates: skills.filter { skill in
+                    !collection.memberSkillIDs.contains {
+                        CollectionSupport.memberID($0, matches: skill, skills: skills)
+                    }
+                },
                 onAdd: { ids in
                     onAddMembers(ids)
                     isPickerPresented = false
@@ -134,6 +143,11 @@ struct CollectionDetailView: View {
                 .fill(status == .mounted ? ConsoleTheme.statusOk : status == .diverged ? ConsoleTheme.statusWarn : ConsoleTheme.statusOff)
                 .frame(width: 8, height: 8)
             Text(agent.displayName).font(.callout)
+            if mounted && status == .unmounted {
+                Text("无可挂载技能")
+                    .font(.caption2)
+                    .foregroundStyle(ConsoleTheme.statusWarn)
+            }
             if let report = reportFor(agent.id), !report.skipped.isEmpty {
                 Text("成功 \(report.changed.count) · 跳过 \(report.skipped.count)")
                     .font(.caption2)
@@ -199,7 +213,7 @@ private struct MemberPicker: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("添加 \(selected.count) 个") {
-                        onAdd(selected.map(\.id))
+                        onAdd(selected.map(\.persistenceID))
                     }
                     .disabled(selected.isEmpty)
                 }

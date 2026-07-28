@@ -108,8 +108,10 @@ struct ContentView: View {
             CollectionPickerSheet(
                 collections: collectionRecords,
                 onPick: { collection in
-                    if !collection.memberSkillIDs.contains(skill.id) {
-                        collection.memberSkillIDs.append(skill.id)
+                    if !collection.memberSkillIDs.contains(where: {
+                        CollectionSupport.memberID($0, matches: skill, skills: store.skills)
+                    }) {
+                        collection.memberSkillIDs.append(skill.persistenceID)
                         store.refreshMountStatuses(collections: collectionRecords)
                     }
                 },
@@ -119,7 +121,7 @@ struct ContentView: View {
                     let record = CollectionRecord(
                         name: trimmed,
                         sortOrder: collectionRecords.count,
-                        memberSkillIDs: [skill.id]
+                        memberSkillIDs: [skill.persistenceID]
                     )
                     modelContext.insert(record)
                     store.refreshMountStatuses(collections: collectionRecords)
@@ -130,6 +132,7 @@ struct ContentView: View {
             async let skills: Void = store.reloadSkills()
             async let discover: Void = store.reloadDiscoverableSkillsDirectory()
             _ = await (skills, discover)
+            reconcileCollectionMemberIDs()
             store.refreshMountStatuses(collections: collectionRecords)
             store.merge(records: skillRecords)
             store.startDiscoverDirectoryRefreshLoop()
@@ -143,6 +146,7 @@ struct ContentView: View {
         }
         .onChange(of: store.skills) {
             // 文件 watcher 重扫 / ⌘R 后重算状态灯(如 link 被手动删掉 → 黄灯)
+            reconcileCollectionMemberIDs()
             store.refreshMountStatuses(collections: collectionRecords)
         }
         .onChange(of: descriptionLanguageMode) {
@@ -345,7 +349,9 @@ struct ContentView: View {
                     store.refreshMountStatuses(collections: collectionRecords)
                 },
                 onRemoveMember: { skill in
-                    collection.memberSkillIDs.removeAll { $0 == skill.id }
+                    collection.memberSkillIDs.removeAll {
+                        CollectionSupport.memberID($0, matches: skill, skills: store.skills)
+                    }
                     store.refreshMountStatuses(collections: collectionRecords)
                 },
                 onInstall: { skill in await store.installSkill(skill) },
@@ -444,11 +450,23 @@ struct ContentView: View {
     /// 挂载/卸载 组→agent:先执行磁盘操作,再更新装载意图,最后刷新扫描与状态灯。
     private func setMounted(collection: CollectionRecord, agentID: String, mount: Bool) {
         guard let definition = AgentRegistry.agent(id: agentID) else { return }
-        let members = collection.memberSkillIDs.compactMap { id in store.skills.first { $0.id == id } }
+        let resolution = CollectionSupport.resolveMemberIDs(collection.memberSkillIDs, skills: store.skills)
         let dir = AgentRegistry.resolvedSkillsDir(for: definition)
         if mount {
+            var report = MountReport(
+                skipped: resolution.missingIDs.map {
+                    .init(skillID: $0, reason: ActivationService.missingLibraryMemberReason)
+                }
+            )
+            guard !resolution.members.isEmpty else {
+                store.recordMountReport(report, collectionID: collection.id, agentID: agentID)
+                store.refreshMountStatuses(collections: collectionRecords)
+                return
+            }
             do {
-                let report = try ActivationService.mount(skills: members, agentSkillsDir: dir)
+                let mountReport = try ActivationService.mount(skills: resolution.members, agentSkillsDir: dir)
+                report.changed.append(contentsOf: mountReport.changed)
+                report.skipped.append(contentsOf: mountReport.skipped)
                 if !collection.mountedAgentIDs.contains(agentID) {
                     collection.mountedAgentIDs.append(agentID)
                 }
@@ -458,10 +476,25 @@ struct ContentView: View {
                 store.errorMessage = error.localizedDescription
             }
         } else {
-            let report = ActivationService.unmount(skills: members, agentSkillsDir: dir)
+            let protectedIDs = CollectionSupport.protectedMountedMemberIDs(
+                excluding: collection,
+                agentID: agentID,
+                collections: collectionRecords,
+                skills: store.skills
+            )
+            let protected = resolution.members.filter { protectedIDs.contains($0.persistenceID) }
+            let unmountable = resolution.members.filter { !protectedIDs.contains($0.persistenceID) }
+            let unmountReport = ActivationService.unmount(skills: unmountable, agentSkillsDir: dir)
+            var report = unmountReport
+            report.skipped.append(contentsOf: resolution.missingIDs.map {
+                .init(skillID: $0, reason: ActivationService.missingLibraryMemberReason)
+            })
+            report.skipped.append(contentsOf: protected.map {
+                .init(skillID: $0.persistenceID, reason: ActivationService.sharedCollectionReferenceReason)
+            })
             // 有残留(如实体目录不删除)时保留挂载意图:状态灯持续黄灯并可"重新应用",
             // 冲突不能伪装成卸载成功
-            if report.skipped.isEmpty {
+            if unmountReport.skipped.isEmpty {
                 collection.mountedAgentIDs.removeAll { $0 == agentID }
             }
             store.recordMountReport(report, collectionID: collection.id, agentID: agentID)
@@ -470,10 +503,17 @@ struct ContentView: View {
         Task {
             await store.reloadSkills()
             // 迁移会把 path-keyed id 变成 name-keyed id:重扫后按名重对成员 id
-            collection.memberSkillIDs = CollectionSupport.reconcileMemberIDs(
-                collection.memberSkillIDs, skills: store.skills
-            )
+            reconcileCollectionMemberIDs()
             store.refreshMountStatuses(collections: collectionRecords)
+        }
+    }
+
+    private func reconcileCollectionMemberIDs() {
+        for collection in collectionRecords {
+            let reconciled = CollectionSupport.reconcileMemberIDs(collection.memberSkillIDs, skills: store.skills)
+            if collection.memberSkillIDs != reconciled {
+                collection.memberSkillIDs = reconciled
+            }
         }
     }
 

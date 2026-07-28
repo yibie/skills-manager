@@ -123,46 +123,50 @@ struct SkillLifecycleService: Sendable {
             && isSkillsCLIInstallation(skill)
         let canonical = canonicalSkillsDirectory
             .appendingPathComponent(SymlinkInstaller.sanitize(skill.name))
-        if shouldTakeOver,
-           FileManager.default.fileExists(atPath: canonical.path) {
-            throw SymlinkInstallerError.destinationConflict(canonical)
-        }
+        let takeoverNeedsInstall = try shouldTakeOver
+            ? prepareSkillsCLITakeover(skill, canonical: canonical)
+            : true
 
-        if skill.isDedicatedDirectory {
-            try SymlinkInstaller.install(
-                sourceDirectory: skill.directoryPath,
-                skillName: skill.name,
-                agentIDs: agentIDs,
-                canonicalSkillsDirectory: canonicalSkillsDirectory
-            )
-        } else {
-            try SymlinkInstaller.install(
-                content: skill.markdownContent,
-                skillName: skill.name,
-                agentIDs: agentIDs,
-                canonicalSkillsDirectory: canonicalSkillsDirectory
-            )
-        }
+        if takeoverNeedsInstall {
+            if skill.isDedicatedDirectory {
+                try SymlinkInstaller.install(
+                    sourceDirectory: skill.directoryPath,
+                    skillName: skill.name,
+                    agentIDs: agentIDs,
+                    canonicalSkillsDirectory: canonicalSkillsDirectory
+                )
+            } else {
+                try SymlinkInstaller.install(
+                    content: skill.markdownContent,
+                    skillName: skill.name,
+                    agentIDs: agentIDs,
+                    canonicalSkillsDirectory: canonicalSkillsDirectory
+                )
+            }
 
-        if let sourceURL = skill.provenance.sourceURL,
-           let skillID = skill.provenance.skillID {
-            try ManagedSkillManifest(
-                sourceURL: sourceURL,
-                skillID: skillID,
-                sourceRef: skill.provenance.sourceRef,
-                installedAt: Date(),
-                contentHash: canonicalContentHash(canonical)
-            ).write(to: canonical)
+            if let sourceURL = skill.provenance.sourceURL,
+               let skillID = skill.provenance.skillID {
+                try ManagedSkillManifest(
+                    sourceURL: sourceURL,
+                    skillID: skillID,
+                    sourceRef: skill.provenance.sourceRef,
+                    installedAt: Date(),
+                    contentHash: canonicalContentHash(canonical)
+                ).write(to: canonical)
+            }
         }
 
         if shouldTakeOver {
+            let removeCanonicalOnFailure = takeoverNeedsInstall
             do {
                 try takeOverSkillsCLIInstallation(skill, canonical: canonical)
             } catch {
-                try? SymlinkInstaller.removeFromLibrary(
-                    skillName: skill.name,
-                    canonicalSkillsDirectory: canonicalSkillsDirectory
-                )
+                if removeCanonicalOnFailure {
+                    try? SymlinkInstaller.removeFromLibrary(
+                        skillName: skill.name,
+                        canonicalSkillsDirectory: canonicalSkillsDirectory
+                    )
+                }
                 throw error
             }
             removeSkillsCLILockEntry(skill.name, appendLog: appendLog)
@@ -192,39 +196,43 @@ struct SkillLifecycleService: Sendable {
             && isSkillsCLIInstallation(skill)
         let canonical = canonicalSkillsDirectory
             .appendingPathComponent(SymlinkInstaller.sanitize(skill.name))
-        if shouldTakeOver,
-           FileManager.default.fileExists(atPath: canonical.path) {
-            throw SymlinkInstallerError.destinationConflict(canonical)
+        let takeoverNeedsInstall = try shouldTakeOver
+            ? prepareSkillsCLITakeover(skill, canonical: canonical)
+            : true
+
+        if takeoverNeedsInstall {
+            appendLog("The original provider is unavailable; taking over management in Skills Manager.")
+            try await installNative(
+                DiscoverSkill(
+                    id: "\(sourceURL.absoluteString):\(skillID)",
+                    source: sourceURL.pathComponents.dropFirst().prefix(2).joined(separator: "/"),
+                    skillId: skillID,
+                    name: skill.displayName,
+                    installs: 0,
+                    repoURL: sourceURL,
+                    repositoryRef: skill.provenance.sourceRef,
+                    installCommand: "",
+                    baseDescription: skill.baseDescription,
+                    baseDescriptionLocale: skill.baseDescriptionLocale,
+                    localizedDescription: skill.localizedDescription,
+                    readmeExcerpt: nil
+                ),
+                agentIDs,
+                appendLog
+            )
         }
 
-        appendLog("The original provider is unavailable; taking over management in Skills Manager.")
-        try await installNative(
-            DiscoverSkill(
-                id: "\(sourceURL.absoluteString):\(skillID)",
-                source: sourceURL.pathComponents.dropFirst().prefix(2).joined(separator: "/"),
-                skillId: skillID,
-                name: skill.displayName,
-                installs: 0,
-                repoURL: sourceURL,
-                repositoryRef: skill.provenance.sourceRef,
-                installCommand: "",
-                baseDescription: skill.baseDescription,
-                baseDescriptionLocale: skill.baseDescriptionLocale,
-                localizedDescription: skill.localizedDescription,
-                readmeExcerpt: nil
-            ),
-            agentIDs,
-            appendLog
-        )
-
         if shouldTakeOver {
+            let removeCanonicalOnFailure = takeoverNeedsInstall
             do {
                 try takeOverSkillsCLIInstallation(skill, canonical: canonical)
             } catch {
-                try? SymlinkInstaller.removeFromLibrary(
-                    skillName: skill.name,
-                    canonicalSkillsDirectory: canonicalSkillsDirectory
-                )
+                if removeCanonicalOnFailure {
+                    try? SymlinkInstaller.removeFromLibrary(
+                        skillName: skill.name,
+                        canonicalSkillsDirectory: canonicalSkillsDirectory
+                    )
+                }
                 throw error
             }
             removeSkillsCLILockEntry(skill.name, appendLog: appendLog)
@@ -297,25 +305,108 @@ struct SkillLifecycleService: Sendable {
             == expected.resolvingSymlinksInPath().standardizedFileURL
     }
 
+    private func prepareSkillsCLITakeover(_ skill: Skill, canonical: URL) throws -> Bool {
+        let fm = FileManager.default
+        let backup = skillsCLIProviderBackup(for: skill)
+        guard itemExistsIncludingSymlink(canonical, fm: fm) else {
+            if itemExistsIncludingSymlink(backup, fm: fm) {
+                throw SymlinkInstallerError.destinationConflict(backup)
+            }
+            return true
+        }
+        guard isRecoverableCanonical(canonical, for: skill) else {
+            throw SymlinkInstallerError.destinationConflict(canonical)
+        }
+        return false
+    }
+
+    private func isRecoverableCanonical(_ canonical: URL, for skill: Skill) -> Bool {
+        guard SymlinkInstaller.isManagedCanonicalDirectory(canonical),
+              let manifest = ManagedSkillManifest.load(from: canonical)
+        else { return false }
+
+        let expected = skill.provenance
+        guard SymlinkInstaller.sanitize(manifest.skillID)
+            == SymlinkInstaller.sanitize(expected.skillID ?? skill.name)
+        else { return false }
+
+        let actual = manifest.provenance
+        guard let expectedSource = expected.trustedGitHubRepoIdentity,
+              let actualSource = actual.trustedGitHubRepoIdentity
+        else { return false }
+        return expectedSource == actualSource
+            && expected.sourceRef == manifest.sourceRef
+    }
+
     private func takeOverSkillsCLIInstallation(_ skill: Skill, canonical: URL) throws {
         let fm = FileManager.default
-        let target = skill.directoryPath.standardizedFileURL
-        guard fm.fileExists(atPath: target.path) else { return }
+        let target = skillsCLIProviderDirectory(for: skill)
+        let backup = skillsCLIProviderBackup(for: skill)
+        guard itemExistsIncludingSymlink(canonical, fm: fm),
+              isRecoverableCanonical(canonical, for: skill)
+        else {
+            throw SymlinkInstallerError.destinationConflict(canonical)
+        }
 
-        let backup = target.deletingLastPathComponent()
-            .appendingPathComponent(".\(target.lastPathComponent)-skills-cli-\(UUID().uuidString)")
-        try fm.moveItem(at: target, to: backup)
+        if itemExistsIncludingSymlink(target, fm: fm) {
+            guard !isSymbolicLink(target, fm: fm) else {
+                guard isLink(target, pointingTo: canonical, fm: fm) else {
+                    throw SymlinkInstallerError.destinationConflict(target)
+                }
+                try? trashItem(backup)
+                return
+            }
+            guard !itemExistsIncludingSymlink(backup, fm: fm) else {
+                throw SymlinkInstallerError.destinationConflict(backup)
+            }
+            try fm.moveItem(at: target, to: backup)
+        }
+
         do {
+            try fm.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
             try fm.createSymbolicLink(
                 atPath: target.path,
                 withDestinationPath: canonical.resolvingSymlinksInPath().path
             )
-            try trashItem(backup)
         } catch {
             try? fm.removeItem(at: target)
-            try? fm.moveItem(at: backup, to: target)
+            if !itemExistsIncludingSymlink(target, fm: fm) {
+                try? fm.moveItem(at: backup, to: target)
+            }
             throw error
         }
+        try? trashItem(backup)
+    }
+
+    private func skillsCLIProviderDirectory(for skill: Skill) -> URL {
+        home.appendingPathComponent(".agents/skills")
+            .appendingPathComponent(SymlinkInstaller.sanitize(skill.name))
+            .standardizedFileURL
+    }
+
+    private func skillsCLIProviderBackup(for skill: Skill) -> URL {
+        let target = skillsCLIProviderDirectory(for: skill)
+        return target.deletingLastPathComponent()
+            .appendingPathComponent(".\(target.lastPathComponent)-skills-cli-backup")
+            .standardizedFileURL
+    }
+
+    private func isSymbolicLink(_ url: URL, fm: FileManager) -> Bool {
+        (try? url.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true
+    }
+
+    private func itemExistsIncludingSymlink(_ url: URL, fm: FileManager) -> Bool {
+        fm.fileExists(atPath: url.path)
+            || (try? fm.destinationOfSymbolicLink(atPath: url.path)) != nil
+    }
+
+    private func isLink(_ link: URL, pointingTo target: URL, fm: FileManager) -> Bool {
+        guard let rawDestination = try? fm.destinationOfSymbolicLink(atPath: link.path) else { return false }
+        let destination = rawDestination.hasPrefix("/")
+            ? URL(fileURLWithPath: rawDestination)
+            : link.deletingLastPathComponent().appendingPathComponent(rawDestination)
+        return destination.resolvingSymlinksInPath().standardizedFileURL
+            == target.resolvingSymlinksInPath().standardizedFileURL
     }
 
     private func removeSkillsCLILockEntry(

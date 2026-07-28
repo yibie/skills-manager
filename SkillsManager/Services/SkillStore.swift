@@ -1422,22 +1422,31 @@ final class SkillStore {
     /// 以磁盘为准重建所有「组 × agent」的状态灯数据。skills 刷新或分组变更后调用。
     func refreshMountStatuses(collections: [CollectionRecord]) {
         var map: [String: MountStatus] = [:]
+        var reports = mountReports.filter { key, _ in
+            !collections.contains { collection in
+                collection.mountedAgentIDs.contains { key == "\(collection.id.uuidString):\($0)" }
+            }
+        }
         for collection in collections {
-            let members = collection.memberSkillIDs.compactMap { id in skills.first { $0.id == id } }
+            let resolution = CollectionSupport.resolveMemberIDs(collection.memberSkillIDs, skills: skills)
             for agentID in Set(collection.mountedAgentIDs) {
                 guard let definition = AgentRegistry.agent(id: agentID) else { continue }
-                let linked = ActivationService.probeLinkedCount(
-                    memberSkills: members,
+                let probe = ActivationService.probeMount(
+                    memberSkills: resolution.members,
+                    missingMemberIDs: resolution.missingIDs,
                     agentSkillsDir: AgentRegistry.resolvedSkillsDir(for: definition)
                 )
-                map["\(collection.id.uuidString):\(agentID)"] = ActivationService.status(
+                let key = "\(collection.id.uuidString):\(agentID)"
+                map[key] = ActivationService.status(
                     intentMounted: true,
-                    linkedCount: linked,
-                    memberCount: members.count
+                    linkedCount: probe.linkedCount,
+                    memberCount: collection.memberSkillIDs.count
                 )
+                reports[key] = probe.report.skipped.isEmpty ? nil : probe.report
             }
         }
         mountStatuses = map
+        mountReports = reports
     }
 }
 

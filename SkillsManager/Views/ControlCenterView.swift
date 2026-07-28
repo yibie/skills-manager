@@ -26,7 +26,7 @@ struct ControlCenterView: View {
         var agents = Set<String>()
         for collection in collections {
             for agentID in collection.mountedAgentIDs where statusFor(collection, agentID) == .mounted {
-                skillMounts += collection.memberSkillIDs.count
+                skillMounts += CollectionSupport.resolveMemberIDs(collection.memberSkillIDs, skills: skills).members.count
                 agents.insert(agentID)
             }
         }
@@ -51,6 +51,8 @@ struct ControlCenterView: View {
                     ForEach(collections, id: \.id) { collection in
                         CollectionCard(
                             collection: collection,
+                            resolvedMemberCount: CollectionSupport.resolveMemberIDs(collection.memberSkillIDs, skills: skills).members.count,
+                            missingCount: CollectionSupport.resolveMemberIDs(collection.memberSkillIDs, skills: skills).missingIDs.count,
                             detectedAgents: detectedAgents,
                             statusFor: { statusFor(collection, $0) },
                             reportFor: { mountReportFor(collection, $0) },
@@ -98,6 +100,8 @@ struct ControlCenterView: View {
 
 private struct CollectionCard: View {
     let collection: CollectionRecord
+    let resolvedMemberCount: Int
+    let missingCount: Int
     let detectedAgents: [AgentDefinition]
     let statusFor: (String) -> MountStatus
     var reportFor: (String) -> MountReport? = { _ in nil }
@@ -130,14 +134,17 @@ private struct CollectionCard: View {
 
     private var statusText: (text: String, isWarning: Bool) {
         guard !collection.mountedAgentIDs.isEmpty else { return ("未挂载", false) }
-        let diverged = collection.mountedAgentIDs.filter { statusFor($0) == .diverged }
-        if diverged.isEmpty {
+        guard resolvedMemberCount > 0 else {
+            return ("无可挂载技能：挂载意图无法应用", true)
+        }
+        let notMounted = collection.mountedAgentIDs.filter { statusFor($0) != .mounted }
+        if notMounted.isEmpty {
             let names = collection.mountedAgentIDs.compactMap { id in
                 detectedAgents.first { $0.id == id }?.displayName
             }
             return ("挂载于 \(names.joined(separator: "、")) · 状态正常", false)
         }
-        let names = diverged.compactMap { id in detectedAgents.first { $0.id == id }?.displayName }
+        let names = notMounted.compactMap { id in detectedAgents.first { $0.id == id }?.displayName }
         return ("\(names.joined(separator: "、"))：与磁盘不一致", true)
     }
 
@@ -166,7 +173,7 @@ private struct CollectionCard: View {
                 .menuIndicator(.hidden)
                 .menuStyle(.borderlessButton)
             }
-            Text("\(collection.memberSkillIDs.count) 个技能")
+            Text("\(collection.memberSkillIDs.count) 个技能" + (missingCount > 0 ? " · \(missingCount) 个缺失" : ""))
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -202,11 +209,11 @@ private struct CollectionCard: View {
             }
 
             if !unmountedAgents.isEmpty {
-                if collection.memberSkillIDs.isEmpty {
+                if resolvedMemberCount == 0 {
                     Label("先添加技能再挂载", systemImage: "plus")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
-                        .help("空分组没有可挂载内容")
+                        .help(missingCount > 0 ? "分组成员缺失，无法挂载" : "空分组没有可挂载内容")
                 } else {
                     Menu {
                         ForEach(unmountedAgents, id: \.id) { agent in

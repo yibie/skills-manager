@@ -8,7 +8,7 @@ final class CollectionRecord {
     @Attribute(.unique) var id: UUID
     var name: String
     var sortOrder: Int
-    var memberSkillIDs: [String]      // skill.id("{source}:{name}")
+    var memberSkillIDs: [String]      // Skill.persistenceID; legacy skill.id reads remain compatible
     var mountedAgentIDs: [String]     // AgentRegistry id(装载意图)
     /// 预留:Phase 2 工作区绑定。
     var projectPaths: [String]

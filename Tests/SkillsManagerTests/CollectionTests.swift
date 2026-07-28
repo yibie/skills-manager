@@ -13,6 +13,26 @@ struct CollectionTests {
         return ModelContext(container)
     }
 
+    private func skill(name: String, canonicalPath: URL) -> Skill {
+        Skill(
+            id: "local:\(name)",
+            name: name,
+            displayName: name,
+            baseDescription: "",
+            baseDescriptionLocale: "en",
+            localizedDescription: nil,
+            source: .local,
+            version: nil,
+            filePath: canonicalPath.appendingPathComponent("SKILL.md"),
+            directoryPath: canonicalPath,
+            canonicalPath: canonicalPath,
+            compatibleAgents: [],
+            tags: [],
+            markdownContent: "",
+            frontmatter: [:]
+        )
+    }
+
     @Test @MainActor
     func recordPersistsMembersAndIntent() throws {
         let context = try makeContext()
@@ -47,5 +67,42 @@ struct CollectionTests {
         let fetched = try context.fetch(FetchDescriptor<CollectionRecord>())
         #expect(fetched[0].memberSkillIDs == ["local:renwei-writing"])
         #expect(fetched[0].mountedAgentIDs == ["codex"])
+    }
+
+    @Test @MainActor
+    func refreshMountStatusesReportsPartialMissingMembers() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("collection-status-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let previousImports = UserDefaults.standard.dictionary(forKey: AppSettings.importedAgentFoldersKey)
+        defer { UserDefaults.standard.set(previousImports, forKey: AppSettings.importedAgentFoldersKey) }
+
+        let agentDir = root.appendingPathComponent("agent")
+        let canonical = root.appendingPathComponent("canonical/linked")
+        try FileManager.default.createDirectory(at: canonical, withIntermediateDirectories: true)
+        try "# linked".write(to: canonical.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+        try FileManager.default.createDirectory(at: agentDir, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(
+            atPath: agentDir.appendingPathComponent("linked").path,
+            withDestinationPath: canonical.path
+        )
+        AgentRegistry.importManagedFolder(agentID: "codex", folderURL: agentDir)
+
+        let linked = skill(name: "linked", canonicalPath: canonical)
+        let collection = CollectionRecord(
+            name: "Partial",
+            memberSkillIDs: [linked.persistenceID, "path:/missing"],
+            mountedAgentIDs: ["codex"]
+        )
+        let store = SkillStore()
+        store.skills = [linked]
+
+        store.refreshMountStatuses(collections: [collection])
+
+        #expect(store.mountStatus(collectionID: collection.id, agentID: "codex") == .diverged)
+        let report = try #require(store.mountReport(collectionID: collection.id, agentID: "codex"))
+        #expect(report.skipped.contains {
+            $0.skillID == "path:/missing" && $0.reason == ActivationService.missingLibraryMemberReason
+        })
     }
 }

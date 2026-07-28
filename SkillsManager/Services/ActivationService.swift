@@ -25,10 +25,21 @@ struct MountReport: Equatable, Sendable {
     }
 }
 
+struct MountProbe: Equatable, Sendable {
+    var linkedCount: Int = 0
+    var report = MountReport()
+}
+
 /// 分组挂载服务:把技能 symlink 进 agent 目录(挂载)或移除 link(卸载)。
 /// canonical(~/.config/agents/skills/)是库的本体,永远不删。
 /// 实体技能(.local)挂载前先迁移进 canonical,原处留 link,原 agent 不受影响。
 enum ActivationService {
+    static let missingLibraryMemberReason = "Library member missing"
+    static let missingCanonicalContentReason = "canonical content missing"
+    static let missingAgentLinkReason = "agent link missing"
+    static let wrongSymlinkDestinationReason = "wrong symlink destination"
+    static let conflictingRealFileReason = "real file or directory exists"
+    static let sharedCollectionReferenceReason = "referenced by another Collection mounted to this agent"
 
     /// 状态灯纯函数:意图 + 磁盘事实 → 卡片/开关状态。
     static func status(intentMounted: Bool, linkedCount: Int, memberCount: Int) -> MountStatus {
@@ -39,19 +50,42 @@ enum ActivationService {
         return .diverged
     }
 
-    /// 数成员技能里有多少个在 agentSkillsDir 已有指向 canonical 的 link。
-    static func probeLinkedCount(
+    /// Read-only disk probe for reconstructing actionable collection diagnostics.
+    static func probeMount(
         memberSkills: [Skill],
+        missingMemberIDs: [String],
         agentSkillsDir: URL,
         canonicalDir: URL = AgentRegistry.canonicalGlobalSkillsDir,
         fm: FileManager = .default
-    ) -> Int {
-        memberSkills.reduce(0) { count, skill in
-            let link = agentSkillsDir.appendingPathComponent(SymlinkInstaller.sanitize(skill.name))
-            guard isLink(link, pointingTo: canonicalPath(for: skill, canonicalDir: canonicalDir), fm: fm)
-            else { return count }
-            return count + 1
+    ) -> MountProbe {
+        var probe = MountProbe()
+        for id in missingMemberIDs {
+            probe.report.skipped.append(.init(skillID: id, reason: missingLibraryMemberReason))
         }
+
+        for skill in memberSkills {
+            let link = agentSkillsDir.appendingPathComponent(SymlinkInstaller.sanitize(skill.name))
+            let canonical = canonicalPath(for: skill, canonicalDir: canonicalDir)
+            let canonicalHasContent = hasCanonicalContent(at: canonical, fm: fm)
+            if !canonicalHasContent {
+                probe.report.skipped.append(.init(skillID: skill.persistenceID, reason: missingCanonicalContentReason))
+            }
+
+            if let raw = try? fm.destinationOfSymbolicLink(atPath: link.path) {
+                if linkDestination(raw, from: link, pointsTo: canonical), canonicalHasContent {
+                    probe.linkedCount += 1
+                    probe.report.changed.append(skill.persistenceID)
+                } else if !linkDestination(raw, from: link, pointsTo: canonical) {
+                    probe.report.skipped.append(.init(skillID: skill.persistenceID, reason: wrongSymlinkDestinationReason))
+                }
+            } else if fm.fileExists(atPath: link.path) {
+                probe.report.skipped.append(.init(skillID: skill.persistenceID, reason: conflictingRealFileReason))
+            } else {
+                probe.report.skipped.append(.init(skillID: skill.persistenceID, reason: missingAgentLinkReason))
+            }
+        }
+
+        return probe
     }
 
     /// 挂载:确保每个技能有 canonical 副本,再在 agentSkillsDir 建 link。
@@ -183,10 +217,23 @@ enum ActivationService {
 
     private static func isLink(_ link: URL, pointingTo target: URL, fm: FileManager) -> Bool {
         guard let raw = try? fm.destinationOfSymbolicLink(atPath: link.path) else { return false }
+        return linkDestination(raw, from: link, pointsTo: target)
+    }
+
+    private static func linkDestination(_ raw: String, from link: URL, pointsTo target: URL) -> Bool {
         let destination: URL = raw.hasPrefix("/")
             ? URL(fileURLWithPath: raw)
             : link.deletingLastPathComponent().appendingPathComponent(raw)
         return destination.resolvingSymlinksInPath().standardizedFileURL.path
             == target.resolvingSymlinksInPath().standardizedFileURL.path
+    }
+
+    private static func hasCanonicalContent(at canonical: URL, fm: FileManager) -> Bool {
+        var isDirectory: ObjCBool = false
+        let skillFile = canonical.appendingPathComponent("SKILL.md")
+        guard fm.fileExists(atPath: skillFile.path, isDirectory: &isDirectory) else {
+            return false
+        }
+        return !isDirectory.boolValue
     }
 }
