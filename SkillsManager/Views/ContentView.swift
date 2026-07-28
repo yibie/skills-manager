@@ -210,6 +210,7 @@ struct ContentView: View {
             Button("仍要更新", role: .destructive) {
                 if let skill = store.pendingUpdateOverwrite {
                     store.pendingUpdateOverwrite = nil
+                    guard !usesUIStateMatrixFixture else { return }
                     Task { await store.updateSkill(skill, confirmedOverwrite: true) }
                 }
             }
@@ -615,13 +616,20 @@ struct ContentView: View {
     }
 
     private func seedUIStateMatrixFixture() {
-        let skills = Skill.mockSkills
+        let arguments = ProcessInfo.processInfo.arguments
+        let skills = arguments.contains("--ui-state-matrix-empty") ? [] : Skill.mockSkills
         store.skills = skills
         store.conflicts = []
         store.discoverableSkills = []
         store.discoverSearchResults = []
         store.discoverableSkillDetails = [:]
         store.discoverableSkillTotal = 0
+
+        guard !skills.isEmpty else {
+            selectedFilter = .controlCenter
+            applyUIStateMatrixFixtureStatuses(collections: [])
+            return
+        }
 
         let collections: [CollectionRecord]
         if collectionRecords.isEmpty {
@@ -648,6 +656,13 @@ struct ContentView: View {
                     memberSkillIDs: [],
                     mountedAgentIDs: ["cursor"]
                 ),
+                CollectionRecord(
+                    id: UUID(uuidString: "00000000-0000-0000-0000-000000000204")!,
+                    name: "2.0 RC：共享挂载",
+                    sortOrder: 3,
+                    memberSkillIDs: [ids[0]],
+                    mountedAgentIDs: ["claude-code"]
+                ),
             ]
             for collection in collections {
                 modelContext.insert(collection)
@@ -663,6 +678,9 @@ struct ContentView: View {
 
         selectedFilter = .controlCenter
         applyUIStateMatrixFixtureStatuses(collections: collections)
+        if arguments.contains("--ui-state-matrix-update-drift") {
+            store.pendingUpdateOverwrite = skills[0]
+        }
     }
 
     private func applyUIStateMatrixFixtureStatuses(collections: [CollectionRecord]) {
