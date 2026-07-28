@@ -203,6 +203,7 @@ private struct CollectionCard: View {
                     .toggleStyle(.switch)
                     .controlSize(.small)
                     .labelsHidden()
+                    .accessibilityLabel("\(detectedAgents.first { $0.id == agentID }?.displayName ?? agentID) 挂载")
                     .tint(ConsoleTheme.accent)
                 }
                 .frame(height: ConsoleTheme.mountRowHeight)

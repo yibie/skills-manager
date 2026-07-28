@@ -166,6 +166,7 @@ struct CollectionDetailView: View {
             .toggleStyle(.switch)
             .controlSize(.small)
             .labelsHidden()
+            .accessibilityLabel("\(agent.displayName) 挂载")
             .tint(ConsoleTheme.accent)
         }
         .padding(.horizontal, 10)

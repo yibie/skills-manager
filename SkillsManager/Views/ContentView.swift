@@ -54,6 +54,21 @@ struct ContentView: View {
         }
     }
 
+    private var detectedAgents: [AgentDefinition] {
+        #if DEBUG
+        if usesUIStateMatrixFixture { return Self.uiStateMatrixAgents }
+        #endif
+        return AgentRegistry.installedAgents()
+    }
+
+    private var usesUIStateMatrixFixture: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("--ui-state-matrix")
+        #else
+        false
+        #endif
+    }
+
     var body: some View {
         splitView
         .onChange(of: selectedFilter) {
@@ -66,6 +81,7 @@ struct ContentView: View {
             isPresented: $isProjectPickerPresented,
             allowedContentTypes: [.folder]
         ) { result in
+            guard !usesUIStateMatrixFixture else { return }
             if case .success(let url) = result {
                 Task { await store.openProject(url: url) }
             }
@@ -77,6 +93,7 @@ struct ContentView: View {
                 } label: {
                     Label("Open Project", systemImage: "folder.badge.plus")
                 }
+                .disabled(usesUIStateMatrixFixture)
                 .help("Open a project folder to scan for local skills")
             }
 
@@ -112,7 +129,7 @@ struct ContentView: View {
                         CollectionSupport.memberID($0, matches: skill, skills: store.skills)
                     }) {
                         collection.memberSkillIDs.append(skill.persistenceID)
-                        store.refreshMountStatuses(collections: collectionRecords)
+                        refreshCollectionMountStatuses()
                     }
                 },
                 onCreate: { name in
@@ -124,44 +141,55 @@ struct ContentView: View {
                         memberSkillIDs: [skill.persistenceID]
                     )
                     modelContext.insert(record)
-                    store.refreshMountStatuses(collections: collectionRecords)
+                    refreshCollectionMountStatuses()
                 }
             )
         }
         .task {
+            #if DEBUG
+            if usesUIStateMatrixFixture {
+                seedUIStateMatrixFixture()
+                return
+            }
+            #endif
             async let skills: Void = store.reloadSkills()
             async let discover: Void = store.reloadDiscoverableSkillsDirectory()
             _ = await (skills, discover)
             reconcileCollectionMemberIDs()
-            store.refreshMountStatuses(collections: collectionRecords)
+            refreshCollectionMountStatuses()
             store.merge(records: skillRecords)
             store.startDiscoverDirectoryRefreshLoop()
             store.startWatchingSkillDirectories()
         }
         .onChange(of: skillRecords) {
+            guard !usesUIStateMatrixFixture else { return }
             store.merge(records: skillRecords)
         }
         .onChange(of: collectionRecords) {
-            store.refreshMountStatuses(collections: collectionRecords)
+            refreshCollectionMountStatuses()
         }
         .onChange(of: store.skills) {
+            guard !usesUIStateMatrixFixture else { return }
             // 文件 watcher 重扫 / ⌘R 后重算状态灯(如 link 被手动删掉 → 黄灯)
             reconcileCollectionMemberIDs()
-            store.refreshMountStatuses(collections: collectionRecords)
+            refreshCollectionMountStatuses()
         }
         .onChange(of: descriptionLanguageMode) {
+            guard !usesUIStateMatrixFixture else { return }
             Task {
                 await store.refreshLocalizedDescriptions(using: locale)
                 store.startDiscoverHomeTranslationPrewarm(using: locale)
             }
         }
         .onChange(of: manualDescriptionLocale) {
+            guard !usesUIStateMatrixFixture else { return }
             Task {
                 await store.refreshLocalizedDescriptions(using: locale)
                 store.startDiscoverHomeTranslationPrewarm(using: locale)
             }
         }
         .onChange(of: locale.identifier) {
+            guard !usesUIStateMatrixFixture else { return }
             Task {
                 await store.refreshLocalizedDescriptions(using: locale)
                 store.startDiscoverHomeTranslationPrewarm(using: locale)
@@ -190,7 +218,7 @@ struct ContentView: View {
             Text("“\(store.pendingUpdateOverwrite?.displayName ?? "")”的内容与安装时的记录不一致。更新会用远端版本覆盖本地修改;被替换的副本会保留在库目录旁的 .skills-manager-history 中。")
         }
         .focusedSceneValue(\.skillCommandActions, SkillCommandActions(
-            refresh: { Task { await store.reloadSkills() } },
+            refresh: { refreshSkillsCommand() },
             toggleStar: currentSelectedSkill.map { skill in { toggleStar(for: skill) } },
             isStarred: currentSelectedSkill?.isStarred ?? false
         ))
@@ -238,13 +266,20 @@ struct ContentView: View {
 
     private var sidebarColumn: some View {
         SidebarView(
-            selectedFilter: $selectedFilter,
+            selectedFilter: Binding(
+                get: { selectedFilter },
+                set: { filter in
+                    guard !usesUIStateMatrixFixture || filter == .controlCenter else { return }
+                    selectedFilter = filter
+                }
+            ),
             skills: store.skills,
             discoverableCount: store.discoverableSkillTotal,
             projectSkillCount: store.projectSkills.count,
             agentDocCount: store.agentDocs.count,
             conflictCount: store.conflicts.count,
-            currentProjectURL: store.currentProjectURL
+            currentProjectURL: store.currentProjectURL,
+            showsOnlyControlCenter: usesUIStateMatrixFixture
         )
         .navigationSplitViewColumnWidth(min: 200, ideal: 220)
     }
@@ -255,7 +290,7 @@ struct ContentView: View {
             ControlCenterView(
                 collections: collectionRecords,
                 skills: store.skills,
-                detectedAgents: AgentRegistry.installedAgents(),
+                detectedAgents: detectedAgents,
                 statusFor: { store.mountStatus(collectionID: $0.id, agentID: $1) },
                 mountReportFor: { store.mountReport(collectionID: $0.id, agentID: $1) },
                 onOpen: { selectedFilter = .collection($0.id, name: $0.name) },
@@ -277,7 +312,7 @@ struct ContentView: View {
                         }
                     }
                     modelContext.delete(collection)
-                    store.refreshMountStatuses(collections: collectionRecords)
+                    refreshCollectionMountStatuses()
                 }
             )
         } else if selectedFilter == .discover {
@@ -334,7 +369,7 @@ struct ContentView: View {
             CollectionDetailView(
                 collection: collection,
                 skills: store.skills,
-                detectedAgents: AgentRegistry.installedAgents(),
+                detectedAgents: detectedAgents,
                 statusFor: { store.mountStatus(collectionID: id, agentID: $0) },
                 reportFor: { store.mountReport(collectionID: id, agentID: $0) },
                 selectedSkill: $selectedSkill,
@@ -346,17 +381,26 @@ struct ContentView: View {
                 },
                 onAddMembers: { ids in
                     collection.memberSkillIDs.append(contentsOf: ids.filter { !collection.memberSkillIDs.contains($0) })
-                    store.refreshMountStatuses(collections: collectionRecords)
+                    refreshCollectionMountStatuses()
                 },
                 onRemoveMember: { skill in
                     collection.memberSkillIDs.removeAll {
                         CollectionSupport.memberID($0, matches: skill, skills: store.skills)
                     }
-                    store.refreshMountStatuses(collections: collectionRecords)
+                    refreshCollectionMountStatuses()
                 },
-                onInstall: { skill in await store.installSkill(skill) },
-                onUninstall: { skill in await store.removeSkillFromLibrary(skill) },
-                onMoveToTrash: { skill in await store.moveSkillToTrash(skill) },
+                onInstall: { skill in
+                    guard !usesUIStateMatrixFixture else { return }
+                    await store.installSkill(skill)
+                },
+                onUninstall: { skill in
+                    guard !usesUIStateMatrixFixture else { return }
+                    await store.removeSkillFromLibrary(skill)
+                },
+                onMoveToTrash: { skill in
+                    guard !usesUIStateMatrixFixture else { return }
+                    await store.moveSkillToTrash(skill)
+                },
                 onToggleStar: { skill in toggleStar(for: skill) }
             )
         } else if case .agent(let name) = selectedFilter {
@@ -417,14 +461,20 @@ struct ContentView: View {
                     guard let skill = currentSelectedSkill else { return }
                     toggleStar(for: skill)
                 },
-                onPromote: { skill in await store.promoteSkill(skill) },
+                onPromote: { skill in
+                    guard !usesUIStateMatrixFixture else { return }
+                    await store.promoteSkill(skill)
+                },
                 onInstallToAgent: { skill, agentIDs in
+                    guard !usesUIStateMatrixFixture else { return }
                     await store.installSkillToAgents(skill, agentIDs: agentIDs)
                 },
                 onUpdate: { skill in
+                    guard !usesUIStateMatrixFixture else { return }
                     await store.updateSkill(skill)
                 },
                 onTranslate: { skill in
+                    guard !usesUIStateMatrixFixture else { return }
                     let scope: DescriptionTranslationScope
                     if case .projectLocal = skill.source {
                         scope = .projectSkill(id: skill.id)
@@ -444,11 +494,17 @@ struct ContentView: View {
         guard !trimmed.isEmpty else { return }
         let record = CollectionRecord(name: trimmed, sortOrder: collectionRecords.count)
         modelContext.insert(record)
-        store.refreshMountStatuses(collections: collectionRecords)
+        refreshCollectionMountStatuses()
     }
 
     /// 挂载/卸载 组→agent:先执行磁盘操作,再更新装载意图,最后刷新扫描与状态灯。
     private func setMounted(collection: CollectionRecord, agentID: String, mount: Bool) {
+        #if DEBUG
+        if usesUIStateMatrixFixture {
+            setUIStateMatrixFixtureMounted(collection: collection, agentID: agentID, mount: mount)
+            return
+        }
+        #endif
         guard let definition = AgentRegistry.agent(id: agentID) else { return }
         let resolution = CollectionSupport.resolveMemberIDs(collection.memberSkillIDs, skills: store.skills)
         let dir = AgentRegistry.resolvedSkillsDir(for: definition)
@@ -460,7 +516,7 @@ struct ContentView: View {
             )
             guard !resolution.members.isEmpty else {
                 store.recordMountReport(report, collectionID: collection.id, agentID: agentID)
-                store.refreshMountStatuses(collections: collectionRecords)
+                refreshCollectionMountStatuses()
                 return
             }
             do {
@@ -499,13 +555,23 @@ struct ContentView: View {
             }
             store.recordMountReport(report, collectionID: collection.id, agentID: agentID)
         }
-        store.refreshMountStatuses(collections: collectionRecords)
+        refreshCollectionMountStatuses()
         Task {
             await store.reloadSkills()
             // 迁移会把 path-keyed id 变成 name-keyed id:重扫后按名重对成员 id
             reconcileCollectionMemberIDs()
-            store.refreshMountStatuses(collections: collectionRecords)
+            refreshCollectionMountStatuses()
         }
+    }
+
+    private func refreshCollectionMountStatuses() {
+        #if DEBUG
+        if usesUIStateMatrixFixture {
+            applyUIStateMatrixFixtureStatuses(collections: collectionRecords)
+            return
+        }
+        #endif
+        store.refreshMountStatuses(collections: collectionRecords)
     }
 
     private func reconcileCollectionMemberIDs() {
@@ -517,13 +583,124 @@ struct ContentView: View {
         }
     }
 
+    private func refreshSkillsCommand() {
+        #if DEBUG
+        if usesUIStateMatrixFixture {
+            seedUIStateMatrixFixture()
+            return
+        }
+        #endif
+        Task { await store.reloadSkills() }
+    }
+
     /// Toggles a skill's star in both SwiftData and the state file shared with the TUI.
     private func toggleStar(for skill: Skill) {
         let newValue = !skill.isStarred
         let record = SkillRecord.recordForStarWrite(for: skill, in: modelContext)
         record.isStarred = newValue
+        guard !usesUIStateMatrixFixture else {
+            if let index = store.skills.firstIndex(where: { $0.id == skill.id }) {
+                store.skills[index].isStarred = newValue
+            }
+            return
+        }
         store.setSkillStarred(skill, isStarred: newValue)
     }
+
+    #if DEBUG
+    private static let uiStateMatrixAgentIDs = ["claude-code", "codex", "cursor"]
+
+    private static var uiStateMatrixAgents: [AgentDefinition] {
+        uiStateMatrixAgentIDs.compactMap { AgentRegistry.agent(id: $0) }
+    }
+
+    private func seedUIStateMatrixFixture() {
+        let skills = Skill.mockSkills
+        store.skills = skills
+        store.conflicts = []
+        store.discoverableSkills = []
+        store.discoverSearchResults = []
+        store.discoverableSkillDetails = [:]
+        store.discoverableSkillTotal = 0
+
+        let collections: [CollectionRecord]
+        if collectionRecords.isEmpty {
+            let ids = skills.map(\.persistenceID)
+            collections = [
+                CollectionRecord(
+                    id: UUID(uuidString: "00000000-0000-0000-0000-000000000201")!,
+                    name: "2.0 RC：已挂载",
+                    sortOrder: 0,
+                    memberSkillIDs: Array(ids.prefix(2)),
+                    mountedAgentIDs: ["claude-code"]
+                ),
+                CollectionRecord(
+                    id: UUID(uuidString: "00000000-0000-0000-0000-000000000202")!,
+                    name: "2.0 RC：部分缺失",
+                    sortOrder: 1,
+                    memberSkillIDs: [ids[2], "legacy:missing-skill"],
+                    mountedAgentIDs: ["codex"]
+                ),
+                CollectionRecord(
+                    id: UUID(uuidString: "00000000-0000-0000-0000-000000000203")!,
+                    name: "2.0 RC：空分组",
+                    sortOrder: 2,
+                    memberSkillIDs: [],
+                    mountedAgentIDs: ["cursor"]
+                ),
+            ]
+            for collection in collections {
+                modelContext.insert(collection)
+            }
+            do {
+                try modelContext.save()
+            } catch {
+                store.errorMessage = "UI state matrix fixture failed: \(error.localizedDescription)"
+            }
+        } else {
+            collections = collectionRecords
+        }
+
+        selectedFilter = .controlCenter
+        applyUIStateMatrixFixtureStatuses(collections: collections)
+    }
+
+    private func applyUIStateMatrixFixtureStatuses(collections: [CollectionRecord]) {
+        var statuses: [String: MountStatus] = [:]
+        var reports: [String: MountReport] = [:]
+        for collection in collections {
+            let resolution = CollectionSupport.resolveMemberIDs(collection.memberSkillIDs, skills: store.skills)
+            for agentID in collection.mountedAgentIDs {
+                let key = "\(collection.id.uuidString):\(agentID)"
+                statuses[key] = ActivationService.status(
+                    intentMounted: true,
+                    linkedCount: resolution.members.count,
+                    memberCount: collection.memberSkillIDs.count
+                )
+                var report = MountReport(changed: resolution.members.map(\.persistenceID))
+                report.skipped = resolution.missingIDs.map {
+                    .init(skillID: $0, reason: ActivationService.missingLibraryMemberReason)
+                }
+                if !report.skipped.isEmpty {
+                    reports[key] = report
+                }
+            }
+        }
+        store.mountStatuses = statuses
+        store.mountReports = reports
+    }
+
+    private func setUIStateMatrixFixtureMounted(collection: CollectionRecord, agentID: String, mount: Bool) {
+        if mount {
+            if !collection.mountedAgentIDs.contains(agentID) {
+                collection.mountedAgentIDs.append(agentID)
+            }
+        } else {
+            collection.mountedAgentIDs.removeAll { $0 == agentID }
+        }
+        applyUIStateMatrixFixtureStatuses(collections: collectionRecords)
+    }
+    #endif
 }
 
 #Preview {

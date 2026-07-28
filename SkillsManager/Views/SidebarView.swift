@@ -8,6 +8,7 @@ struct SidebarView: View {
     var agentDocCount: Int = 0
     var conflictCount: Int = 0
     var currentProjectURL: URL? = nil
+    var showsOnlyControlCenter = false
 
     @State private var isAgentsExpanded = false
 
@@ -17,6 +18,7 @@ struct SidebarView: View {
 
     /// Union of: agents detected from registry + agents appearing in skill metadata.
     private var agentNames: [String] {
+        guard !showsOnlyControlCenter else { return [] }
         let fromSkills = Set(skills.flatMap { $0.compatibleAgents })
         let fromRegistry = Set(AgentRegistry.installedAgents().map { $0.displayName })
         return fromSkills.union(fromRegistry).sorted()
@@ -32,37 +34,39 @@ struct SidebarView: View {
                 SidebarRow(filter: .controlCenter, count: 0, selectedFilter: selectedFilter)
             }
 
-            Section("Library") {
-                SidebarRow(filter: .discover, count: discoverableCount, selectedFilter: selectedFilter)
-                SidebarRow(filter: .all, count: allCount, selectedFilter: selectedFilter)
-                SidebarRow(filter: .starred, count: starredCount, selectedFilter: selectedFilter)
-                if conflictCount > 0 {
-                    SidebarRow(filter: .conflicts, count: conflictCount, selectedFilter: selectedFilter)
-                }
-            }
-
-            if !agentNames.isEmpty {
-                Section {
-                    DisclosureGroup(isExpanded: $isAgentsExpanded) {
-                        ForEach(agentNames, id: \.self) { agent in
-                            SidebarRow(
-                                filter: .agent(agent),
-                                count: agentCount(for: agent),
-                                selectedFilter: selectedFilter,
-                                showsIcon: false
-                            )
-                        }
-                    } label: {
-                        Label("Agents", systemImage: "cpu")
-                            .badge(agentNames.count)
+            if !showsOnlyControlCenter {
+                Section("Library") {
+                    SidebarRow(filter: .discover, count: discoverableCount, selectedFilter: selectedFilter)
+                    SidebarRow(filter: .all, count: allCount, selectedFilter: selectedFilter)
+                    SidebarRow(filter: .starred, count: starredCount, selectedFilter: selectedFilter)
+                    if conflictCount > 0 {
+                        SidebarRow(filter: .conflicts, count: conflictCount, selectedFilter: selectedFilter)
                     }
                 }
-            }
 
-            if currentProjectURL != nil {
-                Section("Project") {
-                    SidebarRow(filter: .project, count: projectSkillCount, selectedFilter: selectedFilter)
-                    SidebarRow(filter: .agentDocs, count: agentDocCount, selectedFilter: selectedFilter)
+                if !agentNames.isEmpty {
+                    Section {
+                        DisclosureGroup(isExpanded: $isAgentsExpanded) {
+                            ForEach(agentNames, id: \.self) { agent in
+                                SidebarRow(
+                                    filter: .agent(agent),
+                                    count: agentCount(for: agent),
+                                    selectedFilter: selectedFilter,
+                                    showsIcon: false
+                                )
+                            }
+                        } label: {
+                            Label("Agents", systemImage: "cpu")
+                                .badge(agentNames.count)
+                        }
+                    }
+                }
+
+                if currentProjectURL != nil {
+                    Section("Project") {
+                        SidebarRow(filter: .project, count: projectSkillCount, selectedFilter: selectedFilter)
+                        SidebarRow(filter: .agentDocs, count: agentDocCount, selectedFilter: selectedFilter)
+                    }
                 }
             }
         }

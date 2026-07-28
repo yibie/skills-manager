@@ -6,7 +6,9 @@ struct SkillsManagerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     init() {
-        AppSettings.migrateApiKeysToKeychainIfNeeded()
+        if !Self.usesUIStateMatrixFixture {
+            AppSettings.migrateApiKeysToKeychainIfNeeded()
+        }
     }
 
     var sharedModelContainer: ModelContainer = {
@@ -17,7 +19,7 @@ struct SkillsManagerApp: App {
         let config = ModelConfiguration(
             "SkillsManager",
             schema: schema,
-            isStoredInMemoryOnly: false
+            isStoredInMemoryOnly: Self.usesUIStateMatrixFixture
         )
         do {
             return try ModelContainer(for: schema, configurations: [config])
@@ -37,6 +39,15 @@ struct SkillsManagerApp: App {
 
         Settings {
             SettingsView()
+                .disabled(Self.usesUIStateMatrixFixture)
         }
+    }
+
+    private static var usesUIStateMatrixFixture: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("--ui-state-matrix")
+        #else
+        false
+        #endif
     }
 }
