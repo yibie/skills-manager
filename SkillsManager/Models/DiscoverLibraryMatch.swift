@@ -29,16 +29,22 @@ enum DiscoverLibraryMatcher {
         guard let skillID = skill.provenance.skillID,
               let sourceURL = skill.provenance.sourceURL,
               skillID == entry.skillId,
-              let installedRepo = repoSlug(sourceURL)
+              let installedRepo = canonicalGitHubRepoIdentity(sourceURL)
         else { return false }
-        return installedRepo == entry.source.lowercased() || installedRepo == repoSlug(entry.repoURL)
+        let entrySourceRepo = URL(string: "https://github.com/\(entry.source)")
+            .flatMap(canonicalGitHubRepoIdentity)
+        return installedRepo == canonicalGitHubRepoIdentity(entry.repoURL)
+            || installedRepo == entrySourceRepo
     }
 
-    /// 归一成 "owner/repo"(小写、去 .git);非 owner/repo 形态(本地路径等)返回 nil。
-    static func repoSlug(_ url: URL) -> String? {
+    /// 归一成 "owner/repo"(小写、去 .git,忽略 scheme/query/fragment);非 GitHub owner/repo 返回 nil。
+    static func canonicalGitHubRepoIdentity(_ url: URL) -> String? {
+        guard url.host?.lowercased() == "github.com" else { return nil }
         let parts = url.pathComponents.filter { $0 != "/" }
         guard parts.count >= 2 else { return nil }
-        let repo = parts[1].hasSuffix(".git") ? String(parts[1].dropLast(4)) : parts[1]
+        let repo = parts[1].lowercased().hasSuffix(".git")
+            ? String(parts[1].dropLast(4))
+            : parts[1]
         return "\(parts[0])/\(repo)".lowercased()
     }
 }

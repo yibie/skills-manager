@@ -480,16 +480,8 @@ struct ContentView: View {
     /// Toggles a skill's star in both SwiftData and the state file shared with the TUI.
     private func toggleStar(for skill: Skill) {
         let newValue = !skill.isStarred
-        let skillID = skill.id
-        let descriptor = FetchDescriptor<SkillRecord>(
-            predicate: #Predicate { $0.skillID == skillID }
-        )
-        if let record = try? modelContext.fetch(descriptor).first {
-            record.isStarred = newValue
-        } else {
-            let record = SkillRecord(skillID: skillID, isStarred: newValue, installState: skill.installState.rawValue)
-            modelContext.insert(record)
-        }
+        let record = SkillRecord.recordForStarWrite(for: skill, in: modelContext)
+        record.isStarred = newValue
         store.setSkillStarred(skill, isStarred: newValue)
     }
 }

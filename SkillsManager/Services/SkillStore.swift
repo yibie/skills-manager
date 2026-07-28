@@ -310,19 +310,23 @@ final class SkillStore {
         return merged
     }
 
-    func merge(records: [SkillRecord]) {
+    func merge(records: [SkillRecord], sharedStarredNames: Set<String>? = nil) {
         persistedRecords = records
-        applyPersistedSkillState()
+        applyPersistedSkillState(sharedStarredNames: sharedStarredNames)
     }
 
     /// Re-applies SwiftData records and the TUI-shared star file to the in-memory
     /// skills. Runs after every scan so stars and install states survive reloads.
-    private func applyPersistedSkillState() {
-        let lookup = Dictionary(uniqueKeysWithValues: persistedRecords.map { ($0.skillID, $0) })
-        let sharedStarred = SharedStarredState.starredNames()
+    private func applyPersistedSkillState(sharedStarredNames: Set<String>? = nil) {
+        let lookup = Dictionary(persistedRecords.map { ($0.skillID, $0) }, uniquingKeysWith: { first, _ in first })
+        let sharedStarred = sharedStarredNames ?? SharedStarredState.starredNames()
+        let nameCounts = Dictionary(grouping: skills, by: \.name).mapValues(\.count)
         for index in skills.indices {
-            let record = lookup[skills[index].id]
-            skills[index].isStarred = (record?.isStarred ?? false) || sharedStarred.contains(skills[index].name)
+            let record = lookup[skills[index].persistenceID] ?? lookup[skills[index].id]
+            let sharedFallback = record == nil
+                && nameCounts[skills[index].name] == 1
+                && sharedStarred.contains(skills[index].name)
+            skills[index].isStarred = record?.isStarred ?? sharedFallback
             if let record {
                 skills[index].installState = InstallState(rawValue: record.installState) ?? .notInstalled
             }

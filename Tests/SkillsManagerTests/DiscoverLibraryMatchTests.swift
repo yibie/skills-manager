@@ -73,10 +73,30 @@ struct DiscoverLibraryMatchTests {
     func gitSuffixAndCasingDoNotBreakTheMatch() {
         let skill = makeSkill(name: "commit", provenance: SkillProvenance(
             provider: .skillsCLI,
-            sourceURL: URL(string: "https://github.com/Vercel-Labs/Agent-Skills.git")!,
+            sourceURL: URL(string: "http://github.com/Vercel-Labs/Agent-Skills.git?tab=readme#install")!,
             skillID: "commit"
         ))
         #expect(DiscoverLibraryMatcher.isInstalled(entry: makeEntry(), in: [skill]))
+    }
+
+    @Test
+    func canonicalRepoIdentityCollapsesGitHubURLVariants() {
+        let first = DiscoverLibraryMatcher.canonicalGitHubRepoIdentity(
+            URL(string: "http://GitHub.com/Vercel-Labs/Agent-Skills.GIT?tab=readme#install")!
+        )
+        let second = DiscoverLibraryMatcher.canonicalGitHubRepoIdentity(
+            URL(string: "https://github.com/vercel-labs/agent-skills")!
+        )
+
+        #expect(first == "vercel-labs/agent-skills")
+        #expect(second == first)
+    }
+
+    @Test
+    func canonicalRepoIdentityRejectsNonGitHubHosts() {
+        #expect(DiscoverLibraryMatcher.canonicalGitHubRepoIdentity(
+            URL(string: "https://gitlab.com/vercel-labs/agent-skills")!
+        ) == nil)
     }
 
     @Test

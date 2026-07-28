@@ -17,6 +17,37 @@ final class SkillRecord {
     }
 }
 
+extension SkillRecord {
+    @MainActor
+    static func recordForStarWrite(for skill: Skill, in modelContext: ModelContext) -> SkillRecord {
+        let persistenceID = skill.persistenceID
+        let stableDescriptor = FetchDescriptor<SkillRecord>(
+            predicate: #Predicate { $0.skillID == persistenceID }
+        )
+        if let record = try? modelContext.fetch(stableDescriptor).first {
+            return record
+        }
+
+        let legacyID = skill.id
+        if legacyID != persistenceID {
+            let legacyDescriptor = FetchDescriptor<SkillRecord>(
+                predicate: #Predicate { $0.skillID == legacyID }
+            )
+            if let record = try? modelContext.fetch(legacyDescriptor).first {
+                record.skillID = persistenceID
+                return record
+            }
+        }
+
+        let record = SkillRecord(
+            skillID: persistenceID,
+            installState: skill.installState.rawValue
+        )
+        modelContext.insert(record)
+        return record
+    }
+}
+
 // In-memory skill representation (not persisted via SwiftData, built from file scanning)
 struct Skill: Identifiable, Hashable, Sendable {
     let id: String              // unique: "{source}:{name}"
@@ -61,12 +92,23 @@ struct Skill: Identifiable, Hashable, Sendable {
 
     var isDedicatedDirectory: Bool {
         filePath.lastPathComponent == "SKILL.md"
-            && filePath.deletingLastPathComponent().standardizedFileURL
-                == directoryPath.standardizedFileURL
+            && filePath.deletingLastPathComponent().standardizedFileURL.path
+                == directoryPath.standardizedFileURL.path
     }
 
     var trashTargetURL: URL {
         isDedicatedDirectory ? directoryPath.standardizedFileURL : filePath.standardizedFileURL
+    }
+
+    var persistenceID: String {
+        if let sourceURL = provenance.trustedGitHubRepoIdentity,
+           let skillID = provenance.skillID?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !skillID.isEmpty {
+            return "github:\(sourceURL):\(skillID)"
+        }
+
+        let url = isDedicatedDirectory ? directoryPath : filePath
+        return "path:\(url.resolvingSymlinksInPath().standardizedFileURL.path)"
     }
 }
 
@@ -95,6 +137,11 @@ struct SkillProvenance: Codable, Hashable, Sendable {
     var sourceRef: String? = nil
 
     static let manual = SkillProvenance(provider: .manual, sourceURL: nil, skillID: nil)
+
+    var trustedGitHubRepoIdentity: String? {
+        guard let sourceURL else { return nil }
+        return DiscoverLibraryMatcher.canonicalGitHubRepoIdentity(sourceURL)
+    }
 }
 
 enum SkillSource: Hashable, Codable, Sendable {
