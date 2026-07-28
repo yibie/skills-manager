@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_PLIST = ROOT / "SkillsManager" / "Info.plist"
 PROJECT_FILE = ROOT / "SkillsManager.xcodeproj" / "project.pbxproj"
+SEMVER = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 
 
 def fail(message):
@@ -84,6 +85,9 @@ def main(argv=None):
         short = required(source, "CFBundleShortVersionString", "short version")
         build = required(source, "CFBundleVersion", "build version")
         bundle_id = expand_bundle_id(required(source, "CFBundleIdentifier", "bundle id"))
+
+        if not SEMVER.fullmatch(short):
+            return fail(f"source short version must be MAJOR.MINOR.PATCH, got {short}")
 
         if args.tag and args.tag != f"v{short}":
             return fail(f"--tag must be v{short}, got {args.tag}")

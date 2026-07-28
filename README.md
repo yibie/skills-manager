@@ -36,7 +36,9 @@ Coding agent skills are scattered everywhere. Each agent has its own format, ins
 
 ## Installation
 
-Download the latest release from the [Releases](../../releases) page and drag to Applications.
+Download signed builds from the [Releases](../../releases) page and drag to Applications.
+
+The current 2.0.0 artifact is an unsigned internal prerelease RC, not the GA download. Until Developer ID signing and notarization are complete, build from source below. RC testers should read the [2.0.0 upgrade and rollback guide](docs/releases/2.0.0.md) first.
 
 Or build from source:
 

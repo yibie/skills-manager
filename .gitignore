@@ -5,6 +5,7 @@ DerivedData/
 .deriveddata/
 *.xcuserstate
 .DS_Store
+__pycache__/
 
 SkillsManager.xcodeproj/xcuserdata/
 SkillsManager.xcodeproj/project.xcworkspace/xcuserdata/
