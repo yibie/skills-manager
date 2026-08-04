@@ -2,19 +2,32 @@
 
 A native macOS app to manage skills across all your coding agents — Claude Code, Cursor, Codex, Gemini CLI, Qwen Code, Roo Code, Continue, OpenHands, OpenClaw, and more.
 
+**Current source version: 2.0.0 (build 200).**
+
 <img src="SkillsManager_Logo.png" width="80" alt="Skills Manager Icon">
 
 ---
 
 ## Screenshots
 
-![Discover](docs/screenshots/discover.png)
-*Discover skills from skills.sh and inspect them in the native detail view*
+![Collections Control Center](docs/screenshots/control-center.png)
+*Organize Library skills into Collections, then mount them into agents without moving or duplicating the originals*
 
-![Starred Skills](docs/screenshots/starred.png)
-*Manage your library — filter by agent, source, or starred*
+![Mounted Collection](docs/screenshots/collection-detail.png)
+*Inspect Collection membership and mounted agents while keeping missing or diverged state visible*
 
 ---
+
+## What's new in 2.0.0
+
+Version 2.0 turns Skills Manager from a directory browser into a local skill lifecycle control plane built around `Library → Collection → Mount`.
+
+- **Collections Control Center** — group Library skills once and mount or unmount the group for each agent without deleting the underlying skills
+- **Truthful mount state** — missing members, shared mounts, partial application, and on-disk divergence stay visible and can be reapplied explicitly
+- **Safer ownership and recovery** — provider-managed skills retain their real owner; native takeover preserves recoverable backups and refuses ambiguous destructive repairs
+- **Broader agent support** — OpenCode is a first-class XDG-aware install target, while neutral shared roots such as `~/.agents/skills` are no longer mislabeled as OpenClaw
+- **More useful Library navigation** — agent home pages, conflict diagnosis, full-site Discover search, and working Copy ID, Copy Path, and Show in Finder actions
+- **Stable identity across surfaces** — Collections, upgrades, shared stars, the macOS app, and the Blessed terminal UI now use the same durable skill identity
 
 ## What it does
 
@@ -38,7 +51,7 @@ Coding agent skills are scattered everywhere. Each agent has its own format, ins
 
 Download signed builds from the [Releases](../../releases) page and drag to Applications.
 
-The current 2.0.0 artifact is an unsigned internal prerelease RC, not the GA download. Until Developer ID signing and notarization are complete, build from source below. RC testers should read the [2.0.0 upgrade and rollback guide](docs/releases/2.0.0.md) first.
+The current 2.0.0 artifact is still an unsigned internal prerelease RC, not the GA download. Until Developer ID signing and notarization are complete, build from source below. RC testers should read the [2.0.0 upgrade and rollback guide](docs/releases/2.0.0.md) first.
 
 Or build from source:
 
