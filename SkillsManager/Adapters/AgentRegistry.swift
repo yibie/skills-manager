@@ -48,6 +48,7 @@ enum AgentRegistry {
         "mcpjam",
         "mux",
         "neovate",
+        "opencode",
         "openhands",
         "qwen-code",
     ]

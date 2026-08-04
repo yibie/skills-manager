@@ -81,7 +81,7 @@ Skills Manager detects and scans every agent below through `AgentRegistry`. The 
 | Mistral Vibe | `mistral-vibe` | Scan |
 | Mux | `mux` | Yes |
 | Neovate | `neovate` | Yes |
-| OpenCode | `opencode` | Scan |
+| OpenCode | `opencode` | Yes |
 | OpenHands | `openhands` | Yes |
 | Pi | `pi` | Yes |
 | Pochi | `pochi` | Scan |

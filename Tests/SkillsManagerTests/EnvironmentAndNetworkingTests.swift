@@ -163,6 +163,19 @@ struct EnvironmentAndNetworkingTests {
     }
 
     @Test
+    func openCodeIsAvailableThroughInstallTargetSelection() {
+        let installed = AgentRegistry.installedInstallTargets(importedPaths: [:]) { path in
+            path.hasSuffix("/.config/opencode")
+        }
+        let importable = AgentRegistry.missingInstallTargets(importedPaths: [:]) { _ in
+            false
+        }
+
+        #expect(installed.contains(where: { $0.id == "opencode" }))
+        #expect(importable.contains(where: { $0.id == "opencode" }))
+    }
+
+    @Test
     func discoverDirectoryCategoryURLsMatchSkillsShSections() {
         #expect(DiscoverDirectoryCategory.allTime.url.absoluteString == "https://skills.sh/")
         #expect(DiscoverDirectoryCategory.trending.url.absoluteString == "https://skills.sh/trending")
