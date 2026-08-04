@@ -203,20 +203,20 @@ struct ContentView: View {
         } message: {
             Text(store.errorMessage ?? "")
         }
-        .alert("本地副本已被修改", isPresented: Binding(
+        .alert("Local Copy Modified", isPresented: Binding(
             get: { store.pendingUpdateOverwrite != nil },
             set: { if !$0 { store.pendingUpdateOverwrite = nil } }
         )) {
-            Button("仍要更新", role: .destructive) {
+            Button("Update Anyway", role: .destructive) {
                 if let skill = store.pendingUpdateOverwrite {
                     store.pendingUpdateOverwrite = nil
                     guard !usesUIStateMatrixFixture else { return }
                     Task { await store.updateSkill(skill, confirmedOverwrite: true) }
                 }
             }
-            Button("取消", role: .cancel) { store.pendingUpdateOverwrite = nil }
+            Button("Cancel", role: .cancel) { store.pendingUpdateOverwrite = nil }
         } message: {
-            Text("“\(store.pendingUpdateOverwrite?.displayName ?? "")”的内容与安装时的记录不一致。更新会用远端版本覆盖本地修改;被替换的副本会保留在库目录旁的 .skills-manager-history 中。")
+            Text("The contents of “\(store.pendingUpdateOverwrite?.displayName ?? "")” differ from the installed record. Updating replaces local changes with the remote version; the replaced copy is kept in .skills-manager-history beside the Library directory.")
         }
         .focusedSceneValue(\.skillCommandActions, SkillCommandActions(
             refresh: { refreshSkillsCommand() },
@@ -637,28 +637,28 @@ struct ContentView: View {
             collections = [
                 CollectionRecord(
                     id: UUID(uuidString: "00000000-0000-0000-0000-000000000201")!,
-                    name: "2.0 RC：已挂载",
+                    name: String(localized: "2.0 RC: Mounted"),
                     sortOrder: 0,
                     memberSkillIDs: Array(ids.prefix(2)),
                     mountedAgentIDs: ["claude-code"]
                 ),
                 CollectionRecord(
                     id: UUID(uuidString: "00000000-0000-0000-0000-000000000202")!,
-                    name: "2.0 RC：部分缺失",
+                    name: String(localized: "2.0 RC: Partially Missing"),
                     sortOrder: 1,
                     memberSkillIDs: [ids[2], "legacy:missing-skill"],
                     mountedAgentIDs: ["codex"]
                 ),
                 CollectionRecord(
                     id: UUID(uuidString: "00000000-0000-0000-0000-000000000203")!,
-                    name: "2.0 RC：空分组",
+                    name: String(localized: "2.0 RC: Empty Collection"),
                     sortOrder: 2,
                     memberSkillIDs: [],
                     mountedAgentIDs: ["cursor"]
                 ),
                 CollectionRecord(
                     id: UUID(uuidString: "00000000-0000-0000-0000-000000000204")!,
-                    name: "2.0 RC：共享挂载",
+                    name: String(localized: "2.0 RC: Shared Mount"),
                     sortOrder: 3,
                     memberSkillIDs: [ids[0]],
                     mountedAgentIDs: ["claude-code"]

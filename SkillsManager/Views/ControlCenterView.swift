@@ -30,16 +30,21 @@ struct ControlCenterView: View {
                 agents.insert(agentID)
             }
         }
-        return "\(collections.count) 个分组 · \(skillMounts) 个技能正挂载在 \(agents.count) 个 agent"
+        return String.localizedStringWithFormat(
+            String(localized: "Collections: %lld · Mounted skills: %lld · Agents: %lld"),
+            Int64(collections.count),
+            Int64(skillMounts),
+            Int64(agents.count)
+        )
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
-                    Text("控制台").font(.title2).fontWeight(.semibold)
+                    Text("Control Center").font(.title2).fontWeight(.semibold)
                     Spacer()
-                    Button("＋ 新建分组") { isNamingPresented = true }
+                    Button("＋ Create Collection") { isNamingPresented = true }
                         .buttonStyle(.borderedProminent)
                         .tint(ConsoleTheme.accent)
                 }
@@ -67,7 +72,7 @@ struct ControlCenterView: View {
                     Button { isNamingPresented = true } label: {
                         VStack(spacing: 8) {
                             Image(systemName: "plus").font(.title2)
-                            Text("新建分组").font(.callout)
+                            Text("Create Collection").font(.callout)
                         }
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -84,14 +89,14 @@ struct ControlCenterView: View {
             .padding(20)
         }
         .background(ConsoleTheme.pageBackground)
-        .navigationTitle("控制台")
-        .alert("新建分组", isPresented: $isNamingPresented) {
-            TextField("组名", text: $newName)
-            Button("创建") {
+        .navigationTitle("Control Center")
+        .alert("Create Collection", isPresented: $isNamingPresented) {
+            TextField("Collection Name", text: $newName)
+            Button("Create") {
                 onCreate(newName)
                 newName = ""
             }
-            Button("取消", role: .cancel) { newName = "" }
+            Button("Cancel", role: .cancel) { newName = "" }
         }
     }
 }
@@ -127,25 +132,35 @@ private struct CollectionCard: View {
 
     private var deleteDialogMessage: String {
         if collection.mountedAgentIDs.isEmpty {
-            return "技能本体保留在 Library,仅删除这个分组。"
+            return String(localized: "Skills remain in the Library; only this Collection will be deleted.")
         }
-        return "该分组已挂载到:\(mountedAgentNames.joined(separator: "、"))。“卸载链接并删除”会先移除这些 agent 目录中的 symlink;“仅删除”会把链接留在磁盘上且不再受本应用管理。技能本体始终保留在 Library。"
+        return String.localizedStringWithFormat(
+            String(localized: "This Collection is mounted to: %@. “Unmount Links and Delete” removes those symlinks first; “Delete Only” leaves them on disk and unmanaged. Skills always remain in the Library."),
+            mountedAgentNames.joined(separator: ", ")
+        )
     }
 
     private var statusText: (text: String, isWarning: Bool) {
-        guard !collection.mountedAgentIDs.isEmpty else { return ("未挂载", false) }
+        guard !collection.mountedAgentIDs.isEmpty else { return (String(localized: "Not Mounted"), false) }
         guard resolvedMemberCount > 0 else {
-            return ("无可挂载技能：挂载意图无法应用", true)
+            return (String(localized: "No Mountable Skills: mount intent cannot be applied"), true)
         }
         let notMounted = collection.mountedAgentIDs.filter { statusFor($0) != .mounted }
         if notMounted.isEmpty {
             let names = collection.mountedAgentIDs.compactMap { id in
                 detectedAgents.first { $0.id == id }?.displayName
             }
-            return ("挂载于 \(names.joined(separator: "、")) · 状态正常", false)
+            return (String.localizedStringWithFormat(String(localized: "Mounted to %@ · Healthy"), names.joined(separator: ", ")), false)
         }
         let names = notMounted.compactMap { id in detectedAgents.first { $0.id == id }?.displayName }
-        return ("\(names.joined(separator: "、"))：与磁盘不一致", true)
+        return (String.localizedStringWithFormat(String(localized: "%@: Differs from Disk"), names.joined(separator: ", ")), true)
+    }
+
+    private var memberSummary: String {
+        let members = String.localizedStringWithFormat(String(localized: "%lld skills"), Int64(collection.memberSkillIDs.count))
+        guard missingCount > 0 else { return members }
+        let missing = String.localizedStringWithFormat(String(localized: "%lld missing"), Int64(missingCount))
+        return "\(members) · \(missing)"
     }
 
     var body: some View {
@@ -159,12 +174,12 @@ private struct CollectionCard: View {
                     .font(.headline)
                 Spacer()
                 Menu {
-                    Button("重命名…") {
+                    Button("Rename…") {
                         renameText = collection.name
                         isRenamePresented = true
                     }
                     Divider()
-                    Button("删除分组…", role: .destructive) { isDeleteConfirmPresented = true }
+                    Button("Delete Collection…", role: .destructive) { isDeleteConfirmPresented = true }
                 } label: {
                     Image(systemName: "ellipsis")
                         .frame(width: 24, height: 24)
@@ -173,7 +188,7 @@ private struct CollectionCard: View {
                 .menuIndicator(.hidden)
                 .menuStyle(.borderlessButton)
             }
-            Text("\(collection.memberSkillIDs.count) 个技能" + (missingCount > 0 ? " · \(missingCount) 个缺失" : ""))
+            Text(memberSummary)
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -185,14 +200,14 @@ private struct CollectionCard: View {
                     Text(detectedAgents.first { $0.id == agentID }?.displayName ?? agentID)
                         .font(.callout)
                     if let report = reportFor(agentID), !report.skipped.isEmpty {
-                        Text("成功 \(report.changed.count) · 跳过 \(report.skipped.count)")
+                        Text("Succeeded \(report.changed.count) · Skipped \(report.skipped.count)")
                             .font(.caption2)
                             .foregroundStyle(ConsoleTheme.statusWarn)
                             .help(report.skipped.map { "\($0.skillID):\($0.reason)" }.joined(separator: "\n"))
                     }
                     Spacer()
                     if statusFor(agentID) == .diverged {
-                        Button("重新应用") { onReapply(agentID) }
+                        Button("Reapply") { onReapply(agentID) }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
                     }
@@ -203,7 +218,7 @@ private struct CollectionCard: View {
                     .toggleStyle(.switch)
                     .controlSize(.small)
                     .labelsHidden()
-                    .accessibilityLabel("\(detectedAgents.first { $0.id == agentID }?.displayName ?? agentID) 挂载")
+                    .accessibilityLabel(Text("\(detectedAgents.first { $0.id == agentID }?.displayName ?? agentID) mount"))
                     .tint(ConsoleTheme.accent)
                 }
                 .frame(height: ConsoleTheme.mountRowHeight)
@@ -211,17 +226,19 @@ private struct CollectionCard: View {
 
             if !unmountedAgents.isEmpty {
                 if resolvedMemberCount == 0 {
-                    Label("先添加技能再挂载", systemImage: "plus")
+                    Label("Add Skills Before Mounting", systemImage: "plus")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
-                        .help(missingCount > 0 ? "分组成员缺失，无法挂载" : "空分组没有可挂载内容")
+                        .help(missingCount > 0
+                            ? String(localized: "Cannot mount while Collection members are missing.")
+                            : String(localized: "An empty Collection has no mountable content."))
                 } else {
                     Menu {
                         ForEach(unmountedAgents, id: \.id) { agent in
                             Button(agent.displayName) { onToggleAgent(agent.id, true) }
                         }
                     } label: {
-                        Label("挂载到…", systemImage: "plus")
+                        Label("Mount To…", systemImage: "plus")
                             .font(.caption)
                     }
                     .menuStyle(.borderlessButton)
@@ -242,24 +259,24 @@ private struct CollectionCard: View {
         .contentShape(Rectangle())
         .onTapGesture(perform: onOpen)
         .confirmationDialog(
-            "删除分组“\(collection.name)”?",
+            "Delete “\(collection.name)”?",
             isPresented: $isDeleteConfirmPresented,
             titleVisibility: .visible
         ) {
             if collection.mountedAgentIDs.isEmpty {
-                Button("删除分组", role: .destructive) { onDelete(false) }
+                Button("Delete Collection", role: .destructive) { onDelete(false) }
             } else {
-                Button("卸载链接并删除分组", role: .destructive) { onDelete(true) }
-                Button("仅删除分组(保留磁盘链接)", role: .destructive) { onDelete(false) }
+                Button("Unmount Links and Delete Collection", role: .destructive) { onDelete(true) }
+                Button("Delete Collection Only (Keep Disk Links)", role: .destructive) { onDelete(false) }
             }
-            Button("取消", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text(deleteDialogMessage)
         }
-        .alert("重命名分组", isPresented: $isRenamePresented) {
-            TextField("组名", text: $renameText)
-            Button("确定") { onRename(renameText) }
-            Button("取消", role: .cancel) {}
+        .alert("Rename Collection", isPresented: $isRenamePresented) {
+            TextField("Collection Name", text: $renameText)
+            Button("Rename") { onRename(renameText) }
+            Button("Cancel", role: .cancel) {}
         }
     }
 

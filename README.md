@@ -27,6 +27,7 @@ Version 2.0 turns Skills Manager from a directory browser into a local skill lif
 - **Safer ownership and recovery** — provider-managed skills retain their real owner; native takeover preserves recoverable backups and refuses ambiguous destructive repairs
 - **Broader agent support** — OpenCode is a first-class XDG-aware install target, while neutral shared roots such as `~/.agents/skills` are no longer mislabeled as OpenClaw
 - **More useful Library navigation** — agent home pages, conflict diagnosis, full-site Discover search, and working Copy ID, Copy Path, and Show in Finder actions
+- **Localized macOS interface** — English is the source and fallback language, with Simplified Chinese selected through the standard macOS system or per-app language setting
 - **Stable identity across surfaces** — Collections, upgrades, shared stars, the macOS app, and the Blessed terminal UI now use the same durable skill identity
 
 ## What it does
@@ -37,7 +38,7 @@ Coding agent skills are scattered everywhere. Each agent has its own format, ins
 - **Install** to one or multiple agents at once
 - **Try** skills with your own LLM (Claude, OpenAI, OpenRouter, Ollama, or LM Studio) before installing
 - **Manage** installed skills regardless of where they came from — update or remove through the detected provider, star favorites (stars are shared with the terminal UI), and spot diverged same-name copies across agents (Conflicts)
-- **Group skills into collections** and mount a collection into an agent only when needed — symlinks in, links out, the library stays put (sidebar → 控制台)
+- **Group skills into collections** and mount a collection into an agent only when needed — symlinks in, links out, the library stays put (sidebar → Control Center)
 - **Monitor** agent skill directories and refresh automatically when they change on disk
 - **Agent home pages** — clicking an agent in the sidebar opens its home: detection status and skills directory (Show in Finder / Copy Path), conflicts involving that agent, and its full skill list
 - **Translate** discovered skill summaries with a bundled 8-language catalog and on-demand LLM fallback for newly loaded entries

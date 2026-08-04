@@ -16,15 +16,15 @@ enum SidebarFilter: Hashable, Sendable {
 
     var title: String {
         switch self {
-        case .controlCenter:        "控制台"
-        case .discover:             "Discover"
-        case .all:                  "All Skills"
-        case .installed:            "Installed"
-        case .starred:              "Starred"
-        case .trial:                "Trial"
-        case .conflicts:            "Conflicts"
-        case .project:              "Project"
-        case .agentDocs:            "Agent Docs"
+        case .controlCenter:        String(localized: "Control Center")
+        case .discover:             String(localized: "Discover")
+        case .all:                  String(localized: "All Skills")
+        case .installed:            String(localized: "Installed")
+        case .starred:              String(localized: "Starred")
+        case .trial:                String(localized: "Trial")
+        case .conflicts:            String(localized: "Conflicts")
+        case .project:              String(localized: "Project")
+        case .agentDocs:            String(localized: "Agent Docs")
         case .agent(let name):      name
         case .source(let name):     name
         case .collection(_, let name): name

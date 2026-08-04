@@ -16,12 +16,14 @@ struct MountReport: Equatable, Sendable {
 
     var summaryText: String {
         var parts: [String] = []
-        if !changed.isEmpty { parts.append("成功 \(changed.count) 个") }
-        if !skipped.isEmpty {
-            let reasons = skipped.map { "\($0.skillID)(\($0.reason))" }.joined(separator: "、")
-            parts.append("跳过 \(skipped.count) 个:\(reasons)")
+        if !changed.isEmpty {
+            parts.append(String.localizedStringWithFormat(String(localized: "Succeeded: %lld"), Int64(changed.count)))
         }
-        return parts.isEmpty ? "无变化" : parts.joined(separator: ",")
+        if !skipped.isEmpty {
+            let reasons = skipped.map { "\($0.skillID) (\($0.reason))" }.joined(separator: ", ")
+            parts.append(String.localizedStringWithFormat(String(localized: "Skipped: %lld (%@)"), Int64(skipped.count), reasons))
+        }
+        return parts.isEmpty ? String(localized: "No changes") : parts.joined(separator: ", ")
     }
 }
 
@@ -126,7 +128,7 @@ enum ActivationService {
                 try? fm.removeItem(at: link)
                 report.changed.append(skill.id)
             } else if (try? fm.attributesOfItem(atPath: link.path)) != nil {
-                report.skipped.append(.init(skillID: skill.id, reason: "实体目录不删除"))
+                report.skipped.append(.init(skillID: skill.id, reason: String(localized: "Real file or directory was not removed")))
             }
         }
         return report

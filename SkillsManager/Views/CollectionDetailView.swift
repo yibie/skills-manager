@@ -43,6 +43,13 @@ struct CollectionDetailView: View {
         resolution.missingIDs.count
     }
 
+    private var memberSummary: String {
+        let members = String.localizedStringWithFormat(String(localized: "%lld skills"), Int64(collection.memberSkillIDs.count))
+        guard missingCount > 0 else { return members }
+        let missing = String.localizedStringWithFormat(String(localized: "%lld missing"), Int64(missingCount))
+        return "\(members) · \(missing)"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 10) {
@@ -51,11 +58,11 @@ struct CollectionDetailView: View {
                         .font(.title2)
                         .foregroundStyle(.secondary)
                     Text(collection.name).font(.headline)
-                    Text("\(collection.memberSkillIDs.count) 个技能" + (missingCount > 0 ? " · \(missingCount) 个缺失" : ""))
+                    Text(memberSummary)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Button("＋ 添加技能") { isPickerPresented = true }
+                    Button("＋ Add Skills") { isPickerPresented = true }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                 }
@@ -66,24 +73,26 @@ struct CollectionDetailView: View {
                     }
                     if !unmountedAgents.isEmpty {
                         if !hasResolvedMembers {
-                            Label("先添加技能再挂载", systemImage: "plus")
+                            Label("Add Skills Before Mounting", systemImage: "plus")
                                 .font(.callout)
                                 .foregroundStyle(.tertiary)
-                                .help(missingCount > 0 ? "分组成员缺失，无法挂载" : "空分组没有可挂载内容")
+                                .help(missingCount > 0
+                                    ? String(localized: "Cannot mount while Collection members are missing.")
+                                    : String(localized: "An empty Collection has no mountable content."))
                         } else {
                             Menu {
                                 ForEach(unmountedAgents, id: \.id) { agent in
                                     Button(agent.displayName) { onToggleAgent(agent.id, true) }
                                 }
                             } label: {
-                                Label("挂载到…", systemImage: "plus")
+                                Label("Mount To…", systemImage: "plus")
                                     .font(.callout)
                             }
                             .menuStyle(.borderlessButton)
                         }
                     }
                 }
-                Text("打开开关 = 组内技能 symlink 进该 agent;关闭 = 仅移除链接,技能保留在库中")
+                Text("Turning a switch on symlinks this Collection's skills into the agent; turning it off removes only the links and keeps the skills in the Library.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -93,11 +102,15 @@ struct CollectionDetailView: View {
 
             if !hasResolvedMembers {
                 ContentUnavailableView {
-                    Label(missingCount > 0 ? "分组成员缺失" : "分组中还没有技能", systemImage: "tray")
+                    Label(missingCount > 0
+                        ? String(localized: "Missing Collection Members")
+                        : String(localized: "No Skills in This Collection"), systemImage: "tray")
                 } description: {
-                    Text(missingCount > 0 ? "添加或恢复技能后，可将整个分组挂载到 Agent。" : "添加技能后，可将整个分组挂载到 Agent。")
+                    Text(missingCount > 0
+                        ? String(localized: "Add or restore skills before mounting this Collection to an agent.")
+                        : String(localized: "Add skills before mounting this Collection to an agent."))
                 } actions: {
-                    Button("添加技能") { isPickerPresented = true }
+                    Button("Add Skills") { isPickerPresented = true }
                 }
             } else {
                 SkillListView(
@@ -144,18 +157,18 @@ struct CollectionDetailView: View {
                 .frame(width: 8, height: 8)
             Text(agent.displayName).font(.callout)
             if mounted && status == .unmounted {
-                Text("无可挂载技能")
+                Text("No Mountable Skills")
                     .font(.caption2)
                     .foregroundStyle(ConsoleTheme.statusWarn)
             }
             if let report = reportFor(agent.id), !report.skipped.isEmpty {
-                Text("成功 \(report.changed.count) · 跳过 \(report.skipped.count)")
+                Text("Succeeded \(report.changed.count) · Skipped \(report.skipped.count)")
                     .font(.caption2)
                     .foregroundStyle(ConsoleTheme.statusWarn)
                     .help(report.skipped.map { "\($0.skillID):\($0.reason)" }.joined(separator: "\n"))
             }
             if status == .diverged {
-                Button("重新应用") { onReapply(agent.id) }
+                Button("Reapply") { onReapply(agent.id) }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
             }
@@ -166,7 +179,7 @@ struct CollectionDetailView: View {
             .toggleStyle(.switch)
             .controlSize(.small)
             .labelsHidden()
-            .accessibilityLabel("\(agent.displayName) 挂载")
+            .accessibilityLabel(Text("\(agent.displayName) mount"))
             .tint(ConsoleTheme.accent)
         }
         .padding(.horizontal, 10)
@@ -209,17 +222,17 @@ private struct MemberPicker: View {
                 }
                 .tag(skill)
             }
-            .searchable(text: $searchText, prompt: "搜索技能")
-            .navigationTitle("添加技能")
+            .searchable(text: $searchText, prompt: "Search Skills")
+            .navigationTitle("Add Skills")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("添加 \(selected.count) 个") {
+                    Button("Add \(selected.count)") {
                         onAdd(selected.map(\.persistenceID))
                     }
                     .disabled(selected.isEmpty)
                 }
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button("Cancel") { dismiss() }
                 }
             }
         }

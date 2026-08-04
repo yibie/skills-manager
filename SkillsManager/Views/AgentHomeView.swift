@@ -85,7 +85,7 @@ struct AgentHomeView: View {
             }
             Spacer()
             SkillMetaBadge(
-                text: isDetected ? "已检测" : "未检测到安装",
+                text: isDetected ? String(localized: "Detected") : String(localized: "Not Detected"),
                 tint: isDetected ? .green : .secondary
             )
             if let dir = definition.map({ AgentRegistry.resolvedSkillsDir(for: $0) }) {
@@ -118,16 +118,16 @@ struct AgentHomeView: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)
             VStack(alignment: .leading, spacing: 2) {
-                Text("\(agentConflicts.count) 个技能冲突")
+                Text("\(agentConflicts.count) skill conflicts")
                     .font(.callout)
                     .fontWeight(.medium)
-                Text(agentConflicts.map(\.name).joined(separator: "、"))
+                Text(agentConflicts.map(\.name).joined(separator: ", "))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
             Spacer()
-            Button("查看", action: onShowConflicts)
+            Button("View", action: onShowConflicts)
                 .buttonStyle(.bordered)
                 .controlSize(.small)
         }

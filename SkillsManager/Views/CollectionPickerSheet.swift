@@ -22,7 +22,7 @@ struct CollectionPickerSheet: View {
                             Image(systemName: "folder")
                             Text(collection.name)
                             Spacer()
-                            Text("\(collection.memberSkillIDs.count) 个技能")
+                            Text("\(collection.memberSkillIDs.count) skills")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -32,26 +32,26 @@ struct CollectionPickerSheet: View {
                 Button {
                     isNamingPresented = true
                 } label: {
-                    Label("新建分组…", systemImage: "plus")
+                    Label("Create Collection…", systemImage: "plus")
                 }
                 .buttonStyle(.plain)
             }
             .navigationTitle("Add to Collection")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button("Cancel") { dismiss() }
                 }
             }
         }
         .frame(width: 360, height: 420)
-        .alert("新建分组", isPresented: $isNamingPresented) {
-            TextField("组名", text: $newName)
-            Button("创建") {
+        .alert("Create Collection", isPresented: $isNamingPresented) {
+            TextField("Collection Name", text: $newName)
+            Button("Create") {
                 onCreate(newName)
                 newName = ""
                 dismiss()
             }
-            Button("取消", role: .cancel) { newName = "" }
+            Button("Cancel", role: .cancel) { newName = "" }
         }
     }
 }
