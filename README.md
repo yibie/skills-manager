@@ -50,9 +50,9 @@ Coding agent skills are scattered everywhere. Each agent has its own format, ins
 
 ## Installation
 
-Download signed builds from the [Releases](../../releases) page and drag to Applications.
+Download [Skills Manager 2.0.0](../../releases/download/v2.0.0/SkillsManager-v2.0.0.zip) and drag it to Applications. The universal app is Developer ID signed, Apple-notarized, and accepted by Gatekeeper. SHA-256: `8da1f38838119864e593e9e591355dd53b5d407e4a7383aac68f095efdac1ad5`.
 
-The current 2.0.0 artifact is still an unsigned internal prerelease RC, not the GA download. Until Developer ID signing and notarization are complete, build from source below. RC testers should read the [2.0.0 upgrade and rollback guide](docs/releases/2.0.0.md) first.
+Upgrading from 1.x? Read the [2.0.0 upgrade and rollback guide](docs/releases/2.0.0.md) first. All releases remain available on the [Releases](../../releases) page.
 
 Or build from source:
 
