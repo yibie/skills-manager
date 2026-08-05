@@ -1,5 +1,12 @@
 # Skills Manager 2.0 RC — Work Plan
 
+> [!IMPORTANT]
+> **Archived on 2026-08-05.** This is the execution plan that led to the
+> 2.0.0 unsigned internal RC published on 2026-08-04; it is not an active task
+> list. The unchecked criteria below preserve the original planning record.
+> Use [README](../../README.md), [CHANGELOG](../../CHANGELOG.md), and the
+> [2.0.0 release guide](../../docs/releases/2.0.0.md) for current status.
+
 ## TL;DR
 
 - **What you will get:** a locally verified macOS 2.0 release candidate with

@@ -1,5 +1,12 @@
 # Skills Manager 改进 Backlog(六方评估综合)
 
+> [!IMPORTANT]
+> **Archived on 2026-08-05.** This is a historical assessment snapshot from
+> 2026-07-26, not the current product backlog. Its paths, line numbers, test
+> counts, and implementation claims describe the pre-2.0 working copy. Use
+> [README](../../README.md), [CHANGELOG](../../CHANGELOG.md), and the
+> [2.0.0 release guide](../../docs/releases/2.0.0.md) for current behavior.
+
 仓库根:`/Users/chenyibin/Documents/prj/skills-manager`(下文路径均相对此根)
 
 ## 0. 核实记录与综合裁决
@@ -398,4 +405,3 @@
 - P2-8(改名)排在 P1-1(ID 单源)之后,避免两次触碰同一批引用;
 - P2-9(检视器重启)以 P0-1(方向裁决)为闸门,以 P1-5(遮蔽检测)为地基;
 - TUI 条目(P0-8/P0-9/P1-13)是冻结前的最后维护窗口,之后新能力一律走 P2-1 的内核+CLI 路线。
-

@@ -1,5 +1,13 @@
 # Skills Manager — Development Progress
 
+> [!IMPORTANT]
+> **Archived on 2026-08-05.** This document is a historical development
+> snapshot last updated before the 2.0 lifecycle-control-plane work. In
+> particular, the section labeled “Architecture snapshot (current)” describes
+> the older implementation and is not authoritative now. Use
+> [README](../../README.md), [CHANGELOG](../../CHANGELOG.md), and the
+> [2.0.0 release guide](../releases/2.0.0.md) for current behavior.
+
 ## Phase 1 ✅ COMPLETE (prior session)
 
 MVP: local skill management + version tracking.

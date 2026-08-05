@@ -1,5 +1,12 @@
 # Ralph Loop — 产品评估与自动改进
 
+> [!IMPORTANT]
+> **Archived on 2026-08-05.** This file records the 2026-07-26 Ralph run and
+> must not be treated as an active execution queue. The referenced detached
+> HEAD, working-copy state, test totals, and pending actions are historical.
+> Use [README](../../README.md), [CHANGELOG](../../CHANGELOG.md), and the
+> [2.0.0 release guide](../../docs/releases/2.0.0.md) for current status.
+
 - 启动:2026-07-26,/loop 动态模式(自调度)
 - 任务:组织团队评估 Skills Manager 产品,形成改进清单(backlog.md),后续迭代逐项自动实施
 - Git 注意:启动时处于 detached HEAD @ 243ee0c;自动改进只改工作区、**不自动 commit**(用户未要求提交;如需提交建议先建分支)
