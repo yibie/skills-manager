@@ -22,13 +22,29 @@ A native macOS app to manage skills across all your coding agents — Claude Cod
 
 Version 2.0 turns Skills Manager from a directory browser into a local skill lifecycle control plane built around `Library → Collection → Mount`.
 
-- **Collections Control Center** — group Library skills once and mount or unmount the group for each agent without deleting the underlying skills
-- **Truthful mount state** — missing members, shared mounts, partial application, and on-disk divergence stay visible and can be reapplied explicitly
-- **Safer ownership and recovery** — provider-managed skills retain their real owner; native takeover preserves recoverable backups and refuses ambiguous destructive repairs
-- **Broader agent support** — OpenCode is a first-class XDG-aware install target, while neutral shared roots such as `~/.agents/skills` are no longer mislabeled as OpenClaw
-- **More useful Library navigation** — agent home pages, conflict diagnosis, full-site Discover search, and working Copy ID, Copy Path, and Show in Finder actions
-- **Localized macOS interface** — English is the source and fallback language, with Simplified Chinese selected through the standard macOS system or per-app language setting
-- **Stable identity across surfaces** — Collections, upgrades, shared stars, the macOS app, and the Blessed terminal UI now use the same durable skill identity
+```text
+Library      trusted, managed skill sources
+   ↓
+Collection   reusable groups for a project or workflow
+   ↓
+Mount        links a Collection into one or more agents on demand
+```
+
+### From 1.x to 2.0
+
+| Area | 1.x | 2.0 |
+|------|-----|-----|
+| Product model | Browse and manage agent skill directories | Manage the complete local skill lifecycle |
+| Organization | Skills live primarily inside each agent directory | A managed Library supplies reusable Collections |
+| Multi-agent use | Install and maintain skills for each agent separately | Mount or unmount a Collection without moving or duplicating its Library skills |
+| State | Primarily installed or not installed | Missing, shared, partially applied, and diverged states remain visible and can be reapplied explicitly |
+| Identity | Names and paths do most of the matching | Durable skill IDs connect upgrades, Collections, stars, the macOS app, and the TUI |
+| Ownership and recovery | Basic provider install and removal flows | Provider ownership is preserved; takeover keeps recoverable backups and refuses ambiguous destructive repairs |
+| Navigation | Directory-oriented agent views | Agent home pages, conflict diagnosis, full-site Discover search, Copy ID, Copy Path, and Show in Finder |
+| Agent support | Core agent scanning and installation | A broader registry, including first-class XDG-aware OpenCode support and correctly classified neutral shared roots |
+| Localization | UI strings did not have a consistent English fallback | English is the source and fallback language; macOS can select the bundled Simplified Chinese localization |
+
+The architecture remains local-first: there is no Skills Manager backend, unmounting never deletes the Library copy, and network access is limited to features such as Discover, translation fallback, and LLM Try calls.
 
 ## What it does
 
