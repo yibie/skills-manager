@@ -22,6 +22,9 @@ SkillsManager.xcodeproj/project.xcworkspace/xcuserdata/
 
 # Local agent/tool state
 /.claude/settings.local.json
+/.claude/ralph/
+/.codex/plans/
+/docs/superpowers/progress.md
 /.*/skills/vercel-react-best-practices
 /skills/vercel-react-best-practices
 /skills-lock.json
